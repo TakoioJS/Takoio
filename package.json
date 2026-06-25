@@ -1,6 +1,6 @@
 {
   "name": "takoio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple, free comment system with Vue 3 + Vite 8",
   "keywords": [
     "takoio",
