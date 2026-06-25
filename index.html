@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Takoio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .article {
+      background: #fff;
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .article h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .article p {
+      margin-bottom: 12px;
+      color: #475569;
+    }
+
+    .article code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 32px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    #takoio {
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Takoio</h1>
+    <p class="subtitle">Vue 3 + Vite 8 + TypeScript</p>
+    <h3 class="section-title">💬 评论</h3>
+    <div id="takoio"></div>
+  </div>
+
+  <script type="module">
+    import { createApp } from 'vue'
+    import ElementPlus from 'element-plus'
+    import 'element-plus/dist/index.css'
+    import App from './src/client/view/App.vue'
+
+    console.log('🚀 Takoio v1.0.0 Dev Server Starting...')
+
+    const app = createApp(App, {
+      tcb: null,
+      options: {
+        envId: 'http://localhost:8080',
+        lang: 'zh-CN',
+        path: '/test-article',
+        title: '测试文章',
+        pageSize: 10,
+        sort: 'newest',
+        onCommentPosted: (comment) => {
+          console.log('📝 新评论（本地）:', comment)
+        },
+        onError: (err) => {
+          console.warn('⚠️ 后端不可用（开发模式正常）:', err.message)
+        }
+      }
+    })
+
+    app.use(ElementPlus, { size: 'default', zIndex: 3000 })
+    app.mount('#takoio')
+
+    console.log('✅ Takoio v1.0.0 mounted!')
+    console.log('💡 开发模式：后端不可用，评论区 UI 正常预览')
+    console.log('💡 输入 #admin 切换到管理面板')
+  </script>
+</body>
+
+</html>
