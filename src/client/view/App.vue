@@ -79,8 +79,14 @@ const loadKeyConfig = async () => {
 onMounted(async () => {
   if (typeof window !== 'undefined') {
     if (props.options.customCSS) {
+      // Sanitize customCSS: block dangerous CSS injections
+      const sanitized = props.options.customCSS
+        .replace(/url\s*\(/gi, '/* url() blocked */')
+        .replace(/expression\s*\(/gi, '/* expression() blocked */')
+        .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')
+        .replace(/javascript\s*:/gi, '/* javascript: blocked */')
       const style = document.createElement('style')
-      style.textContent = props.options.customCSS
+      style.textContent = sanitized
       document.head.appendChild(style)
     }
     await loadKeyConfig()

@@ -56,14 +56,13 @@ adminRoutes.get('/config', async (c) => {
 // PUT /api/admin/config — 更新配置
 adminRoutes.put('/config', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleSetConfig({ ...body, _ip: await getClientIp(c) }))
 })
 
 // DELETE /api/admin/config — 重置配置
 adminRoutes.delete('/config', async (c) => {
-  const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleConfigReset({}))
 })
 
@@ -80,7 +79,7 @@ adminRoutes.get('/type', async (c) => {
 // PUT /api/admin/type — 设置类型
 adminRoutes.put('/type', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleTypeSet(body))
 })
 
@@ -95,21 +94,21 @@ adminRoutes.get('/private-key', async (c) => {
 // PUT /api/admin/private-key — 设置私钥
 adminRoutes.put('/private-key', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handlePrivateKeySet(body))
 })
 
 // POST /api/admin/notification — 发送通知
 adminRoutes.post('/notification', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleSendNotification(body))
 })
 
 // POST /api/admin/email-test — 测试邮件
 adminRoutes.post('/email-test', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleEmailTest(body))
 })
 
@@ -133,6 +132,6 @@ adminRoutes.get('/export', async (c) => {
 adminRoutes.post('/import/:source', async (c) => {
   const source = c.req.param('source')
   const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleImport(source, body))
 })

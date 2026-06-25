@@ -269,14 +269,12 @@ const onLogin = async (): Promise<void> => {
   }
   logging.value = true
   try {
-    console.log('[Takoio Admin] 尝试登录，envId:', props.options.envId)
     const base = props.options.envId.replace(/\/$/, '')
     const result = await request(`${base}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: password.value })
     })
-    console.log('[Takoio Admin] 登录响应:', result)
     if ((result as any).success) {
       const serverToken = (result as any).token || ''
       saveSession(serverToken)

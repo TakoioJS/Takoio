@@ -128,8 +128,8 @@ const displayIpRegion = computed(() => {
 })
 
 const renderContent = async (): Promise<void> => {
-  if (props.comment.renderedComment) { renderedContent.value = props.comment.renderedComment; return }
-  const html = await renderMarkdown(props.comment.comment || '')
+  const source = props.comment.renderedComment || props.comment.comment || ''
+  const html = await renderMarkdown(source)
   renderedContent.value = html
   setTimeout(async () => {
     const el = document.querySelector(`.tk-comment[data-id="${props.comment.id}"] .tk-comment-content`)

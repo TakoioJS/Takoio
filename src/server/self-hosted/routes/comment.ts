@@ -17,8 +17,6 @@ import {
 const getToken = (c: any): string | undefined => {
   const auth = c.req.header('Authorization')
   if (auth?.startsWith('Bearer ')) return auth.slice(7)
-  const qToken = c.req.query('token')
-  if (qToken) return qToken
   return undefined
 }
 
@@ -56,16 +54,16 @@ commentRoutes.get('/:id/ip-region', async (c) => {
 commentRoutes.put('/:id', async (c) => {
   const id = c.req.param('id')
   const body = await c.req.json()
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleCommentUpdate({ id, ...body }))
 })
 
 commentRoutes.post('/:id/like', async (c) => {
-  return c.json(await handleCommentLike({ id: c.req.param('id') }))
+  return c.json(await handleCommentLike({ id: c.req.param('id'), _ip: await getClientIp(c) }))
 })
 
 commentRoutes.post('/:id/dislike', async (c) => {
-  return c.json(await handleCommentDislike({ id: c.req.param('id') }))
+  return c.json(await handleCommentDislike({ id: c.req.param('id'), _ip: await getClientIp(c) }))
 })
 
 commentRoutes.delete('/:id', async (c) => {
@@ -77,21 +75,20 @@ commentRoutes.delete('/:id', async (c) => {
 commentRoutes.patch('/:id/hide', async (c) => {
   const id = c.req.param('id')
   const body = await c.req.json()
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleCommentHide({ id, hide: body.hide }))
 })
 
 commentRoutes.patch('/:id/top', async (c) => {
   const id = c.req.param('id')
   const body = await c.req.json()
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleCommentSetTop({ id, isTop: body.isTop }))
 })
 
 commentRoutes.patch('/:id/spam', async (c) => {
   const id = c.req.param('id')
-  const body = await c.req.json().catch(() => ({}))
-  await requireAdmin({ token: getToken(c) || body.token })
+  await requireAdmin({ token: getToken(c) })
   return c.json(await handleCommentSetSpam({ id }))
 })
 

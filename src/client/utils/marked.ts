@@ -25,7 +25,7 @@ const PURIFY_CONFIG: Config = {
   ],
   ALLOWED_ATTR: [
     'class', 'id', 'href', 'src', 'alt', 'title', 'target', 'rel',
-    'width', 'height', 'style',
+    'width', 'height',
     'colspan', 'rowspan', 'align', 'valign',
     'aria-hidden', 'role',
     'xmlns', 'encoding', 'mathvariant', 'displaystyle', 'scriptlevel',

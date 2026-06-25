@@ -1,5 +1,6 @@
 import { Marked } from 'marked'
 import { getHighlighter, type Highlighter } from 'shiki'
+import DOMPurify from 'isomorphic-dompurify'
 
 let highlighter: Highlighter | null = null
 let hlPromise: Promise<Highlighter> | null = null
@@ -23,6 +24,31 @@ async function getHl() {
   return highlighter
 }
 
+const PURIFY_CONFIG = {
+  ALLOWED_TAGS: [
+    'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ins',
+    'a', 'img', 'code', 'pre', 'blockquote',
+    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+    'hr', 'span', 'div', 'sup', 'sub', 'details', 'summary',
+    'math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'mspace', 'mover', 'munder',
+    'munderover', 'msub', 'msup', 'mfrac', 'msqrt', 'mtable', 'mtr', 'mtd',
+    'annotation',
+    'svg', 'path', 'line', 'rect', 'circle', 'g',
+  ],
+  ALLOWED_ATTR: [
+    'class', 'id', 'href', 'src', 'alt', 'title', 'target', 'rel',
+    'width', 'height',
+    'colspan', 'rowspan', 'align', 'valign',
+    'aria-hidden', 'role',
+    'xmlns', 'encoding', 'mathvariant', 'displaystyle', 'scriptlevel',
+    'd', 'viewBox', 'fill', 'stroke', 'transform', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
+    'rx', 'ry', 'r', 'cx', 'cy',
+  ],
+  ALLOW_DATA_ATTR: false,
+  FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur'],
+}
+
 export async function renderComment(text: string): Promise<string> {
   const hl = await getHl()
   const md = new Marked({ gfm: true, breaks: true })
@@ -43,5 +69,6 @@ export async function renderComment(text: string): Promise<string> {
       },
     },
   })
-  return await md.parse(text)
+  const html = await md.parse(text)
+  return DOMPurify.sanitize(html, PURIFY_CONFIG)
 }

@@ -9,7 +9,7 @@
     </div>
 
     <div v-if="replyTo" class="tk-reply-to">
-      回复 <strong>{{ replyTo.nick }}</strong>：
+      {{ t('replyTo') }} <strong>{{ replyTo.nick }}</strong>：
       <button class="tk-btn-link tk-btn-sm" @click="emit('clear-reply')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -33,7 +33,7 @@
 
       <div class="tk-editor-item">
         <textarea ref="editorRef" v-model="form.comment" class="tk-textarea" :placeholder="t('placeholder')" :maxlength="commentMaxLength" rows="4" @keydown.ctrl.enter="onSubmit" @paste="onPaste"></textarea>
-        <div class="tk-word-limit"><span>{{ form.comment.length }}</span>/500</div>
+        <div class="tk-word-limit"><span>{{ form.comment.length }}</span>/{{ commentMaxLength }}</div>
       </div>
 
       <div v-if="uploadedImages.length" class="tk-image-previews">

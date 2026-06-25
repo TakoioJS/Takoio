@@ -228,20 +228,46 @@ export const handleCommentUpdate = async (data: UpdateCommentData) => {
   return { success: true }
 }
 
+// In-memory dedup: track like/dislike by comment+ip
+const reactionIps = new Map<string, Set<string>>()
+const REACTION_TTL = 24 * 60 * 60 * 1000 // 24 hours
+setInterval(() => reactionIps.clear(), REACTION_TTL).unref()
+
+const hasReacted = (commentId: string, ip: string): boolean => {
+  const set = reactionIps.get(commentId)
+  return set ? set.has(ip) : false
+}
+
+const markReacted = (commentId: string, ip: string): void => {
+  let set = reactionIps.get(commentId)
+  if (!set) { set = new Set(); reactionIps.set(commentId, set) }
+  set.add(ip)
+}
+
 // ========== Comment Like ==========
 
-export const handleCommentLike = async (data: CommentIdData) => {
+export const handleCommentLike = async (data: CommentIdData & { _ip?: string }) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  return { success: await commentStore.likeComment(validation.data.id) }
+  const { id } = validation.data
+  const ip = data._ip || ''
+  if (ip && hasReacted(id, ip)) return { success: false, message: 'already_reacted' }
+  const result = await commentStore.likeComment(id)
+  if (result && ip) markReacted(id, ip)
+  return { success: result }
 }
 
 // ========== Comment Dislike ==========
 
-export const handleCommentDislike = async (data: CommentIdData) => {
+export const handleCommentDislike = async (data: CommentIdData & { _ip?: string }) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  return { success: await commentStore.dislikeComment(validation.data.id) }
+  const { id } = validation.data
+  const ip = data._ip || ''
+  if (ip && hasReacted(id, ip)) return { success: false, message: 'already_reacted' }
+  const result = await commentStore.dislikeComment(id)
+  if (result && ip) markReacted(id, ip)
+  return { success: result }
 }
 
 // ========== Comment Delete ==========

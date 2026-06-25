@@ -29,6 +29,7 @@ export interface TakoioConfig {
   AUDIT_MODE: boolean
   IP_REGION_ENABLED: boolean
   IP_PROXY_HEADER: string
+  TRUSTED_PROXIES: string
   SHOW_IP_REGION: boolean
   SHOW_UA_INFO: boolean
   ENABLE_LIKE: boolean
@@ -123,6 +124,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   AUDIT_MODE: false,
   IP_REGION_ENABLED: true,
   IP_PROXY_HEADER: '',
+  TRUSTED_PROXIES: '',
   SHOW_IP_REGION: 'all' as any,
   SHOW_UA_INFO: true,
   ENABLE_LIKE: true,

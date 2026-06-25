@@ -23,7 +23,7 @@ export async function init (options: TakoioConfig = {} as TakoioConfig): Promise
     return
   }
   setLanguage(options)
-  render(options)
+  await render(options)
   await updateVisitorsCount({
     ...options,
     _isLocalhost: () => ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(
@@ -66,5 +66,4 @@ export async function getVisitorsCount (
   return await getVisitorsCountApi(opts)
 }
 
-export default init
 export { version }

@@ -734,7 +734,7 @@ const onFetchModels = async (p: any) => {
     const key = p.key
     let res
     if (format === 'gemini') {
-      res = await fetch(`${modelsUrl}?key=${encodeURIComponent(key)}`)
+      res = await fetch(modelsUrl, { headers: { 'x-goog-api-key': key } })
     } else if (format === 'anthropic') {
       res = await fetch(modelsUrl, { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' } })
     } else {

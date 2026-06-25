@@ -1,14 +1,14 @@
 /**
  * Extract client IP from request headers.
  *
- * Priority: custom header → standard proxy headers → Node.js socket (self-hosted only).
- * In serverless environments (Vercel, Netlify), there is no Node.js HTTP server,
- * so getConnInfo is skipped and we rely entirely on proxy headers.
+ * Security: only reads proxy headers when the direct connection IP
+ * falls within TRUSTED_PROXIES. If no trusted proxies configured,
+ * only the direct socket IP is used (no header forging possible).
  */
 
 import { getConfig } from '../config'
 
-// Headers to check in order of preference (populated by reverse proxies / CDNs)
+// Headers to check in order of preference
 const PROXY_HEADERS = [
   'x-forwarded-for',
   'x-real-ip',
@@ -20,32 +20,46 @@ const PROXY_HEADERS = [
 const pickFirstIp = (header: string | undefined): string =>
   header?.split(',')[0]?.trim() || ''
 
+/** Check if an IP is in the trusted proxy list (CIDR support not needed for typical use) */
+const isTrustedProxy = (ip: string, trusted: string[]): boolean =>
+  trusted.length === 0 ? false : trusted.includes(ip)
+
 export const getClientIp = async (c: any): Promise<string> => {
   const config = await getConfig()
 
-  // 1. User-configured custom header
-  const customHeader = config.IP_PROXY_HEADER?.toLowerCase()
-  if (customHeader) {
-    const ip = pickFirstIp(c.req.header(customHeader))
-    if (ip) return ip
-  }
-
-  // 2. Standard proxy headers
-  for (const h of PROXY_HEADERS) {
-    const ip = pickFirstIp(c.req.header(h))
-    if (ip) return ip
-  }
-
-  // 3. Node.js socket — only available in self-hosted mode (via @hono/node-server).
-  //    Serverless runtimes (Vercel, Netlify) do not expose a real socket,
-  //    so we guard with env checks to avoid a useless import + exception.
+  // Determine the direct connection IP (the actual remote address)
+  // This is needed to decide whether to trust proxy headers
+  let directIp = '127.0.0.1'
   if (c.env?.socket || c.env?.incoming) {
     try {
       const { getConnInfo } = await import('@hono/node-server/conninfo')
       const info = getConnInfo(c)
-      if (info.remote.address) return info.remote.address
+      if (info.remote.address) directIp = info.remote.address
     } catch { /* not in a Node HTTP server context */ }
   }
 
-  return '127.0.0.1'
+  // Parse trusted proxies
+  const trustedRaw = config.TRUSTED_PROXIES || ''
+  const trustedList = trustedRaw.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
+
+  // Only read proxy headers if the direct IP is from a trusted proxy
+  const isTrusted = isTrustedProxy(directIp, trustedList)
+
+  // 1. User-configured custom header (only when trusted)
+  if (isTrusted) {
+    const customHeader = config.IP_PROXY_HEADER?.toLowerCase()
+    if (customHeader) {
+      const ip = pickFirstIp(c.req.header(customHeader))
+      if (ip) return ip
+    }
+
+    // 2. Standard proxy headers (only when trusted)
+    for (const h of PROXY_HEADERS) {
+      const ip = pickFirstIp(c.req.header(h))
+      if (ip) return ip
+    }
+  }
+
+  // 3. Return the direct connection IP
+  return directIp
 }

@@ -60,7 +60,7 @@
             <span class="tk-ac-url" :title="item.url">{{ item.url }}</span>
             <span class="tk-ac-time">{{ formatTime(item.created) }}</span>
           </div>
-          <div class="tk-ac-content tk-content" v-html="item.renderedComment || item.comment" />
+          <div class="tk-ac-content tk-content" v-html="(item as any)._safeContent || ''" />
           <div class="tk-ac-meta">
             <span class="tk-ac-meta-item">
               <div :title="item.ua" style="font-size: 12px; line-height: 1.5;">
@@ -189,17 +189,13 @@ const authAdmin = (path: string, method: string = 'GET', body?: any): Promise<an
 const loadComments = async (): Promise<void> => {
   loading.value = true
   try {
-    console.log('[Takoio Admin] 加载评论，token:', props.token ? '已提供' : '无')
     const qs = new URLSearchParams({ page: String(page.value), pageSize: String(pageSize.value) })
     if (search.value) qs.set('search', search.value)
     if (filter.value && filter.value !== 'all') qs.set('filter', filter.value)
     const r = await authAdmin(`/api/comments/admin?${qs}`)
-    console.log('[Takoio Admin] 评论数据:', r)
     const data = r.data || []
     for (const item of data) {
-      if (item.comment) {
-        item.renderedComment = await renderMarkdown(item.comment)
-      }
+      item._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
     }
     comments.value = data
     total.value = r.total || 0

@@ -11,16 +11,56 @@ import type { TakoioConfig } from '../types'
 const containers: Map<string, HTMLElement> = new Map()
 let app: VueApp | null = null
 
+/**
+ * 等待 DOM 元素就绪
+ * 先同步查找，找不到则通过 MutationObserver 短暂等待，带超时兜底
+ */
+const waitForElement = (
+  selector?: string | HTMLElement,
+  timeout = 5000
+): Promise<HTMLElement | null> => {
+  return new Promise((resolve) => {
+    // 1. 已经是 HTMLElement 直接返回
+    if (selector instanceof HTMLElement) return resolve(selector)
+
+    // 2. 立即能找到
+    const el = typeof selector === 'string'
+      ? document.querySelector<HTMLElement>(selector)
+      : document.getElementById('takoio')
+    if (el) return resolve(el)
+
+    // 3. 用 MutationObserver 等它出现
+    const observer = new MutationObserver(() => {
+      const found = typeof selector === 'string'
+        ? document.querySelector<HTMLElement>(selector)
+        : document.getElementById('takoio')
+      if (found) { observer.disconnect(); clearTimeout(timer); resolve(found) }
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+
+    // 4. 超时兜底
+    const timer = setTimeout(() => { observer.disconnect(); resolve(null) }, timeout)
+  })
+}
+
 /** 渲染 Takoio 组件 */
-export const render = (
-  options: TakoioConfig
-): void => {
+export const render = async (options: TakoioConfig): Promise<void> => {
+  // Vue 缺失守卫：UMD 模式下 window.Vue 未加载时给出明确报错
+  if (typeof createApp !== 'function') {
+    console.error(
+      'Takoio: Vue 3 is required but not found. ' +
+      'Load Vue before Takoio:\n' +
+      '<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>'
+    )
+    return
+  }
+
   setLanguage(options)
 
-  // 解析挂载目标
-  const el = resolveElement(options.el)
+  // 异步等待挂载目标就绪
+  const el = await waitForElement(options.el, 5000)
   if (!el) {
-    console.error('Takoio: target element not found')
+    console.error(`Takoio: element "${options.el || '#takoio'}" not found after 5s`)
     return
   }
 
@@ -68,16 +108,6 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
   const m = hex.replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
   if (!m) return null
   return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
-}
-
-const resolveElement = (selector?: string | HTMLElement): HTMLElement | null => {
-  if (!selector) {
-    return document.getElementById('takoio')
-  }
-  if (typeof selector === 'string') {
-    return document.querySelector(selector)
-  }
-  return selector
 }
 
 export { version }

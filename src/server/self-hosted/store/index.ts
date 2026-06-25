@@ -16,6 +16,17 @@ export const ensureDb = impl.ensureDb
 
 // ponytail: in-memory rate limits, shared across all backends
 const rateLimitMap = new Map<string, { timestamps: number[] }>()
+
+// Periodic cleanup: remove stale entries every 5 minutes
+const CLEANUP_INTERVAL = 5 * 60 * 1000
+setInterval(() => {
+  const now = Date.now()
+  for (const [ip, entry] of rateLimitMap) {
+    entry.timestamps = entry.timestamps.filter(t => now - t < 60000)
+    if (entry.timestamps.length === 0) rateLimitMap.delete(ip)
+  }
+}, CLEANUP_INTERVAL).unref()
+
 export const rateLimitStore = {
   checkRateLimit (ip: string, maxRequests = 60) {
     const now = Date.now()
