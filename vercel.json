@@ -1,7 +1,7 @@
 {
   "installCommand": "pnpm install",
+  "buildCommand": "",
   "framework": null,
-  "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/takoio" }
   ],
