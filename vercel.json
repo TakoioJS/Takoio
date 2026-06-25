@@ -8,8 +8,7 @@
   "functions": {
     "api/takoio.ts": {
       "memory": 256,
-      "maxDuration": 30,
-      "includeFiles": "src/server/self-hosted/**/*.ts"
+      "maxDuration": 30
     }
   }
 }
