@@ -24,7 +24,7 @@ export const handleCounterUpdate = async (data: any) => {
   const validation = safeValidate(CounterUpdateSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const { url, title } = validation.data
-  return visitorStore.getVisitorCount(url, title)
+  return visitorStore.getVisitorCount(url ?? '/', title)
 }
 
 // ========== Get Comments Count ==========

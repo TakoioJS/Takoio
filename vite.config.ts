@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
       open: true,
       gzipSize: true,
       brotliSize: true,
-    }))
+    }) as any)
   }
 
   const entryFile = process.env.ENTRY_FILE
@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => {
         takoio: resolve(__dirname, 'src/client/main.ts')
       }
 
-  const formats = mode === 'umd' ? ['umd' as LibraryFormats] : (mode === 'esm' ? ['es' as LibraryFormats] : ['es' as LibraryFormats, 'cjs' as LibraryFormats])
+  const formats = mode === 'umd' ? ['umd' as LibraryFormats] : (['es' as LibraryFormats, 'cjs' as LibraryFormats])
 
   return {
     plugins,
@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      emptyOutDir: true,
+      emptyOutDir: !process.env.TK_UMD_BUILD,
       sourcemap: mode !== 'umd',
       minify: 'esbuild',
       target: 'es2018',

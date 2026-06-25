@@ -13,10 +13,10 @@ import { sessionStore } from '../store/index'
 import { AppError } from '../utils/errors'
 import { LoginSchema, PasswordSetSchema, ExportSchema, ImportSchema } from '../schemas'
 
-const getToken = (c: any): string | null => {
+const getToken = (c: any): string | undefined => {
   const auth = c.req.header('Authorization')
   if (auth?.startsWith('Bearer ')) return auth.slice(7)
-  return null
+  return undefined
 }
 
 export const adminRoutes = new Hono()

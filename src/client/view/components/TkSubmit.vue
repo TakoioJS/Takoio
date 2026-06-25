@@ -141,7 +141,7 @@ const defaultEmojis = ['👍', '👎', '❤️', '😂', '🤯', '🎉']
 const mailMd5 = ref('')
 const avatarPreview = computed(() => {
   if (!mailMd5.value) return ''
-  const base = (props.options as any).GRAVATAR_URL || 'https://weavatar.com/avatar/'
+  const base = props.options.GRAVATAR_URL || 'https://weavatar.com/avatar/'
   return `${base.replace(/\/+$/, '')}/${mailMd5.value}?d=identicon&s=40`
 })
 watch(() => form.mail, async (v) => {
@@ -151,10 +151,10 @@ watch(() => form.mail, async (v) => {
 const reactions = ref<Record<string, number>>({}); const myReactions = ref<string[]>([])
 
 const fetchReactions = async () => {
-  try { const res = await call('REACTION_GET', { envId: props.options.envId, url: getUrl(props.options) }); const d = (res as any).result || (res as any).data || res; if (d?.reactions) { reactions.value = d.reactions; myReactions.value = d.myReactions || [] } } catch {}
+  try { const res = await call('REACTION_GET', { envId: props.options.envId, url: getUrl(props.options.path) }); const d = (res as any).result || (res as any).data || res; if (d?.reactions) { reactions.value = d.reactions; myReactions.value = d.myReactions || [] } } catch {}
 }
 const toggleReaction = async (emoji: string) => {
-  try { const res = await call('REACTION_SUBMIT', { envId: props.options.envId, url: getUrl(props.options), emoji }); const d = (res as any).result || (res as any).data || res; if (d?.reactions) { reactions.value = d.reactions; myReactions.value = d.myReactions || [] } } catch { toast(t('actionFailed') || t('submitFailed')) }
+  try { const res = await call('REACTION_SUBMIT', { envId: props.options.envId, url: getUrl(props.options.path), emoji }); const d = (res as any).result || (res as any).data || res; if (d?.reactions) { reactions.value = d.reactions; myReactions.value = d.myReactions || [] } } catch { toast(t('actionFailed') || t('submitFailed')) }
 }
 
 const isNickRequired = computed(() => (props.siteConfig?.REQUIRED_FIELDS || ['nick']).includes('nick'))

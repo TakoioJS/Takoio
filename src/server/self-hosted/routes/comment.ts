@@ -14,12 +14,12 @@ import {
   AdminCommentSchema, RecentCommentsSchema,
 } from '../schemas'
 
-const getToken = (c: any): string | null => {
+const getToken = (c: any): string | undefined => {
   const auth = c.req.header('Authorization')
   if (auth?.startsWith('Bearer ')) return auth.slice(7)
   const qToken = c.req.query('token')
   if (qToken) return qToken
-  return null
+  return undefined
 }
 
 export const commentRoutes = new Hono()
@@ -102,6 +102,6 @@ commentRoutes.get('/admin', async (c) => {
     page: Number(query.page) || 1,
     pageSize: Number(query.pageSize) || 20,
     search: query.search,
-    filter: query.filter,
+    filter: query.filter as any,
   }))
 })

@@ -1,7 +1,7 @@
 {
   "name": "takoio",
   "version": "1.0.0",
-  "description": "A simple, free comment system with Vue 3 + Element Plus.",
+  "description": "A simple, free comment system with Vue 3 + Vite 8",
   "keywords": [
     "takoio",
     "comment",
@@ -9,10 +9,13 @@
   ],
   "author": "Takoio Contributors",
   "contributors": [
-    "iMaeGoo <hello@imaegoo.com> (https://github.com/imaegoo)"
+    "PaloMiku <palomiku@outlook.com> (https://github.com/PaloMiku)"
   ],
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist/"
+  ],
   "main": "./dist/takoio.min.js",
   "module": "./dist/takoio.esm.js",
   "exports": {
@@ -26,17 +29,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/takoio/takoio.git"
+    "url": "https://github.com/TakoioJS/Takoio.git"
   },
-  "homepage": "https://takoio.js.org",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 9820",
+    "dev": "vite --host 127.0.0.1 --port 9820",
     "build": "pnpm build:esm && pnpm build:umd",
     "build:esm": "vite build --mode esm",
     "build:umd": "node build-umd.js",
     "build:server": "cd src/server/self-hosted && pnpm install && npx tsc",
     "build:analyze": "node -e \"process.env.ANALYZE='true';import('./build-umd.js')\"",
-    "preview": "vite preview --host 0.0.0.0 --port 9820",
+    "preview": "vite preview --host 127.0.0.1 --port 9820",
     "lint": "eslint src/**/*.{ts,vue}",
     "lint:fix": "eslint src/**/*.{ts,vue} --fix",
     "type-check": "vue-tsc --noEmit",

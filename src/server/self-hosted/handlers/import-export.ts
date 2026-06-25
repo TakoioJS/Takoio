@@ -95,7 +95,7 @@ const toComment = (item: any, source: string) => {
     href: item.href ?? null,
     image: m.image ?? item.image ?? null,
     sticker: m.sticker ?? item.sticker ?? null,
-    ipRegion: (m.ipRegion ?? item.ipRegion ?? '').split(/[| ]/).filter(p => p && p !== '0').join(' ') || null,
+    ipRegion: (m.ipRegion ?? item.ipRegion ?? '').split(/[| ]/).filter((p: string) => p && p !== '0').join(' ') || null,
   }
 }
 

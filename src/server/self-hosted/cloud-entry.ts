@@ -9,6 +9,12 @@
  *   export const GET = fetch   // Vercel
  *   export const POST = fetch  // Vercel
  *   export default { fetch }   // Netlify
+ *
+ * Serverless constraints (by design, no fix needed):
+ *   - In-memory state (rate limits, login attempts, config/auth hash cache)
+ *     is per-instance and resets on cold start. Not shared across instances.
+ *   - Session cleanup is handled by MongoDB TTL index (24h), not app timers.
+ *   - `startup.ts` setInterval for session cleanup is intentionally NOT used here.
  */
 
 import { app } from './app'

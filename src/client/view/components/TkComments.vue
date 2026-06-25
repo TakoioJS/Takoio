@@ -126,8 +126,8 @@ const fetchComments = async (): Promise<void> => {
       if (cfg.ENABLE_LINK_INPUT !== undefined) props.options.enableLinkInput = cfg.ENABLE_LINK_INPUT
       if (cfg.COMMENT_LINK_REQUIRED !== undefined) props.options.commentLinkRequired = cfg.COMMENT_LINK_REQUIRED
       if (cfg.ADMIN_KEYWORD !== undefined) props.options.adminKeyword = cfg.ADMIN_KEYWORD
-      if (cfg.SHOW_IP_REGION !== undefined) (props.options as any)._showIpRegion = cfg.SHOW_IP_REGION
-      if (cfg.SHOW_UA_INFO !== undefined) (props.options as any)._showUaInfo = cfg.SHOW_UA_INFO
+      if (cfg.SHOW_IP_REGION !== undefined) props.options._showIpRegion = cfg.SHOW_IP_REGION
+      if (cfg.SHOW_UA_INFO !== undefined) props.options._showUaInfo = cfg.SHOW_UA_INFO
       if (cfg.ENABLE_CODE_HIGHLIGHT !== undefined) props.options.enableCodeHighlight = cfg.ENABLE_CODE_HIGHLIGHT
       if (cfg.CODE_HIGHLIGHT_THEME !== undefined) props.options.codeHighlightTheme = cfg.CODE_HIGHLIGHT_THEME
       if (cfg.CODE_SHOW_LANGUAGE !== undefined) props.options.codeShowLanguage = cfg.CODE_SHOW_LANGUAGE

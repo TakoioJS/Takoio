@@ -13,6 +13,7 @@ export const MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 
 export interface TakoioConfig {
   SITE_NAME: string
+  MASTER?: string
   MASTER_NAME: string
   GLOBAL_COLOR: string
   PAGE_SIZE: number

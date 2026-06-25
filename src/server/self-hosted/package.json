@@ -15,6 +15,7 @@
     "db:import": "tsx scripts/import-from-json.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.14",
     "@hono/zod-validator": "^0.8.0",
     "@libsql/client": "^0.17.4",
     "dotenv": "^16.4.7",
@@ -29,7 +30,6 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@hono/node-server": "^1.19.14",
     "@types/node": "^22.20.0",
     "@types/nodemailer": "^6.4.24",
     "drizzle-kit": "^0.31.10",

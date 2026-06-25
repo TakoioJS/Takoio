@@ -16,7 +16,11 @@ import { adminRoutes } from './routes/admin'
 import { visitorRoutes } from './routes/visitor'
 import { uploadRoutes } from './routes/upload'
 
-config()
+// Only load .env file in self-hosted / local dev.
+// Serverless platforms (Vercel, Netlify, Lambda) inject env vars directly.
+if (!process.env.VERCEL && !process.env.NETLIFY && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  config()
+}
 
 export const app = new Hono()
 

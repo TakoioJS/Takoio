@@ -140,6 +140,8 @@ export interface TakoioConfig {
   /** 登出回调 */
   onLogoutSuccess?: () => void
   _showUaInfo?: boolean
+  _showIpRegion?: boolean | string
+  GRAVATAR_URL?: string
   MASTER_LABEL?: string
   MASTER_LABEL_COLOR?: string
   /** 隐身模式 */

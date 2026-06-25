@@ -1,14 +1,16 @@
 {
-  "installCommand": "npm install -g pnpm@9 && pnpm install",
-  "buildCommand": "cd src/server/self-hosted && npx tsc",
+  "installCommand": "pnpm install",
+  "buildCommand": "cd src/server/self-hosted && pnpm install",
   "framework": null,
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/takoio" }
   ],
   "functions": {
     "api/takoio.ts": {
       "memory": 256,
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "src/server/self-hosted/**/*.ts"
     }
   }
 }

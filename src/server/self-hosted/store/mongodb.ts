@@ -268,11 +268,17 @@ export const visitorStore = {
   },
 }
 
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+/** Normalize createdAt to a timestamp (ms), handling both Date objects and legacy numbers */
+const toMs = (v: Date | number): number =>
+  v instanceof Date ? v.getTime() : (typeof v === 'number' ? v : 0)
+
 export const sessionStore = {
   async createToken () {
     const db = await getDb()
     const token = randomUUID()
-    await col(db, 'sessions').insertOne({ _id: token, createdAt: Date.now() })
+    await col(db, 'sessions').insertOne({ _id: token, createdAt: new Date() })
     return token
   },
 
@@ -280,7 +286,7 @@ export const sessionStore = {
     const db = await getDb()
     const row = await col(db, 'sessions').findOne({ _id: token })
     if (!row) return false
-    return Date.now() - row.createdAt < 24 * 60 * 60 * 1000
+    return Date.now() - toMs(row.createdAt) < SESSION_TTL_MS
   },
 
   async removeToken (token: string) {
@@ -290,8 +296,30 @@ export const sessionStore = {
 
   async cleanupSessions () {
     const db = await getDb()
-    const dayAgo = Date.now() - 24 * 60 * 60 * 1000
-    await col(db, 'sessions').deleteMany({ createdAt: { $lt: dayAgo } })
+    const cutoff = new Date(Date.now() - SESSION_TTL_MS)
+    // Handle both new Date-type and legacy numeric createdAt
+    await col(db, 'sessions').deleteMany({
+      $or: [
+        { createdAt: { $lt: cutoff } },
+        { createdAt: { $lt: Date.now() - SESSION_TTL_MS } },
+      ],
+    })
+  },
+
+  async removeAllTokens () {
+    const db = await getDb()
+    await col(db, 'sessions').deleteMany({})
+  },
+
+  async rotateToken (oldToken: string) {
+    const db = await getDb()
+    const row = await col(db, 'sessions').findOne({ _id: oldToken })
+    if (!row || Date.now() - toMs(row.createdAt) > SESSION_TTL_MS) return null
+    const { randomUUID } = await import('node:crypto')
+    const newToken = randomUUID()
+    await col(db, 'sessions').insertOne({ _id: newToken, createdAt: new Date() })
+    await col(db, 'sessions').deleteOne({ _id: oldToken })
+    return newToken
   },
 }
 
@@ -400,6 +428,11 @@ export async function ensureDb () {
     { key: { created: -1 } },
     { key: { state: 1 } },
   ])
-  await col(db, 'sessions').createIndex({ createdAt: 1 })
+  // TTL index: MongoDB auto-deletes sessions 24h after createdAt.
+  // Essential for serverless where no app-level cleanup timer runs.
+  await col(db, 'sessions').createIndex(
+    { createdAt: 1 },
+    { expireAfterSeconds: 86400 },
+  )
   await col(db, 'reactions').createIndex({ url: 1 })
 }
