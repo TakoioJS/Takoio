@@ -53,3 +53,5 @@ data/
 
 # TypeScript
 *.d.ts.map
+
+/docs
