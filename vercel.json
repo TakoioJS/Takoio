@@ -1,6 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "cd src/server/self-hosted && pnpm install",
   "framework": null,
   "outputDirectory": "public",
   "rewrites": [
