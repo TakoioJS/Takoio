@@ -3,7 +3,6 @@
  * 评论提交后通过 Pushoo SDK 向管理员推送通知
  */
 
-import { logger } from './utils/logger'
 
 interface PushConfig {
   PUSHOO_SC_KEY?: string
@@ -67,21 +66,13 @@ export async function sendNotification (config: PushConfig, payload: NotifyPaylo
     try {
       await sendOne(platform, token, payload)
     } catch (e: any) {
-      logger.error({ platform, error: e.message }, 'Notification send failed')
+      console.error({ platform, error: e.message }, 'Notification send failed')
     }
   }
 }
 
 async function sendOne (platform: string, token: string, payload: NotifyPayload): Promise<void> {
-  try {
-    const pushoo = (await import('pushoo')).default
-    await pushoo(platform, { token, title: payload.title, content: payload.content })
-    logger.info({ platform }, 'Notification sent')
-  } catch (e: any) {
-    if (e.code === 'ERR_MODULE_NOT_FOUND') {
-      logger.warn('pushoo not installed, skipping notification. Install: pnpm add pushoo')
-      return
-    }
-    throw e
-  }
+  const pushoo = (await import('pushoo')).default
+  await pushoo(platform, { token, title: payload.title, content: payload.content })
+  console.info({ platform }, 'Notification sent')
 }

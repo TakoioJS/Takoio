@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer'
-import { logger } from './utils/logger'
 
 export interface EmailConfig {
   SMTP_HOST?: string
@@ -41,10 +40,10 @@ export async function sendEmail (
       html,
     })
 
-    logger.info({ to: config.SMTP_TO || config.SMTP_USER, subject }, 'Email sent')
+    console.info({ to: config.SMTP_TO || config.SMTP_USER, subject }, 'Email sent')
     return { success: true, message: '邮件发送成功' }
   } catch (e: any) {
-    logger.error({ error: e.message }, 'Email send failed')
+    console.error({ error: e.message }, 'Email send failed')
     return { success: false, message: `邮件发送失败: ${e.message}` }
   }
 }

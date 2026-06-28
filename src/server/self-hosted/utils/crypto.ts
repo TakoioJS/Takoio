@@ -1,29 +1,30 @@
-/**
- * Password hashing via hash-wasm (pure WASM Argon2id).
- * Drop-in replacement for the native argon2 package.
- */
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 
-import { randomBytes } from 'node:crypto'
-import { argon2id, argon2Verify } from 'hash-wasm'
-
-const ARGON2_PARAMS = {
-  memorySize: 65536,   // 64 MB
-  iterations: 3,       // timeCost
-  parallelism: 4,
-  hashLength: 32,
-  outputType: 'encoded' as const,
+// $scrypt$<N>$<r>$<p>$<salt-b64url>$<key-b64url>
+function encodeScrypt (salt: Buffer, key: Buffer): string {
+  return `$scrypt$16384$8$1$${salt.toString('base64url')}$${key.toString('base64url')}`
 }
 
-/** Hash a password with Argon2id. Returns the standard encoded string ($argon2id$...). */
+function parseScrypt (hash: string): { N: number; r: number; p: number; salt: Buffer; key: Buffer } | null {
+  const m = hash.match(/^\$scrypt\$(\d+)\$(\d+)\$(\d+)\$([A-Za-z0-9\-_]+)\$([A-Za-z0-9\-_]+)$/)
+  if (!m) return null
+  return { N: +m[1], r: +m[2], p: +m[3], salt: Buffer.from(m[4], 'base64url'), key: Buffer.from(m[5], 'base64url') }
+}
+
+/** Hash a password with scrypt. Returns $scrypt$<N>$<r>$<p>$<salt>$<key>. */
 export const hashPassword = async (password: string): Promise<string> => {
-  const salt = new Uint8Array(randomBytes(16))
-  return argon2id({ password, salt, ...ARGON2_PARAMS })
+  const salt = randomBytes(16)
+  const key = scryptSync(Buffer.from(password), salt, 64, { N: 16384, r: 8, p: 1 })
+  return encodeScrypt(salt, key)
 }
 
-/** Verify a password against an existing Argon2id encoded hash. */
+/** Verify a password against a scrypt hash ($scrypt$...). */
 export const verifyPassword = async (hash: string, password: string): Promise<boolean> => {
+  const parts = parseScrypt(hash)
+  if (!parts) return false
   try {
-    return await argon2Verify({ hash, password })
+    const derived = scryptSync(Buffer.from(password), parts.salt, parts.key.length, { N: parts.N, r: parts.r, p: parts.p })
+    return timingSafeEqual(derived, parts.key)
   } catch {
     return false
   }

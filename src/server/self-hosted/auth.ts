@@ -5,8 +5,7 @@
 import { hashPassword } from './utils/crypto'
 import { configStore, sessionStore } from './store/index'
 import { getConfig, type TakoioConfig } from './config'
-import { logger } from './utils/logger'
-import { AppError } from './utils/errors'
+import { AppError } from './config'
 
 // ========== Password Hash Cache ==========
 
@@ -51,12 +50,12 @@ export const initPassword = async () => {
     if (dbConfig.AUTH_HASH) {
       authHashCache = dbConfig.AUTH_HASH
       authHashCacheTime = Date.now()
-      logger.info('Admin password loaded from database')
+      console.info('Admin password loaded from database')
     } else {
-      logger.info('No admin password set. Awaiting first-time setup via admin panel.')
+      console.info('No admin password set. Awaiting first-time setup via admin panel.')
     }
   } catch {
-    logger.warn('Could not load admin password from database. Awaiting first-time setup.')
+    console.warn('Could not load admin password from database. Awaiting first-time setup.')
   }
 }
 
@@ -88,7 +87,7 @@ export const recordLoginFailure = (ip: string) => {
   attempt.failures += 1
   if (attempt.failures >= LOGIN_MAX_FAILURES) {
     attempt.lockedUntil = now + LOGIN_LOCKOUT_MS
-    logger.warn({ ip }, `Login locked out after ${LOGIN_MAX_FAILURES} failed attempts`)
+    console.warn({ ip }, `Login locked out after ${LOGIN_MAX_FAILURES} failed attempts`)
   }
   loginAttempts.set(ip, attempt)
 }
@@ -126,9 +125,12 @@ export const verifyCaptcha = async (token: string, cfg: TakoioConfig): Promise<v
       if (!siteKey) throw new Error('极验 SITE_KEY 未配置')
       const [lotNumber, captchaOutput, passToken, genTime] = token.split('|')
       const form = new URLSearchParams({
-        lot_number: lotNumber, captcha_output: captchaOutput,
-        pass_token: passToken, gen_time: genTime,
-        captcha_id: siteKey, sign_token: secret,
+        lot_number: lotNumber,
+        captcha_output: captchaOutput,
+        pass_token: passToken,
+        gen_time: genTime,
+        captcha_id: siteKey,
+        sign_token: secret,
       })
       const res = await fetch('https://gcaptcha4.geetest.com/validate', {
         method: 'POST', body: form, signal: AbortSignal.timeout(5000),
@@ -137,7 +139,7 @@ export const verifyCaptcha = async (token: string, cfg: TakoioConfig): Promise<v
       if (json.status !== 'success') throw new Error('极验验证失败: ' + (json.msg || ''))
     }
   } catch (e: any) {
-    logger.warn({ error: e.message }, 'CAPTCHA verification failed')
+    console.warn({ error: e.message }, 'CAPTCHA verification failed')
     throw new Error('人机验证失败，请重试')
   }
 }

@@ -43,6 +43,7 @@ export const CommentActionSchema = z.object({
 
 export const LoginSchema = z.object({
   password: z.string().min(8, '密码至少 8 位'),
+  captchaToken: z.string().optional(),
 })
 
 export const PasswordSetSchema = z.object({
@@ -74,12 +75,12 @@ export const UpdateCommentSchema = z.object({
 /** 允许通过 SET_CONFIG 修改的配置键白名单 */
 export const ALLOWED_CONFIG_KEYS = [
   'SITE_NAME', 'SITE_URL', 'MASTER', 'MASTER_NAME', 'GLOBAL_COLOR', 'PAGE_SIZE', 'COMMENT_SORT', 'COMMENT_LENGTH_MAX',
-  'REQUIRED_FIELDS', 'COMMENT_NICK_REQUIRED', 'GRAVATAR_URL', 'GRAVATAR_DEFAULT',
+  'REQUIRED_FIELDS', 'COMMENT_NICK_REQUIRED', 'GRAVATAR_URL', 'GRAVATAR_URL_CUSTOM', 'GRAVATAR_DEFAULT',
   'MASTER_LABEL', 'MASTER_LABEL_COLOR', 'COMMENT_BG_IMAGE',
   'ENABLE_VISITOR_COUNTER', 'COMMENT_PAGINATION_MODE', 'COMMENT_RATE_LIMIT',
-  'AUDIT_MODE', 'IP_REGION_ENABLED', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES', 'SHOW_IP_REGION', 'SHOW_UA_INFO', 'ENABLE_LIKE',
-  'ENABLE_DISLIKE', 'ENABLE_ARTICLE_REACTION', 'ENABLE_EMOTION', 'ENABLE_LINK_INPUT', 'COMMENT_LINK_REQUIRED',
-  'ENABLE_ADMIN_KEYWORD', 'ADMIN_KEYWORD', 'ENABLE_CODE_HIGHLIGHT',
+  'ENABLE_LIKE', 'ENABLE_DISLIKE', 'ENABLE_ARTICLE_REACTION', 'ENABLE_EMOTION', 'ENABLE_LINK_INPUT', 'COMMENT_LINK_REQUIRED',
+  'COMMENT_FEATURES',
+  'ENABLE_CODE_HIGHLIGHT',
   'CODE_HIGHLIGHT_THEME', 'CODE_SHOW_LANGUAGE', 'CODE_SHOW_COPY',
   'ENABLE_CAPTCHA', 'ENABLE_IMAGE_UPLOAD',
   'CAPTCHA_PROVIDER', 'CAPTCHA_TYPE', 'CAPTCHA_SITE_KEY', 'CAPTCHA_SECRET_KEY',
@@ -104,7 +105,7 @@ export const ALLOWED_CONFIG_KEYS = [
   'PUSHOO_ONEBOT_TOKEN', 'PUSHOO_ATRI_TOKEN', 'PUSHOO_IGOT_TOKEN',
   'PUSHOO_DISCORD_TOKEN', 'PUSHOO_IFTTT_TOKEN', 'PUSHOO_JOIN_TOKEN',
   'PUSHOO_WEBHOOK_TOKEN',
-  
+
 ] as const
 
 export const SetConfigSchema = z.object({
@@ -139,13 +140,13 @@ export const ExportSchema = z.object({
 })
 
 export const ImportSchema = z.object({
-  json: z.union([z.string(), z.array(z.record(z.unknown()))]).optional(),
-  valine: z.union([z.string(), z.array(z.record(z.unknown()))]).optional(),
-  artalk: z.union([z.string(), z.array(z.record(z.unknown()))]).optional(),
-  waline: z.union([z.string(), z.array(z.record(z.unknown()))]).optional(),
-  twikoo: z.union([z.string(), z.array(z.record(z.unknown()))]).optional(),
-  disqus: z.union([z.string(), z.array(z.record(z.unknown()))]).optional(),
-  takoio: z.union([z.string(), z.record(z.unknown())]).optional(),
+  json: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
+  valine: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
+  artalk: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
+  waline: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
+  twikoo: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
+  disqus: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
+  takoio: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 })
 
 // ========== Image ==========

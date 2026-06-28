@@ -1,10 +1,39 @@
 <template>
-  <div class="tk-pagination" v-if="total > pageSize">
-    <button class="tk-page-btn" :disabled="current === 1" @click="go(current - 1)">‹</button>
-    <button v-for="p in pages" :key="p" :class="['tk-page-btn', { active: p === current }]" @click="go(p)">{{ p }}</button>
-    <button class="tk-page-btn" :disabled="current === last" @click="go(current + 1)">›</button>
+  <div
+    v-if="total > pageSize"
+    class="tk-pagination"
+  >
+    <button
+      class="tk-page-btn"
+      :disabled="current === 1"
+      @click="go(current - 1)"
+    >
+      ‹
+    </button>
+    <button
+      v-for="p in pages"
+      :key="p"
+      :class="['tk-page-btn', { active: p === current }]"
+      @click="go(p)"
+    >
+      {{ p }}
+    </button>
+    <button
+      class="tk-page-btn"
+      :disabled="current === last"
+      @click="go(current + 1)"
+    >
+      ›
+    </button>
     <span class="tk-page-jump">
-      <input class="tk-page-input" type="number" :min="1" :max="last" :value="current" @change="onJump" />
+      <input
+        class="tk-page-input"
+        type="number"
+        :min="1"
+        :max="last"
+        :value="current"
+        @change="onJump"
+      >
     </span>
   </div>
 </template>
@@ -32,15 +61,15 @@ const onJump = (e: Event) => { const v = parseInt((e.target as HTMLInputElement)
 <style scoped>
 .tk-pagination { display: flex; justify-content: center; align-items: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; }
 .tk-page-btn {
-  min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid rgba(128,128,128,0.2);
-  border-radius: 6px; background: transparent; color: inherit; font-size: 13px;
+  min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--tk-border);
+  border-radius: var(--tk-r-input); background: transparent; color: inherit; font-size: 13px;
   cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center;
 }
 .tk-page-btn:hover:not(:disabled):not(.active) { border-color: var(--tk-brand); color: var(--tk-brand); }
 .tk-page-btn.active { background: var(--tk-brand); color: #fff; border-color: var(--tk-brand); font-weight: 600; }
 .tk-page-btn:disabled { opacity: .35; cursor: default; }
 .tk-page-jump { margin-left: 8px; display: flex; align-items: center; }
-.tk-page-input { width: 52px; height: 32px; padding: 0 6px; border: 1px solid rgba(128,128,128,0.2);
-  border-radius: 6px; background: transparent; color: inherit; font-size: 13px; text-align: center; }
+.tk-page-input { width: 52px; height: 32px; padding: 0 6px; border: 1px solid var(--tk-border);
+  border-radius: var(--tk-r-input); background: transparent; color: inherit; font-size: 13px; text-align: center; }
 .tk-page-input:focus { outline: none; border-color: var(--tk-brand); }
 </style>

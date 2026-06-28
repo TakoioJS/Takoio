@@ -6,14 +6,13 @@ import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema } fro
 import type { LoginData, PasswordSetData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
-import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures } from '../auth'
+import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
 import { verifyPassword } from '../utils/crypto'
 import { lookupIpRegion } from '../ip-region'
 import { commentStore } from '../store/index'
 import { sendNotification } from '../notify'
 import { sendEmail } from '../email'
-import { logger } from '../utils/logger'
-import { AppError } from '../utils/errors'
+import { AppError } from '../config'
 
 // ========== Check Setup ==========
 
@@ -33,6 +32,16 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
   // No password set — first-time setup mode
   if (!hash) {
     return { success: false, needSetup: true, message: '请先创建管理员密码' }
+  }
+
+  // CAPTCHA verification
+  if (validation.data.captchaToken) {
+    const cfg = await getConfig()
+    try {
+      await verifyCaptcha(validation.data.captchaToken, cfg)
+    } catch (e: any) {
+      return { success: false, message: e.message || '人机验证失败' }
+    }
   }
 
   // Brute-force protection
@@ -112,7 +121,7 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
   updateAuthHashCache(newHash)
   // Invalidate all existing sessions on password change
   await sessionStore.removeAllTokens()
-  logger.info(existingHash ? 'Admin password updated (all sessions invalidated)' : 'Admin password created (first-time setup)')
+  console.info(existingHash ? 'Admin password updated (all sessions invalidated)' : 'Admin password created (first-time setup)')
 
   // Return a session token so the user is auto-logged in after setup
   return { success: true, token: await sessionStore.createToken() }
@@ -147,7 +156,7 @@ export const handlePrivateKeyGet = async (data: any) => {
   if (!key) return { data: null }
   if (!ALLOWED_CONFIG_KEYS.includes(key as any)) return { data: null }
   const cfg = await getConfig()
-  return { data: cfg[key] || null }
+  return { data: (cfg as Record<string, any>)[key] || null }
 }
 
 // ========== Private Key Set ==========

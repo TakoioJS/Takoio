@@ -1,5 +1,6 @@
 packages:
   - 'src/server/self-hosted'
+  - 'src/admin'
 
 allowBuilds:
   '@parcel/watcher': true

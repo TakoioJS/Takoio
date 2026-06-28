@@ -1,7 +1,10 @@
 <template>
   <div class="tk-footer">
     <span class="tk-footer-text">
-      Powered by <a href="https://github.com/takoio/takoio" target="_blank">Takoio</a> v{{ version }}
+      Powered by <a
+        href="https://github.com/takoio/takoio"
+        target="_blank"
+      >Takoio</a> v{{ version }}
     </span>
   </div>
 </template>
@@ -16,8 +19,9 @@ import { version } from '../../utils'
   padding: 12px;
   text-align: center;
   font-size: 12px;
-  color: inherit;
-  opacity: .6;
+  color: var(--tk-text-3);
+  border-top: 1px solid var(--tk-border-soft);
+  padding-top: 16px;
 }
 .tk-footer-text a {
   color: inherit;

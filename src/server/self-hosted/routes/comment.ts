@@ -6,12 +6,17 @@ import {
   handleCommentGet, handleCommentSubmit, handleCommentUpdate,
   handleCommentLike, handleCommentDislike, handleCommentDelete,
   handleCommentHide, handleCommentGetAdmin, handleCommentSetTop, handleCommentSetSpam,
+  handleCommentApprove,
+  // merged from counter.ts
+  handleCounterGet, handleCounterUpdate, handleGetCommentsCount, handleGetRecentComments,
+  // merged from reaction.ts
+  handleReactionGet, handleReactionSubmit,
 } from '../handlers/comment'
-import { handleGetCommentsCount, handleGetRecentComments } from '../handlers/counter'
 import { handleHiddenFieldsGet, handleIpRegionGet } from '../handlers/admin'
 import {
   GetCommentSchema, SubmitCommentSchema,
   AdminCommentSchema, RecentCommentsSchema,
+  CounterGetSchema,
 } from '../schemas'
 
 const getToken = (c: any): string | undefined => {
@@ -88,8 +93,15 @@ commentRoutes.patch('/:id/top', async (c) => {
 
 commentRoutes.patch('/:id/spam', async (c) => {
   const id = c.req.param('id')
+  const body = await c.req.json().catch(() => ({}))
   await requireAdmin({ token: getToken(c) })
-  return c.json(await handleCommentSetSpam({ id }))
+  return c.json(await handleCommentSetSpam({ id, isSpam: body.isSpam }))
+})
+
+commentRoutes.patch('/:id/approve', async (c) => {
+  const id = c.req.param('id')
+  await requireAdmin({ token: getToken(c) })
+  return c.json(await handleCommentApprove({ id }))
 })
 
 commentRoutes.get('/admin', async (c) => {
@@ -101,4 +113,35 @@ commentRoutes.get('/admin', async (c) => {
     search: query.search,
     filter: query.filter as any,
   }))
+})
+
+// ========== Visitor / Counter routes (merged from routes/visitor.ts) ==========
+
+// GET /api/comments/counter — 获取访客计数
+commentRoutes.get('/counter', zValidator('query', CounterGetSchema), async (c) => {
+  const data = c.req.valid('query')
+  return c.json(await handleCounterGet(data))
+})
+
+// POST /api/comments/counter — 更新访客计数
+commentRoutes.post('/counter', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return c.json(await handleCounterUpdate(body))
+})
+
+// ========== Reaction routes (merged from routes/reaction.ts) ==========
+
+// GET /api/comments/:id/reactions?url=... — 获取表情回应
+commentRoutes.get('/:id/reactions', async (c) => {
+  const url = c.req.query('url') || '/'
+  const ip = await getClientIp(c)
+  return c.json(await handleReactionGet({ url, _ip: ip }))
+})
+
+// POST /api/comments/:id/reactions?url=... — 切换表情回应
+commentRoutes.post('/:id/reactions', async (c) => {
+  const url = c.req.query('url') || '/'
+  const ip = await getClientIp(c)
+  const body = await c.req.json().catch(() => ({}))
+  return c.json(await handleReactionSubmit({ url, emoji: body.emoji, _ip: ip }))
 })

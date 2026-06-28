@@ -1,12 +1,11 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { ensureDb, importStore } from '../store/index'
-import { logger } from '../utils/logger'
 
 const STORE_PATH = process.env.STORE_PATH || './data/store.json'
 
 async function main () {
   if (!existsSync(STORE_PATH)) {
-    logger.info('No store.json found, nothing to import')
+    console.info('No store.json found, nothing to import')
     return
   }
 
@@ -20,7 +19,7 @@ async function main () {
 
   await importStore(data)
 
-  logger.info({
+  console.info({
     comments: commentsBefore,
     configs: configsBefore,
     visitors: visitorsBefore,
@@ -29,6 +28,6 @@ async function main () {
 }
 
 main().catch(err => {
-  logger.error({ error: err.message }, 'Import failed')
+  console.error({ error: err.message }, 'Import failed')
   process.exit(1)
 })

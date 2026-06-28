@@ -48,9 +48,11 @@ export const commentStore = {
 
   async getComments (url: string, page = 1, pageSize = 10, sort = 'newest') {
     const visibleStates = ['visible', 'pending']
-    const orderBy = sort === 'oldest' ? asc(comments.created)
-      : sort === 'hottest' ? desc(comments.like)
-      : desc(comments.created)
+    const orderBy = sort === 'oldest'
+      ? asc(comments.created)
+      : sort === 'hottest'
+        ? desc(comments.like)
+        : desc(comments.created)
 
     const total = await db().select({ count: drizzleCount() }).from(comments)
       .where(and(eq(comments.url, url), inArray(comments.state, visibleStates), sql`${comments.pid} IS NULL`))
@@ -63,7 +65,7 @@ export const commentStore = {
       .all()
 
     const parentIds = rows.map(r => r.id)
-    let replyMap = new Map<string, any[]>()
+    const replyMap = new Map<string, any[]>()
     if (parentIds.length > 0) {
       const allReplies = await db().select().from(comments)
         .where(and(inArray(comments.pid, parentIds as string[]), inArray(comments.state, visibleStates)))
@@ -149,9 +151,58 @@ export const commentStore = {
     return result.rowsAffected > 0
   },
 
-  async setSpam (id: string) {
-    const result = await db().update(comments).set({ isSpam: 1, state: COMMENT_STATE.SPAM }).where(eq(comments.id, id)).run()
+  async setSpam (id: string, isSpam = true) {
+    const patch = isSpam
+      ? { isSpam: 1, state: COMMENT_STATE.SPAM }
+      : { isSpam: 0, state: COMMENT_STATE.VISIBLE }
+    const result = await db().update(comments).set(patch).where(eq(comments.id, id)).run()
     return result.rowsAffected > 0
+  },
+
+  async getDashboardStats () {
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const todayTs = startOfToday.getTime()
+    const yesterdayTs = todayTs - 86400000
+    const [total, today, yesterday, pending, spam, hidden, topCount] = await Promise.all([
+      db().select({ count: drizzleCount() }).from(comments).get(),
+      db().select({ count: drizzleCount() }).from(comments).where(sql`${comments.created} >= ${todayTs}`).get(),
+      db().select({ count: drizzleCount() }).from(comments).where(sql`${comments.created} >= ${yesterdayTs} and ${comments.created} < ${todayTs}`).get(),
+      db().select({ count: drizzleCount() }).from(comments).where(eq(comments.state, COMMENT_STATE.PENDING)).get(),
+      db().select({ count: drizzleCount() }).from(comments).where(eq(comments.isSpam, 1)).get(),
+      db().select({ count: drizzleCount() }).from(comments).where(eq(comments.state, COMMENT_STATE.HIDDEN)).get(),
+      db().select({ count: drizzleCount() }).from(comments).where(eq(comments.isTop, 1)).get(),
+    ])
+    return {
+      total: total?.count ?? 0,
+      today: today?.count ?? 0,
+      yesterday: yesterday?.count ?? 0,
+      pending: pending?.count ?? 0,
+      spam: spam?.count ?? 0,
+      hidden: hidden?.count ?? 0,
+      topCount: topCount?.count ?? 0,
+    }
+  },
+
+  async getDashboardTrend (days = 7) {
+    const n = Math.min(Math.max(Math.floor(days), 1), 30)
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const todayTs = startOfToday.getTime()
+    const result: { date: string; count: number }[] = []
+    for (let i = n - 1; i >= 0; i--) {
+      const dayStart = todayTs - i * 86400000
+      const dayEnd = dayStart + 86400000
+      const r = await db().select({ count: drizzleCount() }).from(comments)
+        .where(sql`${comments.created} >= ${dayStart} and ${comments.created} < ${dayEnd}`)
+        .get()
+      const d = new Date(dayStart)
+      result.push({
+        date: `${d.getMonth() + 1}/${d.getDate()}`,
+        count: r?.count ?? 0,
+      })
+    }
+    return result
   },
 
   async setCommentIpRegion (id: string, ipRegion: string) {
@@ -169,7 +220,7 @@ export const commentStore = {
   },
 
   async searchComments (page = 1, pageSize = 20, searchStr = '', filter = 'all') {
-    let conditions = []
+    const conditions = []
     if (searchStr) {
       const kw = `%${searchStr.toLowerCase()}%`
       conditions.push(or(
@@ -177,7 +228,7 @@ export const commentStore = {
         like(sql`LOWER(${comments.mail})`, kw),
         like(sql`LOWER(${comments.comment})`, kw),
         like(sql`LOWER(${comments.url})`, kw),
-        like(comments.ip, kw),
+        like(comments.ip, kw)
       ))
     }
     if (filter === 'hidden') conditions.push(eq(comments.state, COMMENT_STATE.HIDDEN))
@@ -340,13 +391,30 @@ export async function importStore (data: any) {
   if (data.comments) {
     for (const c of data.comments) {
       await db().insert(comments).values({
-        id: c.id, url: c.url, href: c.href, nick: c.nick, mail: c.mail,
-        mailMd5: c.mailMd5, link: c.link, comment: c.comment, ua: c.ua,
-        ip: c.ip, state: c.state || 'visible', created: c.created,
-        updated: c.updated, pid: c.pid, rid: c.rid,
-        like: c.like ?? 0, dislike: c.dislike ?? 0,
-        isSpam: c.isSpam ? 1 : 0, isTop: c.isTop ? 1 : 0, isPinned: c.isPinned ? 1 : 0,
-        image: c.image, sticker: c.sticker, ipRegion: c.ipRegion, tags: c.tags,
+        id: c.id,
+        url: c.url,
+        href: c.href,
+        nick: c.nick,
+        mail: c.mail,
+        mailMd5: c.mailMd5,
+        link: c.link,
+        comment: c.comment,
+        ua: c.ua,
+        ip: c.ip,
+        state: c.state || 'visible',
+        created: c.created,
+        updated: c.updated,
+        pid: c.pid,
+        rid: c.rid,
+        like: c.like ?? 0,
+        dislike: c.dislike ?? 0,
+        isSpam: c.isSpam ? 1 : 0,
+        isTop: c.isTop ? 1 : 0,
+        isPinned: c.isPinned ? 1 : 0,
+        image: c.image,
+        sticker: c.sticker,
+        ipRegion: c.ipRegion,
+        tags: c.tags,
         renderedComment: c.renderedComment || null,
       }).onConflictDoNothing().run()
     }
@@ -376,6 +444,14 @@ export async function importStore (data: any) {
     }
   }
 }
+
+// Periodically clean up expired sessions (every hour).
+// This runs regardless of which entry is used (self-hosted or cloud),
+// since cloud-entry intentionally has no timer of its own.
+// .unref() prevents it from keeping the process alive.
+setInterval(() => {
+  sessionStore.cleanupSessions()
+}, 3600000).unref()
 
 export async function ensureDb () {
   await initDb()

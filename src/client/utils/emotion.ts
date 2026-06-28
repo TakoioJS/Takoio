@@ -1,14 +1,9 @@
 /**
  * OwO 表情系统
  */
-export interface EmotionItem {
-  text: string
-  icon: string
-}
 
-const OWO_EMOJIS: Record<string, EmotionItem[]> = {
+const OWO_EMOJIS_INLINE: Record<string, EmotionItem[]> = {
   '颜文字': [
-    // 表情
     { text: '开心', icon: '(｡･∀･)ﾉﾞ' },
     { text: '大笑', icon: '╰(￣▽￣)╭' },
     { text: '得意', icon: '(～￣▽￣)～' },
@@ -28,7 +23,6 @@ const OWO_EMOJIS: Record<string, EmotionItem[]> = {
     { text: '第二', icon: '╭(╯^╰)╮' },
     { text: '学霸', icon: '(￣～￣;)' },
     { text: '投币', icon: '_(:з」∠)_' },
-    // 小动物
     { text: '猫猫', icon: '=￣ω￣=' },
     { text: '兔子', icon: '／(=･ x ･=)＼' },
     { text: '狗狗', icon: 'U•ェ•*U' },
@@ -44,7 +38,6 @@ const OWO_EMOJIS: Record<string, EmotionItem[]> = {
     { text: '恐龙', icon: '!(._.)!_(:3 )!_(._.)!' }
   ],
   'Emoji': [
-    // 笑脸
     { text: '哈哈', icon: '😄' },
     { text: '微笑', icon: '😊' },
     { text: '笑哭', icon: '😂' },
@@ -53,7 +46,6 @@ const OWO_EMOJIS: Record<string, EmotionItem[]> = {
     { text: '吐舌', icon: '😛' },
     { text: '眨眼', icon: '😉' },
     { text: '呆', icon: '😶' },
-    // 感情
     { text: '爱心', icon: '❤️' },
     { text: '亲亲', icon: '😘' },
     { text: '害羞', icon: '😳' },
@@ -71,7 +63,6 @@ const OWO_EMOJIS: Record<string, EmotionItem[]> = {
     { text: '击掌', icon: '🙌' },
     { text: '加油', icon: '💪' },
     { text: '握手', icon: '🤝' },
-    // 物品
     { text: '火', icon: '🔥' },
     { text: '星星', icon: '⭐' },
     { text: '太阳', icon: '☀️' },
@@ -87,27 +78,62 @@ const OWO_EMOJIS: Record<string, EmotionItem[]> = {
     { text: '玫瑰', icon: '🌹' },
     { text: '音乐', icon: '🎵' },
     { text: '思考', icon: '🤔' }
+  ],
+  '贴纸': [
+    { text: '笑脸图片', icon: 'https://api.iconify.design/twemoji:grinning-face-with-smiling-eyes.svg', type: 'image' },
+    { text: '笑哭图片', icon: 'https://api.iconify.design/twemoji:face-with-tears-of-joy.svg', type: 'image' },
+    { text: '闪烁星光', icon: 'https://api.iconify.design/twemoji:sparkles.svg', type: 'image' },
+    { text: '鼓掌图片', icon: 'https://api.iconify.design/twemoji:clapping-hands.svg', type: 'image' },
+    { text: '火箭图片', icon: 'https://api.iconify.design/twemoji:rocket.svg', type: 'image' },
+    { text: '派对图片', icon: 'https://api.iconify.design/twemoji:partying-face.svg', type: 'image' }
   ]
 }
+export interface EmotionItem {
+  text: string
+  icon: string
+  type?: 'text' | 'image'
+}
+
+/** 表情分组类型 */
+export type EmojiGroup = Record<string, EmotionItem[]>
 
 let _initialized = false
-let _emotions: Record<string, EmotionItem[]> = {}
+let _emotions: EmojiGroup = {}
 
-export const initOwoEmotions = (emotions?: string[] | Record<string, EmotionItem[]>): void => {
-  if (_initialized) return
-  if (emotions && typeof emotions === 'object' && !Array.isArray(emotions)) {
-    _emotions = { ...OWO_EMOJIS, ...emotions }
-  } else {
-    _emotions = { ...OWO_EMOJIS }
+export const getEmotions = async (options?: any): Promise<EmojiGroup> => {
+  if (_initialized && Object.keys(_emotions).length > 0) return _emotions
+
+  let url = '/owo.json'
+  if (options && options.emoticons) {
+    if (typeof options.emoticons === 'string') {
+      url = options.emoticons
+    } else if (typeof options.emoticons === 'object' && !Array.isArray(options.emoticons)) {
+      _emotions = options.emoticons
+      _initialized = true
+      return _emotions
+    }
   }
-  _initialized = true
-}
 
-export const initMarkedOwo = (): void => {
-  // placeholder
-}
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error()
+    _emotions = await res.json()
+    _initialized = true
+  } catch (e) {
+    const cdnUrl = 'https://cdn.jsdelivr.net/npm/takoio/dist/owo.json'
+    if (url !== cdnUrl) {
+      try {
+        const res = await fetch(cdnUrl)
+        if (!res.ok) throw new Error()
+        _emotions = await res.json()
+        _initialized = true
+      } catch (err) {
+        console.error('Failed to fetch owo.json from CDN:', err)
+        _emotions = OWO_EMOJIS_INLINE
+        _initialized = true
+      }
+    }
+  }
 
-export const getEmotions = (): Record<string, EmotionItem[]> => {
-  if (!_initialized) initOwoEmotions()
   return _emotions
 }

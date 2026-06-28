@@ -1,32 +1,21 @@
 <template>
-  <div class="tk-root">
+  <div
+    class="tk-root"
+    :data-theme="isDark ? 'dark' : 'light'"
+  >
     <TkComments
-      v-if="!isAdminPanel"
       :options="options"
-      @admin="onAdmin"
       @comment-posted="onCommentPosted"
     />
-    <TkAdmin
-      v-else
-      :options="options"
-      @back="onBack"
-    />
-    <!-- 暗语输入后显示的管理入口 -->
-    <div v-if="showAdminEntry && !isAdminPanel" class="tk-admin-entry">
-      <button class="tk-admin-entry-btn" @click="onAdmin" title="管理">{{ t('admin') }}</button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, defineAsyncComponent } from 'vue'
-import { version } from '../version'
-import { logger, t } from '../utils'
-import { request } from '../utils/api'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { version } from '../utils'
+import { logger } from '../utils'
 import type { TakoioConfig, Comment } from '../types'
 import TkComments from './components/TkComments.vue'
-
-const TkAdmin = defineAsyncComponent(() => import('./components/TkAdmin.vue'))
 
 interface Props {
   options: TakoioConfig
@@ -34,138 +23,175 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const isAdminPanel = ref(false)
-const showAdminEntry = ref(false)
-const adminKeyEnabled = ref(false)
-const adminKeyword = ref('')
-let keyBuffer = ''
-
-const onAdmin = (): void => { isAdminPanel.value = true }
-const onBack = (): void => { isAdminPanel.value = false }
-
 const onCommentPosted = (comment: Comment): void => {
   props.options.onCommentPosted?.(comment)
 }
 
-const checkAdminKeyword = (event: KeyboardEvent): void => {
-  if (!adminKeyEnabled.value || !adminKeyword.value) return
-  const target = event.target as HTMLElement | null
-  if (target) {
-    const tag = target.tagName
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return
+const isDark = ref(false)
+
+const checkTheme = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const body = document.body
+  const html = document.documentElement
+
+  const hasDarkClass = body.classList.contains('dark') ||
+                       body.classList.contains('dark-mode') ||
+                       body.getAttribute('data-theme') === 'dark' ||
+                       html.classList.contains('dark') ||
+                       html.classList.contains('dark-mode') ||
+                       html.getAttribute('data-theme') === 'dark'
+
+  if (hasDarkClass) {
+    isDark.value = true
+    return
   }
-  if (event.key.length === 1) {
-    keyBuffer += event.key
-    if (keyBuffer.length > 20) keyBuffer = keyBuffer.slice(-20)
-    if (keyBuffer.endsWith(adminKeyword.value)) {
-      showAdminEntry.value = true
-      keyBuffer = ''
-    }
+
+  const hasLightClass = body.classList.contains('light') ||
+                        body.classList.contains('light-mode') ||
+                        body.getAttribute('data-theme') === 'light' ||
+                        html.classList.contains('light') ||
+                        html.classList.contains('light-mode') ||
+                        html.getAttribute('data-theme') === 'light'
+
+  if (hasLightClass) {
+    isDark.value = false
+    return
+  }
+
+  // Fallback to computed text color of document body
+  // If the text color has high brightness (light text), the background must be dark -> dark theme
+  const bodyStyle = window.getComputedStyle(body)
+  const textColor = bodyStyle.color
+  const match = textColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (match) {
+    const r = parseInt(match[1])
+    const g = parseInt(match[2])
+    const b = parseInt(match[3])
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000
+    isDark.value = yiq > 150
+  } else {
+    // Fallback to prefers-color-scheme
+    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
   }
 }
 
-// 从服务端配置读取管理员暗语开关
-const loadKeyConfig = async () => {
-  try {
-    if (!props.options.envId) return
-    const base = props.options.envId.replace(/\/$/, '')
-    const res = await request(`${base}/api/admin/config`)
-    const cfg = (res as any)?.data || {}
-    adminKeyEnabled.value = !!cfg.ENABLE_ADMIN_KEYWORD
-    adminKeyword.value = cfg.ADMIN_KEYWORD || ''
-  } catch { /* ignore */ }
-}
+let observer: MutationObserver | null = null
+let mediaQuery: MediaQueryList | null = null
 
-onMounted(async () => {
+onMounted(() => {
   if (typeof window !== 'undefined') {
-    if (props.options.customCSS) {
-      // Sanitize customCSS: block dangerous CSS injections
-      const sanitized = props.options.customCSS
-        .replace(/url\s*\(/gi, '/* url() blocked */')
-        .replace(/expression\s*\(/gi, '/* expression() blocked */')
-        .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')
-        .replace(/javascript\s*:/gi, '/* javascript: blocked */')
-      const style = document.createElement('style')
-      style.textContent = sanitized
-      document.head.appendChild(style)
+    checkTheme()
+
+    // MutationObserver to watch class/data-theme changes on body and html
+    observer = new MutationObserver(checkTheme)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+
+    // MediaQueryList listener for prefers-color-scheme changes
+    mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', checkTheme)
+    } else {
+      mediaQuery.addListener(checkTheme)
     }
-    await loadKeyConfig()
-    window.addEventListener('keydown', checkAdminKeyword)
+  }
+
+  if (typeof window !== 'undefined' && props.options.customCSS) {
+    // 严格过滤自定义 CSS：禁止 url()、import、expression、javascript: 等危险特性
+    // 注意：正则过滤存在局限，完全安全方案需要 CSS 解析器沙箱
+    const sanitized = props.options.customCSS
+      .replace(/url\s*\([^)]*\)/gi, '/* url() blocked */') // 禁止所有 url()
+      .replace(/@import/gi, '/* @import blocked */')         // 禁止 @import
+      .replace(/expression\s*\([^)]*\)/gi, '/* expression() blocked */') // 禁止 expression
+      .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')       // 禁止 binding
+      .replace(/javascript\s*:/gi, '/* javascript: blocked */')           // 禁止 javascript:
+      .replace(/vbscript\s*:/gi, '/* vbscript: blocked */')               // 禁止 vbscript:
+      .replace(/behavior\s*:/gi, '/* behavior blocked */')                // 禁止 behavior
+      .replace(/@keyframes\s+[^{]*\{/gi, '/* @keyframes blocked */')     // 禁止 @keyframes（可滥用）
+      .replace(/pointer-events?\s*:/gi, '/* pointer-events blocked */')   // 禁止 pointer-events（可遮挡按钮）
+    const style = document.createElement('style')
+    style.textContent = sanitized
+    style.setAttribute('data-takoio-custom-css', '') // 标记来源便于审计
+    document.head.appendChild(style)
   }
   logger.log(`Takoio v${version} initialized`)
+})
+
+onBeforeUnmount(() => {
+  if (observer) {
+    observer.disconnect()
+  }
+  if (mediaQuery) {
+    if (mediaQuery.removeEventListener) {
+      mediaQuery.removeEventListener('change', checkTheme)
+    } else {
+      mediaQuery.removeListener(checkTheme)
+    }
+  }
 })
 </script>
 
 <style>
-.tk-root {
-  /* 品牌色 */
-  --tk-brand: #0ea5e9;
-  --tk-brand-hover: #0284c7;
-  --tk-brand-light: rgba(14, 165, 233, 0.1);
-  --tk-brand-ring: rgba(14, 165, 233, 0.4);
+.tk-root{
+  /* —— 强调：松绿系（可被 options.brandColor 覆盖，见 index.ts:84）—— */
+  --tk-brand:#5E8C6A; --tk-brand-hover:#52815C;
+  --tk-brand-light:color-mix(in srgb,var(--tk-brand) 12%,transparent);
+  --tk-brand-ring: color-mix(in srgb,var(--tk-brand) 38%,transparent);
 
-  /* 语义色 */
-  --tk-success: #22c55e;
-  --tk-warning: #f59e0b;
-  --tk-danger: #ef4444;
-  --tk-info: #94a3b8;
+  /* —— 语义：颜料级降饱和 —— */
+  --tk-success:#5E8C6A; --tk-warning:#B98A4B; --tk-danger:#B0524F;
+  --tk-info:color-mix(in srgb,currentColor 55%,transparent);
 
-  /* 中性色（基于 inherit + opacity，自动适配宿主背景） */
-  --tk-text: inherit;
-  --tk-text-secondary: color-mix(in srgb, currentColor 60%, transparent);
-  --tk-text-tertiary: color-mix(in srgb, currentColor 40%, transparent);
-  --tk-border: color-mix(in srgb, currentColor 15%, transparent);
-  --tk-border-strong: color-mix(in srgb, currentColor 25%, transparent);
-  --tk-bg-subtle: color-mix(in srgb, currentColor 4%, transparent);
-  --tk-bg-muted: color-mix(in srgb, currentColor 8%, transparent);
+  /* —— 纸的呼吸：中性层次（沿用 currentColor 派生，零侵入宿主）—— */
+  --tk-text:inherit;
+  --tk-text-2:color-mix(in srgb,currentColor 62%,transparent);
+  --tk-text-3:color-mix(in srgb,currentColor 42%,transparent);
+  --tk-border:color-mix(in srgb,currentColor 12%,transparent);
+  --tk-border-soft:color-mix(in srgb,currentColor 7%,transparent);
+  --tk-bg-subtle:color-mix(in srgb,currentColor 3%,transparent);
+  --tk-bg-muted:color-mix(in srgb,currentColor 6%,transparent);
+  --tk-bg-inset:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-bg-code:color-mix(in srgb,currentColor 4%,transparent);
 
-  /* 管理后台独立变量（保持浅色固定） */
-  --tk-admin-bg: #ffffff;
-  --tk-admin-text: #1e293b;
-  --tk-admin-text-secondary: #64748b;
-  --tk-admin-border: #e2e8f0;
-  --tk-admin-hover: #f8fafc;
+  /* —— 纸的层次：统一柔影（替代散落硬阴影）—— */
+  --tk-shadow-paper:0 1px 2px color-mix(in srgb,currentColor 8%,transparent),
+                    0 6px 16px color-mix(in srgb,currentColor 5%,transparent);
+  --tk-shadow-lift:0 2px 4px color-mix(in srgb,currentColor 10%,transparent),
+                   0 12px 28px color-mix(in srgb,currentColor 8%,transparent);
 
-  /* Element Plus 主题对齐 */
-  --el-color-primary: var(--tk-brand);
-  --el-color-primary-light-3: var(--tk-brand-hover);
-  --el-color-primary-light-5: var(--tk-brand-light);
-  --el-border-radius-base: 6px;
+  /* —— 统一圆角与字号 —— */
+  --tk-r-card:12px; --tk-r-input:8px; --tk-r-pill:999px;
+  --tk-fs-base:14px; --tk-lh:1.7;
 
-  color: inherit;
-  font-size: 14px;
-  line-height: 1.6;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  /* —— 补齐此前未定义的变量（修复 TkAvatar:59 / TkComment:329）—— */
+  --tk-dislike-color:#B0524F;
+  --tk-avatar-border:color-mix(in srgb,currentColor 14%,transparent);
+
+  /* —— 向后兼容别名（未在本计划触及的组件仍引用这些旧名）—— */
+  --tk-text-secondary:var(--tk-text-2);
+  --tk-text-tertiary:var(--tk-text-3);
+  --tk-border-strong:color-mix(in srgb,currentColor 25%,transparent);
+
+  color:inherit; font-size:var(--tk-fs-base); line-height:var(--tk-lh);
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+/* 主题变量：由 JS checkTheme() 驱动 data-theme 属性，单一来源 */
+.tk-root[data-theme="light"]{
+  --tk-bg-popup:#fff;
+  --tk-shadow:0 6px 16px rgba(0,0,0,0.06);
+}
+.tk-root[data-theme="dark"]{
+  --tk-bg-popup:#1e1e1e;
+  --tk-shadow:0 6px 16px rgba(0,0,0,0.35);
+  --tk-shadow-lift:0 2px 4px rgba(0,0,0,.4),0 12px 28px rgba(0,0,0,.32);
 }
 
 .tk-root a { color: var(--tk-brand); text-decoration: none; }
 .tk-root a:hover { color: var(--tk-brand-hover); }
 .tk-root button { cursor: pointer; font-family: inherit; }
-.tk-root pre { overflow-x: auto; padding: 12px; background: rgba(0,0,0,0.04); border: 1px solid rgba(128,128,128,0.15); border-radius: 4px; }
+.tk-root pre { overflow-x: auto; padding: 12px; background: var(--tk-bg-code); border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-input); }
 .tk-root code { font-family: 'SF Mono', Monaco, Consolas, monospace; }
-
-.tk-admin-entry {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 10000;
-}
-.tk-admin-entry-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--tk-brand);
-  color: #fff;
-  border: none;
-  font-size: 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  transition: all 0.2s;
-}
-.tk-admin-entry-btn:hover {
-  background: var(--tk-brand-hover);
-  transform: scale(1.08);
-}
 
 /* prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {

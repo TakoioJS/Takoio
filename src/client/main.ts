@@ -4,8 +4,9 @@
  * 纯 HTTP 通信，需要部署自托管服务端。
  */
 
-import { version } from './version'
+
 import { render } from './view'
+import { version } from './utils'
 import {
   setLanguage,
   isUrl,
@@ -65,5 +66,7 @@ export async function getVisitorsCount (
   const opts = { ...options, url: options.url || '/' }
   return await getVisitorsCountApi(opts)
 }
+
+
 
 export { version }

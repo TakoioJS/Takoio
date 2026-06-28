@@ -2,6 +2,30 @@
  * Config management — defaults, retrieval, caching, masking
  */
 
+/**
+ * Application error types — structured errors with codes and HTTP status
+ */
+
+export class AppError extends Error {
+  constructor (
+    public code: string,
+    message: string,
+    public statusCode = 400
+  ) {
+    super(message)
+    this.name = 'AppError'
+  }
+}
+
+export const ERR = {
+  NEED_LOGIN: new AppError('NEED_LOGIN', '请先登录', 401),
+  INVALID_CAPTCHA: new AppError('INVALID_CAPTCHA', '验证码验证失败', 400),
+  RATE_LIMITED: new AppError('RATE_LIMITED', '请求过于频繁', 429),
+  INVALID_INPUT: new AppError('INVALID_INPUT', '输入验证失败', 400),
+  NOT_FOUND: new AppError('NOT_FOUND', '资源不存在', 404),
+  INTERNAL: new AppError('INTERNAL', '服务器内部错误', 500),
+}
+
 import { configStore } from './store/index'
 import { ALLOWED_CONFIG_KEYS } from './schemas'
 
@@ -12,9 +36,13 @@ export const MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 // ========== Config Interface ==========
 
 export interface TakoioConfig {
+  TYPE?: string
   SITE_NAME: string
+  SITE_URL?: string
   MASTER?: string
   MASTER_NAME: string
+  MASTER_LABEL?: string
+  MASTER_LABEL_COLOR?: string
   GLOBAL_COLOR: string
   PAGE_SIZE: number
   COMMENT_SORT: 'newest' | 'oldest' | 'hottest'
@@ -30,10 +58,11 @@ export interface TakoioConfig {
   IP_REGION_ENABLED: boolean
   IP_PROXY_HEADER: string
   TRUSTED_PROXIES: string
-  SHOW_IP_REGION: boolean
+  SHOW_IP_REGION: boolean | string
   SHOW_UA_INFO: boolean
   ENABLE_LIKE: boolean
   ENABLE_DISLIKE: boolean
+  ENABLE_ARTICLE_REACTION?: boolean
   ENABLE_EMOTION: boolean
   ENABLE_LINK_INPUT: boolean
   COMMENT_LINK_REQUIRED: boolean
@@ -71,6 +100,7 @@ export interface TakoioConfig {
   SMTP_TO: string
   SMTP_TLS: boolean
   ENABLE_MAIL_NOTIFICATION: boolean
+  MAIL_NOTIFY_ENABLED?: boolean
   SENDER_EMAIL: string
   SENDER_NAME: string
   MAIL_SUBJECT: string
@@ -82,7 +112,12 @@ export interface TakoioConfig {
   AUTO_AUDIT_AI_MODEL: string
   AUTO_AUDIT_AI_PROMPT: string
   AI_PROVIDERS: string
+  AKISMET_KEY?: string
+  ENABLE_ANTI_SPAM?: boolean
   CORS_ORIGINS: string
+  CUSTOM_CSS?: string
+  CDN_PREFIX?: string
+  COMMENT_BG_IMAGE?: string
   PUSHOO_SC_KEY: string
   PUSHOO_QMSG_KEY: string
   PUSHOO_DINGTALK_TOKEN: string
@@ -102,7 +137,6 @@ export interface TakoioConfig {
   PUSHOO_IFTTT_TOKEN: string
   PUSHOO_JOIN_TOKEN: string
   PUSHOO_WEBHOOK_TOKEN: string
-  [key: string]: unknown
 }
 
 // ========== Default Config ==========
@@ -214,7 +248,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   PUSHOO_IFTTT_TOKEN: '',
   PUSHOO_JOIN_TOKEN: '',
   PUSHOO_WEBHOOK_TOKEN: '',
-  }
+}
 
 // ========== Config Retrieval + Cache ==========
 

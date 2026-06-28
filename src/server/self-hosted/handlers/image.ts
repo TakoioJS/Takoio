@@ -8,8 +8,7 @@ import { createHash, createHmac, randomUUID } from 'node:crypto'
 import { safeValidate } from '../schemas'
 import { UploadImageSchema } from '../schemas'
 import { MAX_UPLOAD_SIZE, getConfig } from '../config'
-import { AppError } from '../utils/errors'
-import { logger } from '../utils/logger'
+import { AppError } from '../config'
 
 // ========== Detect Image Type (magic bytes) ==========
 
@@ -128,7 +127,7 @@ export const checkImageNsfw = async (base64Data: string): Promise<NsfwResult | n
     return detectNsfwModelArk(base64Data, cfg.NSFW_API_KEY, threshold)
   }
 
-  logger.warn({ service }, '未知的 NSFW 检测服务')
+  console.warn({ service }, '未知的 NSFW 检测服务')
   return null
 }
 
@@ -149,8 +148,8 @@ const buildMultipart = (
   fileField: string,
   filename: string,
   buffer: Buffer,
-  mimeType: string,
-): { body: Buffer; contentType: string } => {
+  mimeType: string
+): { body: Blob; contentType: string } => {
   const boundary = `----Takoio${randomUUID().slice(0, 12)}`
   const parts: Buffer[] = []
   for (const [key, value] of Object.entries(fields)) {
@@ -159,7 +158,7 @@ const buildMultipart = (
   parts.push(Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="${fileField}"; filename="${filename}"\r\nContent-Type: ${mimeType}\r\n\r\n`))
   parts.push(buffer)
   parts.push(Buffer.from(`\r\n--${boundary}--\r\n`))
-  return { body: Buffer.concat(parts), contentType: `multipart/form-data; boundary=${boundary}` }
+  return { body: new Blob([Buffer.concat(parts)]), contentType: `multipart/form-data; boundary=${boundary}` }
 }
 
 // ========== Provider Upload Implementations ==========
@@ -309,7 +308,7 @@ const uploadS3Compatible = async (buffer: Buffer, filename: string, mimeType: st
       'x-amz-date': amzDate,
       'Authorization': authorization,
     },
-    body: buffer,
+    body: new Blob([buffer as any]),
   })
 
   if (!res.ok) {
@@ -343,15 +342,14 @@ const PROVIDER_UPLOADERS: Record<string, (buffer: Buffer, filename: string, mime
 export const handleUploadImage = async (data: any) => {
   const validation = safeValidate(UploadImageSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', '无图片数据', 400)
-  if (Math.ceil((validation.data.image.length * 3) / 4) > MAX_UPLOAD_SIZE)
-    throw new AppError('INVALID_INPUT', '图片超过 5MB', 400)
+  if (Math.ceil((validation.data.image.length * 3) / 4) > MAX_UPLOAD_SIZE) { throw new AppError('INVALID_INPUT', '图片超过 5MB', 400) }
 
   const mimeType = detectImageType(validation.data.image)
   if (!mimeType) throw new AppError('INVALID_INPUT', '图片格式无效，仅支持 PNG/JPEG/GIF/WebP', 400)
 
   const nsfwResult = await checkImageNsfw(validation.data.image)
   if (nsfwResult?.isNsfw) {
-    logger.warn({ score: nsfwResult.score }, '图片 NSFW 检测未通过')
+    console.warn({ score: nsfwResult.score }, '图片 NSFW 检测未通过')
     throw new AppError('NSFW_DETECTED', `图片包含不合规内容 (score: ${nsfwResult.score.toFixed(3)})`, 400)
   }
 
@@ -369,6 +367,6 @@ export const handleUploadImage = async (data: any) => {
   const buffer = base64ToBuffer(validation.data.image)
   const filename = generateFilename(mimeType)
   const url = await uploader(buffer, filename, mimeType, cfg)
-  logger.info({ provider, url }, '图片上传成功')
+  console.info({ provider, url }, '图片上传成功')
   return { url }
 }

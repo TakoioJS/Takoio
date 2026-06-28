@@ -1,0 +1,8 @@
+<template>
+  <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="4" width="24" height="24" rx="6" fill="var(--ink)"/>
+    <path d="M8 8C8 6.89543 8.89543 6 10 6H22C23.1046 6 24 6.89543 24 8V18C24 19.1046 23.1046 20 22 20H14L9 25V20H10C8.89543 20 8 19.1046 8 18V8Z" fill="var(--paper)"/>
+    <circle cx="13" cy="13" r="1.5" fill="var(--ink)"/>
+    <circle cx="19" cy="13" r="1.5" fill="var(--ink)"/>
+  </svg>
+</template>

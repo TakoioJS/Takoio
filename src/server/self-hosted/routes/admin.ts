@@ -9,8 +9,9 @@ import {
   handleSendNotification, handleEmailTest,
 } from '../handlers/admin'
 import { handleImport, handleExport } from '../handlers/import-export'
+import { handleDashboardStats, handleDashboardTrend } from '../handlers/comment'
 import { sessionStore } from '../store/index'
-import { AppError } from '../utils/errors'
+import { AppError } from '../config'
 import { LoginSchema, PasswordSetSchema, ExportSchema, ImportSchema } from '../schemas'
 
 const getToken = (c: any): string | undefined => {
@@ -69,6 +70,19 @@ adminRoutes.delete('/config', async (c) => {
 // GET /api/admin/version — 获取版本
 adminRoutes.get('/version', async (c) => {
   return c.json({ version: '1.0.0' })
+})
+
+// GET /api/admin/dashboard — 仪表盘统计
+adminRoutes.get('/dashboard', async (c) => {
+  await requireAdmin({ token: getToken(c) })
+  return c.json(await handleDashboardStats())
+})
+
+// GET /api/admin/dashboard/trend — 近 N 天评论趋势
+adminRoutes.get('/dashboard/trend', async (c) => {
+  await requireAdmin({ token: getToken(c) })
+  const days = Math.min(Math.max(parseInt(c.req.query('days') || '7', 10) || 7, 1), 30)
+  return c.json(await handleDashboardTrend(days))
 })
 
 // GET /api/admin/type — 获取类型

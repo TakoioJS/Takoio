@@ -15,7 +15,7 @@ let _db: Db | null = null
 const connUri = () => process.env.MONGODB_URI || 'mongodb://localhost:27017'
 const dbName = () => process.env.MONGODB_DB || 'takoio'
 
-async function getDb(): Promise<Db> {
+async function getDb (): Promise<Db> {
   if (_db) return _db
   _client = new MongoClient(connUri())
   await _client.connect()
@@ -48,14 +48,30 @@ export const commentStore = {
   async addComment (data: any) {
     const db = await getDb()
     await col(db, 'comments').insertOne({
-      _id: data.id, url: data.url, href: data.href, nick: data.nick,
-      mail: data.mail, mailMd5: data.mailMd5, link: data.link,
-      comment: data.comment, ua: data.ua, ip: data.ip,
-      state: data.state || 'visible', created: data.created,
-      updated: data.updated, pid: data.pid, rid: data.rid,
-      like: data.like ?? 0, dislike: data.dislike ?? 0,
-      isSpam: !!data.isSpam, isTop: !!data.isTop, isPinned: !!data.isPinned,
-      image: data.image, sticker: data.sticker, ipRegion: data.ipRegion, tags: data.tags,
+      _id: data.id,
+      url: data.url,
+      href: data.href,
+      nick: data.nick,
+      mail: data.mail,
+      mailMd5: data.mailMd5,
+      link: data.link,
+      comment: data.comment,
+      ua: data.ua,
+      ip: data.ip,
+      state: data.state || 'visible',
+      created: data.created,
+      updated: data.updated,
+      pid: data.pid,
+      rid: data.rid,
+      like: data.like ?? 0,
+      dislike: data.dislike ?? 0,
+      isSpam: !!data.isSpam,
+      isTop: !!data.isTop,
+      isPinned: !!data.isPinned,
+      image: data.image,
+      sticker: data.sticker,
+      ipRegion: data.ipRegion,
+      tags: data.tags,
       renderedComment: data.renderedComment || null,
     })
     return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 }
@@ -79,9 +95,11 @@ export const commentStore = {
   async getComments (url: string, page = 1, pageSize = 10, sort = 'newest') {
     const db = await getDb()
     const visibleStates = ['visible', 'pending']
-    const sortOrder: Record<string, 1 | -1> = sort === 'oldest' ? { created: 1 }
-      : sort === 'hottest' ? { like: -1 }
-      : { created: -1 }
+    const sortOrder: Record<string, 1 | -1> = sort === 'oldest'
+      ? { created: 1 }
+      : sort === 'hottest'
+        ? { like: -1 }
+        : { created: -1 }
     const query = { url, state: { $in: visibleStates }, pid: null }
 
     const total = await col(db, 'comments').countDocuments(query)
@@ -89,7 +107,7 @@ export const commentStore = {
       .sort(sortOrder).skip((page - 1) * pageSize).limit(pageSize).toArray()
 
     const parentIds = rows.map(r => r._id)
-    let replyMap = new Map<string, any[]>()
+    const replyMap = new Map<string, any[]>()
     if (parentIds.length > 0) {
       const allReplies = await col(db, 'comments').find({ pid: { $in: parentIds }, state: { $in: visibleStates } })
         .sort({ created: 1 }).toArray()
@@ -172,10 +190,53 @@ export const commentStore = {
     return result.matchedCount > 0
   },
 
-  async setSpam (id: string) {
+  async setSpam (id: string, isSpam = true) {
     const db = await getDb()
-    const result = await col(db, 'comments').updateOne({ _id: id }, { $set: { isSpam: true, state: COMMENT_STATE.SPAM } })
+    const patch = isSpam
+      ? { isSpam: true, state: COMMENT_STATE.SPAM }
+      : { isSpam: false, state: COMMENT_STATE.VISIBLE }
+    const result = await col(db, 'comments').updateOne({ _id: id }, { $set: patch })
     return result.matchedCount > 0
+  },
+
+  async getDashboardStats () {
+    const db = await getDb()
+    const coll = col(db, 'comments')
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const todayTs = startOfToday.getTime()
+    const yesterdayTs = todayTs - 86400000
+    const [total, today, yesterday, pending, spam, hidden, topCount] = await Promise.all([
+      coll.countDocuments(),
+      coll.countDocuments({ created: { $gte: todayTs } }),
+      coll.countDocuments({ created: { $gte: yesterdayTs, $lt: todayTs } }),
+      coll.countDocuments({ state: COMMENT_STATE.PENDING }),
+      coll.countDocuments({ isSpam: true }),
+      coll.countDocuments({ state: COMMENT_STATE.HIDDEN }),
+      coll.countDocuments({ isTop: true }),
+    ])
+    return { total, today, yesterday, pending, spam, hidden, topCount }
+  },
+
+  async getDashboardTrend (days = 7) {
+    const db = await getDb()
+    const coll = col(db, 'comments')
+    const n = Math.min(Math.max(Math.floor(days), 1), 30)
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const todayTs = startOfToday.getTime()
+    const result: { date: string; count: number }[] = []
+    for (let i = n - 1; i >= 0; i--) {
+      const dayStart = todayTs - i * 86400000
+      const dayEnd = dayStart + 86400000
+      const count = await coll.countDocuments({ created: { $gte: dayStart, $lt: dayEnd } })
+      const d = new Date(dayStart)
+      result.push({
+        date: `${d.getMonth() + 1}/${d.getDate()}`,
+        count,
+      })
+    }
+    return result
   },
 
   async setCommentIpRegion (id: string, ipRegion: string) {
@@ -235,7 +296,7 @@ export const configStore = {
     await col(db, 'configs').replaceOne(
       { _id: key },
       { _id: key, value: val, updatedAt: Date.now() },
-      { upsert: true },
+      { upsert: true }
     )
   },
 
@@ -385,13 +446,30 @@ export async function importStore (data: any) {
     const coll = col(db, 'comments')
     for (const c of data.comments) {
       await coll.replaceOne({ _id: c.id }, {
-        _id: c.id, url: c.url, href: c.href, nick: c.nick, mail: c.mail,
-        mailMd5: c.mailMd5, link: c.link, comment: c.comment, ua: c.ua,
-        ip: c.ip, state: c.state || 'visible', created: c.created,
-        updated: c.updated, pid: c.pid, rid: c.rid,
-        like: c.like ?? 0, dislike: c.dislike ?? 0,
-        isSpam: !!c.isSpam, isTop: !!c.isTop, isPinned: !!c.isPinned,
-        image: c.image, sticker: c.sticker, ipRegion: c.ipRegion, tags: c.tags,
+        _id: c.id,
+        url: c.url,
+        href: c.href,
+        nick: c.nick,
+        mail: c.mail,
+        mailMd5: c.mailMd5,
+        link: c.link,
+        comment: c.comment,
+        ua: c.ua,
+        ip: c.ip,
+        state: c.state || 'visible',
+        created: c.created,
+        updated: c.updated,
+        pid: c.pid,
+        rid: c.rid,
+        like: c.like ?? 0,
+        dislike: c.dislike ?? 0,
+        isSpam: !!c.isSpam,
+        isTop: !!c.isTop,
+        isPinned: !!c.isPinned,
+        image: c.image,
+        sticker: c.sticker,
+        ipRegion: c.ipRegion,
+        tags: c.tags,
         renderedComment: c.renderedComment || null,
       }, { upsert: true })
     }
@@ -432,7 +510,7 @@ export async function ensureDb () {
   // Essential for serverless where no app-level cleanup timer runs.
   await col(db, 'sessions').createIndex(
     { createdAt: 1 },
-    { expireAfterSeconds: 86400 },
+    { expireAfterSeconds: 86400 }
   )
   await col(db, 'reactions').createIndex({ url: 1 })
 }

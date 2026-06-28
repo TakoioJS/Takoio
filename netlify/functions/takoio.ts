@@ -14,16 +14,26 @@
  *   4. Deploy
  */
 
-import { fetch as serverFetch } from '../../src/server/self-hosted/cloud-entry'
+import { fetch } from '../../src/server/self-hosted/cloud-entry'
 
-export const handler = async (event: any) => {
-  const request = new Request(event.rawUrl, {
+interface NetlifyEvent {
+  readonly path: string
+  readonly httpMethod: string
+  readonly headers?: Record<string, string | undefined>
+  readonly body?: string
+  readonly isBase64Encoded: boolean
+  readonly host: string
+}
+
+export const handler = async (event: NetlifyEvent) => {
+  const url = new URL(event.path, `https://${event.host}`)
+  const request = new Request(url.toString(), {
     method: event.httpMethod,
-    headers: new Headers(event.headers || {}),
+    headers: new Headers(event.headers ?? {}),
     body: event.body
       ? Buffer.from(event.body, event.isBase64Encoded ? 'base64' : 'utf8')
       : undefined,
   })
 
-  return serverFetch(request)
+  return fetch(request)
 }

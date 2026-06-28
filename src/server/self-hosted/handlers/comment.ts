@@ -4,6 +4,7 @@
 
 import * as crypto from 'node:crypto'
 import { safeValidate } from '../schemas'
+import { notifyComment } from '../events'
 import {
   GetCommentSchema,
   SubmitCommentSchema,
@@ -11,6 +12,10 @@ import {
   CommentActionSchema,
   UpdateCommentSchema,
   AdminCommentSchema,
+  CounterGetSchema,
+  CounterUpdateSchema,
+  CommentsCountSchema,
+  RecentCommentsSchema,
 } from '../schemas'
 import type {
   GetCommentData,
@@ -20,15 +25,15 @@ import type {
   UpdateCommentData,
   AdminCommentData,
 } from '../schemas'
-import { commentStore } from '../store/index'
+import { commentStore, visitorStore, reactionStore } from '../store/index'
 import { getConfig, maskSensitiveConfig } from '../config'
 import { verifyCaptcha } from '../auth'
 import { moderateComment, getAuditAction } from '../moderate'
 import { sendNotification } from '../notify'
+import { sendEmail } from '../email'
 import { lookupIpRegion } from '../ip-region'
 import { requireAdmin } from '../auth'
-import { logger } from '../utils/logger'
-import { AppError } from '../utils/errors'
+import { AppError } from '../config'
 import { renderComment } from '../utils/render'
 
 // ========== Comment Get ==========
@@ -39,7 +44,7 @@ export const handleCommentGet = async (data: GetCommentData) => {
   const { url, page, pageSize, sort } = validation.data
   const result = await commentStore.getComments(url || '/', page, pageSize, sort)
   const rawCfg = await getConfig()
-  
+
   const masterMailMd5 = rawCfg.MASTER ? crypto.createHash('md5').update(rawCfg.MASTER.trim().toLowerCase()).digest('hex') : ''
   const masterName = rawCfg.MASTER_NAME || ''
   const checkMaster = (c: any) => {
@@ -155,7 +160,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   }
 
   // 2. 防灌水（相似度检测）
-  function getBigrams(str: string) {
+  function getBigrams (str: string) {
     const s = new Set<string>()
     for (let i = 0; i < str.length - 1; i++) s.add(str.slice(i, i + 2))
     return s
@@ -186,12 +191,12 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
 
   const auditAction = getAuditAction(modResult, cfg.AUDIT_MODE ? 'audit' : 'pass')
   if (auditAction === 'rejected') {
-    logger.info({ source: modResult.source, score: modResult.score, reasons: modResult.reasons }, 'Comment rejected')
+    console.info({ source: modResult.source, score: modResult.score, reasons: modResult.reasons }, 'Comment rejected')
     throw new AppError('MODERATION_FAILED', '评论审核未通过，请修改后再试', 400)
   }
   if (auditAction === 'pending') {
     newComment.state = 'pending'
-    logger.info({ source: modResult.source, score: modResult.score, reasons: modResult.reasons }, 'Comment pending review')
+    console.info({ source: modResult.source, score: modResult.score, reasons: modResult.reasons }, 'Comment pending review')
   }
 
   // IP region
@@ -205,13 +210,70 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
 
   const saved = await commentStore.addComment(newComment)
 
-  // Notification
+  // SSE real-time notification
+  notifyComment(newComment.url, 'comment:new', { comment: { id: saved.id, nick: saved.nick, comment: saved.comment, created: saved.created, url: saved.url } })
+
+  // Push notification
   const siteName = cfg.SITE_NAME || 'Takoio'
   sendNotification(cfg, {
     title: `${nick} 评论了「${title || siteName}」`,
     content: `${nick} 在 ${title || siteName} 发表了评论：\n\n> ${comment.slice(0, 200)}${comment.length > 200 ? '...' : ''}`,
     siteName,
-  }).catch(e => logger.error({ error: e.message }, 'Notification failed'))
+  }).catch(e => console.error({ error: e.message }, 'Notification failed'))
+
+  // Email notification
+  if (cfg.ENABLE_MAIL_NOTIFICATION && cfg.SMTP_HOST) {
+    const renderTpl = (tpl: string, vars: Record<string, string>) =>
+      tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => vars[k] || `{{ ${k} }}`)
+
+    // 1. Reply notification: if this comment is a reply, notify the parent commenter
+    if (rid || pid) {
+      const parentId = rid || pid
+      if (parentId) {
+        try {
+          const parentComment = await commentStore.getComment(parentId)
+          if (parentComment && parentComment.mail && parentComment.mail !== mail) {
+            const replyVars = {
+              siteName,
+              nick: parentComment.nick,
+              title: title || siteName,
+              comment: comment.slice(0, 500),
+              url: data.href || `https://your-site.com${url}`,
+            }
+            const subject = renderTpl(cfg.MAIL_SUBJECT || '有人在 {title} 中回复了你', replyVars)
+            const html = renderTpl(cfg.MAIL_TEMPLATE || '', replyVars)
+            sendEmail(cfg, subject, html).catch(e =>
+              console.error({ error: e.message }, 'Reply email notification failed')
+            )
+          }
+        } catch (e: any) {
+          console.warn({ error: e.message }, 'Failed to send reply email')
+        }
+      }
+    }
+
+    // 2. Admin notification: notify the site owner of a new comment
+    if (cfg.SMTP_TO) {
+      try {
+        const adminVars = {
+          siteName,
+          nick,
+          title: title || siteName,
+          comment: comment.slice(0, 500),
+          url: data.href || `https://your-site.com${url}`,
+          ip: _ip || 'unknown',
+          ua: ua || 'unknown',
+        }
+        const adminSubject = renderTpl(cfg.MAIL_SUBJECT_ADMIN || '新的评论：{nick} 在 {title}', adminVars)
+        const adminHtml = renderTpl(cfg.MAIL_TEMPLATE_ADMIN || '', adminVars)
+        sendEmail(cfg, adminSubject, adminHtml).catch(e =>
+          console.error({ error: e.message }, 'Admin email notification failed')
+        )
+      } catch (e: any) {
+        console.warn({ error: e.message }, 'Failed to send admin email')
+      }
+    }
+  }
 
   return { data: saved, moderated: modResult }
 }
@@ -293,7 +355,7 @@ export const handleCommentGetAdmin = async (data: AdminCommentData) => {
   const validation = safeValidate(AdminCommentSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const { page, pageSize, search, filter } = validation.data
-  let result;
+  let result
   if (search || (filter && filter !== 'all')) {
     result = await commentStore.searchComments(page, pageSize, search, filter)
   } else {
@@ -303,7 +365,7 @@ export const handleCommentGetAdmin = async (data: AdminCommentData) => {
   const rawCfg = await getConfig()
   const masterMailMd5 = rawCfg.MASTER ? crypto.createHash('md5').update(rawCfg.MASTER.trim().toLowerCase()).digest('hex') : ''
   const masterName = rawCfg.MASTER_NAME || ''
-  
+
   const checkMaster = (c: any) => {
     if ((masterName && c.nick === masterName) || (masterMailMd5 && c.mailMd5 === masterMailMd5)) {
       c.isMaster = true
@@ -325,8 +387,102 @@ export const handleCommentSetTop = async (data: CommentIdData & { isTop?: boolea
 
 // ========== Comment Set Spam ==========
 
-export const handleCommentSetSpam = async (data: CommentIdData) => {
+export const handleCommentSetSpam = async (data: CommentIdData & { isSpam?: boolean }) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  return { success: await commentStore.setSpam(validation.data.id) }
+  const isSpam = data.isSpam ?? true
+  return { success: await commentStore.setSpam(validation.data.id, isSpam) }
+}
+
+// ========== Comment Approve (pending → visible) ==========
+
+export const handleCommentApprove = async (data: CommentIdData) => {
+  const validation = safeValidate(CommentIdSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  return { success: await commentStore.showComment(validation.data.id) }
+}
+
+// ========== Dashboard Stats ==========
+
+export const handleDashboardStats = async () => {
+  return await commentStore.getDashboardStats()
+}
+
+export const handleDashboardTrend = async (days = 7) => {
+  return await commentStore.getDashboardTrend(days)
+}
+// ========== Reaction (merged from handlers/reaction.ts) ==========
+
+export const handleReactionGet = async (data: any) => {
+  const url = data.url || '/'
+  const ip = data._ip || 'unknown'
+  const raw = await reactionStore.getReactions(url)
+  return formatReactions(raw, ip)
+}
+
+export const handleReactionSubmit = async (data: any) => {
+  const url = data.url || '/'
+  const emoji = data.emoji
+  const ip = data._ip || 'unknown'
+
+  if (!emoji || typeof emoji !== 'string') {
+    throw new Error('Invalid emoji')
+  }
+
+  const raw = await reactionStore.toggleReaction(url, emoji, ip)
+  return formatReactions(raw, ip)
+}
+
+function formatReactions (raw: Record<string, string[]>, ip: string) {
+  const reactions: Record<string, number> = {}
+  const myReactions: string[] = []
+
+  for (const [emoji, ips] of Object.entries(raw)) {
+    if (ips.length > 0) {
+      reactions[emoji] = ips.length
+      if (ips.includes(ip)) myReactions.push(emoji)
+    }
+  }
+  return { reactions, myReactions }
+}
+
+// ========== Counter (merged from handlers/counter.ts) ==========
+
+export const handleCounterGet = async (data: any) => {
+  const validation = safeValidate(CounterGetSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  const { url, title } = validation.data as { url: string; title?: string }
+  return visitorStore.getVisitorCount(url || '/', title)
+}
+
+export const handleCounterUpdate = async (data: any) => {
+  const validation = safeValidate(CounterUpdateSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  const { url, title } = validation.data as { url: string; title?: string }
+  return visitorStore.getVisitorCount(url ?? '/', title)
+}
+
+export const handleGetCommentsCount = async (data: any) => {
+  const validation = safeValidate(CommentsCountSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  return { data: await commentStore.getCommentsCount((validation.data as { urls: string[] }).urls) }
+}
+
+export const handleGetRecentComments = async (data: any) => {
+  const validation = safeValidate(RecentCommentsSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  const result = await commentStore.getRecentComments((validation.data as { count: number }).count)
+
+  const rawCfg = await getConfig()
+  const masterMailMd5 = rawCfg.MASTER ? crypto.createHash('md5').update(rawCfg.MASTER.trim().toLowerCase()).digest('hex') : ''
+  const masterName = rawCfg.MASTER_NAME || ''
+
+  const checkMaster = (c: any) => {
+    if ((masterName && c.nick === masterName) || (masterMailMd5 && c.mailMd5 === c.mailMd5)) {
+      c.isMaster = true
+    }
+  }
+  result.forEach(checkMaster)
+
+  return { data: result }
 }

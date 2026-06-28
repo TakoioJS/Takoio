@@ -1,7 +1,17 @@
 <template>
-  <div class="tk-avatar" :class="sizeClass">
-    <img v-if="avatar" :src="avatar" :alt="user.nick" />
-    <span v-else class="tk-avatar-fallback">
+  <div
+    class="tk-avatar"
+    :class="sizeClass"
+  >
+    <img
+      v-if="avatar"
+      :src="avatar"
+      :alt="user.nick"
+    >
+    <span
+      v-else
+      class="tk-avatar-fallback"
+    >
       {{ initials }}
     </span>
   </div>
@@ -45,15 +55,15 @@ const initials = computed(() => {
   justify-content: center;
   border-radius: 50%;
   overflow: hidden;
-  background: #f8fafc;
-  border: 2px solid var(--tk-admin-border);
+  background: var(--tk-bg-muted);
+  border: 1px solid var(--tk-avatar-border);
   box-shadow: none;
   flex-shrink: 0;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tk-avatar:hover {
-  transform: scale(1.05);
+  transform: scale(1.03);
   border-color: var(--tk-brand);
 }
 

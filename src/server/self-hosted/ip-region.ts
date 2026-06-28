@@ -3,7 +3,6 @@
  */
 
 import { newWithBuffer, loadContentFromFile, defaultDbFile } from 'ip2region-ts'
-import { logger } from './utils/logger'
 
 let ipSearcher: Awaited<ReturnType<typeof newWithBuffer>> | null = null
 
@@ -11,9 +10,9 @@ export const initIpSearcher = (): void => {
   try {
     const buffer = loadContentFromFile(defaultDbFile)
     ipSearcher = newWithBuffer(buffer)
-    logger.info('IP region searcher initialized (ip2region)')
+    console.info('IP region searcher initialized (ip2region)')
   } catch (e: any) {
-    logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
+    console.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
   }
 }
 

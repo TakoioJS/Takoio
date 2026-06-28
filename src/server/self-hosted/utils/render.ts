@@ -1,17 +1,23 @@
 import { Marked } from 'marked'
-import { getHighlighter, type Highlighter } from 'shiki'
-import DOMPurify from 'isomorphic-dompurify'
+import { createHighlighter } from 'shiki'
+// @ts-expect-error jsdom has no type declarations
+import { JSDOM } from 'jsdom'
+import DOMPurify from 'dompurify'
 
-let highlighter: Highlighter | null = null
-let hlPromise: Promise<Highlighter> | null = null
+
+const { window } = new JSDOM('')
+const purify = DOMPurify(window)
+
+let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null
+let hlPromise: Promise<Awaited<ReturnType<typeof createHighlighter>>> | null = null
 
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-async function getHl() {
+async function getHl () {
   if (highlighter) return highlighter
   if (hlPromise) return hlPromise
-  hlPromise = getHighlighter({
+  hlPromise = createHighlighter({
     themes: ['github-light', 'github-dark'],
     langs: [
       'javascript', 'typescript', 'tsx', 'jsx', 'html', 'css', 'scss',
@@ -49,18 +55,18 @@ const PURIFY_CONFIG = {
   FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur'],
 }
 
-export async function renderComment(text: string): Promise<string> {
+export async function renderComment (text: string): Promise<string> {
   const hl = await getHl()
   const md = new Marked({ gfm: true, breaks: true })
   md.use({
     renderer: {
-      html(_token) { return '' },
+      html (_token) { return '' },
     },
   })
   md.use({
     async: true,
     renderer: {
-      code({ text: code, lang }: { text: string; lang?: string }) {
+      code ({ text: code, lang }: { text: string; lang?: string }) {
         try {
           return hl.codeToHtml(code, { lang: lang || 'text', theme: 'github-light' })
         } catch {
@@ -69,6 +75,17 @@ export async function renderComment(text: string): Promise<string> {
       },
     },
   })
+  md.use({
+    renderer: {
+      image ({ href, title, text }: { href: string; title: string | null; text: string }) {
+        const isEmoji = href.includes('twemoji') || href.includes('iconify') || href.includes('emoji') || text.endsWith('图片') || text.endsWith('表情')
+        if (isEmoji) {
+          return `<img src="${href}" alt="${text}" title="${title || text}" class="tk-owo-emotion" />`
+        }
+        return `<img src="${href}" alt="${text}" title="${title || ''}" class="tk-comment-inline-image" />`
+      }
+    }
+  })
   const html = await md.parse(text)
-  return DOMPurify.sanitize(html, PURIFY_CONFIG)
+  return purify.sanitize(html, PURIFY_CONFIG)
 }

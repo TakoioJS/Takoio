@@ -35,10 +35,7 @@ declare module '*.vue' {
   export default component
 }
 
-declare module 'virtual:uno.css' {
-  const content: string
-  export default content
-}
+declare module 'virtual:uno.css' {}
 
 declare module 'sql.js' {
   const initSqlJs: () => Promise<{

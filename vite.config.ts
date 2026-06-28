@@ -46,7 +46,8 @@ export default defineConfig(({ mode }) => {
     plugins,
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src/client')
+        '@': resolve(__dirname, 'src/client'),
+        '@shared': resolve(__dirname, 'src/client')
       }
     },
     define: {
@@ -90,10 +91,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 9820,
       host: '0.0.0.0',
-      open: true
+      open: true,
+      watch: {
+        ignored: ['**/src/admin/**']
+      }
     },
     optimizeDeps: {
-      include: ['vue', 'element-plus', 'marked', 'lucide-vue-next']
+      include: ['vue', 'marked']
     }
   }
 })

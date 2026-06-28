@@ -3,16 +3,15 @@
  * Uses standard fetch with typed helpers for every endpoint.
  */
 
-import { timeago } from './timeago'
 import type { Comment } from '../types'
+import { isUrl } from './index' // safe: isUrl used at call-time, not module eval
+import { timeago } from './timeago'
 
-const isUrl = (str: string): boolean => /^https?:\/\//.test(str)
 
-export const isNotSet = (option: any): boolean => option === undefined || option === null || option === ''
 
 export type ApiErrorCategory = 'network' | 'timeout' | 'rate_limited' | 'server' | 'unknown'
 
-export function classifyApiError(error: unknown): ApiErrorCategory {
+export function classifyApiError (error: unknown): ApiErrorCategory {
   if (error instanceof DOMException && error.name === 'AbortError') return 'timeout'
   if (error instanceof Error) {
     if (error.name === 'TakoioTimeoutError' || error.message.includes('请求超时')) return 'timeout'
@@ -61,9 +60,19 @@ export const request = async <T = any>(url: string, init?: RequestInit): Promise
 
 /** Submit a comment */
 export const submitComment = (envId: string, data: {
-  url: string; nick: string; comment: string; mail?: string; link?: string
-  pid?: string; rid?: string; ua?: string; image?: string; sticker?: string
-  title?: string; captchaToken?: string; href?: string
+  url: string;
+  nick: string;
+  comment: string;
+  mail?: string;
+  link?: string
+  pid?: string;
+  rid?: string;
+  ua?: string;
+  image?: string;
+  sticker?: string
+  title?: string;
+  captchaToken?: string;
+  href?: string
 }): Promise<any> =>
   request(`${baseUrl(envId)}/api/comments`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
@@ -128,7 +137,8 @@ export const updateVisitorsCount = async (options: any): Promise<{ time: number 
   if (!counterEl) return null
   try {
     const counter = await getVisitorsCountApi({
-      envId: options.envId, funcName: options.funcName,
+      envId: options.envId,
+      funcName: options.funcName,
       url: options._getUrl?.(options.path) || window.location.pathname,
       href: options._getHref?.(options.href) || window.location.href,
       title: options.title ?? document.title,
@@ -141,19 +151,16 @@ export const updateVisitorsCount = async (options: any): Promise<{ time: number 
   }
 }
 
-/** Legacy event-based API call (transitional) */
-export const call = async <T = any>(event: string, data?: any): Promise<{ result: T }> => {
-  const envId = data?.envId as string
-  if (!isUrl(envId)) throw new Error('Takoio: envId is required')
-  const base = baseUrl(envId)
-  const res = await fetch(base + '/' + (data?.funcName || 'takoio'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event, ...data }),
+/** Get reactions for a URL */
+export const getReactions = (envId: string, url: string): Promise<{ reactions: Record<string, number>; myReactions: string[] }> =>
+  request(`${baseUrl(envId)}/api/reactions?url=${encodeURIComponent(url)}`)
+
+/** Toggle a reaction on a URL */
+export const toggleReaction = (envId: string, url: string, emoji: string): Promise<{ reactions: Record<string, number>; myReactions: string[] }> =>
+  request(`${baseUrl(envId)}/api/reactions?url=${encodeURIComponent(url)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }),
   })
-  if (!res.ok) throw new Error(`Takoio: HTTP ${res.status}`)
-  return res.json()
-}
+
 
 /** Generic admin API call (used by components for admin operations) */
 export const adminRequest = async (envId: string, token: string, path: string, method: string = 'GET', body?: any): Promise<any> => {

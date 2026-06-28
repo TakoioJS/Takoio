@@ -93,6 +93,8 @@ export interface TakoioConfig {
   highlightTheme?: string
   /** 是否自动展开所有评论 */
   autoExpand?: boolean
+  /** 是否启用文章表态 */
+  enableArticleReaction?: boolean
   /** 是否启用表情包 */
   enableEmotion?: boolean
   /** 是否显示浏览量 */
@@ -161,6 +163,10 @@ export interface TakoioConfig {
     delimiters?: Array<{ left: string; right: string; display: boolean }>
     throwOnError?: boolean
   }
+  /** 嵌套深度上限，超过后评论平铺显示（默认 2） */
+  maxNestDepth?: number
+  /** 折叠阈值，子评论超过此数量时显示"展开全部"按钮（默认 3） */
+  collapseThreshold?: number
 }
 
 /** 评论计数响应 */
@@ -185,40 +191,8 @@ export interface ApiResponse<T = any> {
 }
 
 /** 事件类型 */
-export type TakoioEvent =
-  | 'COMMENT_SUBMIT'
-  | 'COMMENT_GET'
-  | 'COMMENT_LIKE'
-  | 'COMMENT_DELETE'
-  | 'COMMENT_HIDE'
-  | 'COMMENT_SET_TOP'
-  | 'COMMENT_SET_SPAM'
-  | 'COMMENT_UPDATE'
-  | 'GET_CONFIG'
-  | 'SET_CONFIG'
-  | 'CONFIG_RESET'
-  | 'GET_QQ_NICK'
-  | 'EMAIL_TEST'
-  | 'COUNTER_GET'
-  | 'COUNTER_UPDATE'
-  | 'GET_FUNC_VERSION'
-  | 'GET_COMMENTS_COUNT'
-  | 'GET_RECENT_COMMENTS'
-  | 'LOGIN'
-  | 'LOGOUT'
-  | 'CHECK_SETUP'
-  | 'UPLOAD_IMAGE'
-  | 'COMMENT_IMPORT_VALINE'
-  | 'COMMENT_IMPORT_ARTALK'
-  | 'COMMENT_IMPORT_WALINE'
-  | 'COMMENT_IMPORT_TWIKOO'
-  | 'COMMENT_IMPORT_DISQUS'
-  | 'COMMENT_EXPORT'
-  | 'SEND_NOTIFICATION'
-  | 'PRIVATE_KEY_GET'
-  | 'PRIVATE_KEY_SET'
-  | 'PASSWORD_SET'
-  | 'TYPE_GET'
-  | 'TYPE_SET'
-  | 'IP_REGION_GET'
-  | 'COMMENT_HIDDEN_FIELDS_GET'
+export interface PaginatedResponse<T> {
+  total: number
+  data: T[]
+}
+

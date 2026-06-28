@@ -1,85 +1,198 @@
 <template>
-  <div class="tk-comment" :class="{ 'tk-comment-reply': isReply }">
-    <TkAvatar :user="comment" :gravatar-url="options.GRAVATAR_URL" />
+  <div
+    class="tk-comment"
+    :data-id="comment.id"
+    :class="{ 'tk-comment-reply': isReply, 'tk-comment-flat': depth >= (options.maxNestDepth ?? 2) }"
+  >
+    <TkAvatar
+      :user="comment"
+      :gravatar-url="options.GRAVATAR_URL"
+    />
 
     <div class="tk-comment-body">
       <div class="tk-comment-header">
         <div class="tk-comment-left">
-          <span class="tk-nick" :class="{ 'tk-master': isMaster, 'tk-admin': isAdmin }">
-            <a v-if="comment.link" :href="comment.link" target="_blank" rel="noopener noreferrer">
+          <span
+            class="tk-nick"
+            :class="{ 'tk-master': isMaster, 'tk-admin': isAdmin }"
+          >
+            <a
+              v-if="comment.link"
+              :href="sanitizeUrl(comment.link)"
+              target="_blank"
+              rel="noopener noreferrer nofollow ugc"
+            >
               {{ comment.nick }}
             </a>
             <span v-else>{{ comment.nick }}</span>
-            <span v-if="isMaster" class="tk-tag tk-tag-warning" :style="options.MASTER_LABEL_COLOR ? { background: options.MASTER_LABEL_COLOR, borderColor: 'transparent', color: '#fff' } : {}">
+            <span
+              v-if="isMaster"
+              class="tk-tag tk-tag-warning"
+              :style="options.MASTER_LABEL_COLOR ? { background: options.MASTER_LABEL_COLOR, borderColor: 'transparent', color: '#fff' } : {}"
+            >
               {{ options.MASTER_LABEL || t('master') }}
             </span>
-            <span v-else-if="isAdmin" class="tk-tag tk-tag-success">{{ t('admin') }}</span>
-            <span v-if="comment.isTop" class="tk-tag tk-tag-danger">{{ t('pinned') }}</span>
-            <span v-if="comment.state === 'pending' || comment.state === 'spam'" class="tk-tag tk-tag-info">{{ t('pendingReview') }}</span>
+            <span
+              v-else-if="isAdmin"
+              class="tk-tag tk-tag-success"
+            >{{ t('admin') }}</span>
+            <span
+              v-if="comment.isTop"
+              class="tk-tag tk-tag-danger"
+            >{{ t('pinned') }}</span>
+            <span
+              v-if="comment.state === 'pending' || comment.state === 'spam'"
+              class="tk-tag tk-tag-info"
+            >{{ t('pendingReview') }}</span>
           </span>
-          <span class="tk-time">{{ comment.relativeTime || timeago(comment.created) }}</span>
+          <span
+            class="tk-time"
+            :title="comment.created ? formatDate(comment.created) : undefined"
+          >{{ comment.relativeTime || timeago(comment.created) }}</span>
         </div>
 
         <div class="tk-comment-actions">
           <template v-if="options.enableLike !== false">
-            <button :class="['tk-btn-icon', { 'tk-liked': liked }]" @click="onLike" :title="t('like')">
-              <ThumbsUp :size="14" /><span v-if="comment.like > 0">{{ comment.like }}</span>
+            <button
+              :class="['tk-btn-icon', { 'tk-liked': liked }]"
+              :aria-pressed="liked"
+              :aria-label="liked ? (t('liked') || '已点赞') : (t('like') || '点赞')"
+              :title="t('like')"
+              :disabled="liking"
+              @click="onLike"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+              <span v-if="likeCount > 0">{{ likeCount }}</span>
             </button>
           </template>
           <template v-if="options.enableDislike !== false">
-            <button :class="['tk-btn-icon', { 'tk-disliked': disliked }]" @click="onDislike" :title="t('dislike')">
-              <ThumbsDown :size="14" /><span v-if="(comment.dislike || 0) > 0">{{ comment.dislike || 0 }}</span>
+            <button
+              :class="['tk-btn-icon', { 'tk-disliked': disliked }]"
+              :aria-pressed="disliked"
+              :aria-label="disliked ? (t('disliked') || '已点踩') : (t('dislike') || '点踩')"
+              :title="t('dislike')"
+              :disabled="disliking"
+              @click="onDislike"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+              <span v-if="dislikeCount > 0">{{ dislikeCount }}</span>
             </button>
           </template>
-          <button class="tk-btn-icon" @click="$emit('reply', comment)" :title="t('reply')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+          <button
+            class="tk-btn-icon"
+            :title="t('reply')"
+            @click="$emit('reply', comment)"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><polyline points="9 17 4 12 9 7" /><path d="M20 18v-2a4 4 0 0 0-4-4H4" /></svg>
           </button>
         </div>
       </div>
 
-      <div class="tk-comment-content">
-        <div v-if="comment.state === 'pending' || comment.state === 'spam'" class="tk-pending-notice">
+      <div
+      ref="contentRef"
+      class="tk-comment-content"
+    >
+        <div
+          v-if="comment.state === 'pending' || comment.state === 'spam'"
+          class="tk-pending-notice"
+        >
           {{ t('reviewingNotice') }}
         </div>
-        <div v-else @error.capture="onImageError($event)">
-          <span v-if="comment.replyToNick" class="tk-reply-at">@{{ comment.replyToNick }} </span>
+        <div v-else>
+          <span
+            v-if="comment.replyToNick"
+            class="tk-reply-at"
+          >@{{ comment.replyToNick }} </span>
           <span v-html="renderedContent" />
         </div>
       </div>
 
-      <div v-if="comment.image" class="tk-comment-image">
-        <img :src="comment.image" :alt="t('image')" @error="onImageError($event)" />
+      <div
+        v-if="comment.image"
+        class="tk-comment-image"
+      >
+        <img
+          :src="comment.image"
+          :alt="t('image')"
+          @error="onImageError($event)"
+        >
       </div>
 
-      <div v-if="(options._showUaInfo !== false && comment.ua) || (options._showIpRegion !== false && comment.ipRegion)" class="tk-comment-meta">
-        <span v-if="options._showIpRegion !== false && comment.ipRegion" class="tk-meta-item">
-          <Icon icon="jam:gps-f" width="12" style="margin-right: 2px;" />{{ displayIpRegion }}
+      <div
+        v-if="(options._showUaInfo !== false && comment.ua) || (options._showIpRegion !== false && comment.ipRegion)"
+        class="tk-comment-meta"
+      >
+        <span
+          v-if="options._showIpRegion !== false && comment.ipRegion"
+          class="tk-meta-item"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;flex-shrink:0;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ displayIpRegion }}
         </span>
-        <span v-if="options._showUaInfo !== false && comment.ua" class="tk-meta-item">
+        <span
+          v-if="options._showUaInfo !== false && comment.ua"
+          class="tk-meta-item"
+        >
           <TkUa :ua="comment.ua" />
         </span>
       </div>
 
-      <div v-if="comment.children && comment.children.length > 0" class="tk-replies">
-        <TkComment
-          v-for="child in comment.children"
-          :key="child.id"
-          :comment="child"
-          :options="options"
-          :is-reply="true"
-          @reply="$emit('reply', $event)"
-          @liked="$emit('liked')"
-        />
+      <div
+        v-if="comment.children && comment.children.length > 0"
+        class="tk-replies"
+      >
+        <template v-if="depth >= (options.maxNestDepth ?? 2) && comment.children.length > (options.collapseThreshold ?? 3)">
+          <button
+            v-if="!showAllReplies"
+            class="tk-collapse-btn"
+            @click="showAllReplies = true"
+          >
+            {{ t('showReplies') || `查看 ${comment.children.length} 条回复` }}
+          </button>
+          <div
+            v-if="showAllReplies"
+            class="tk-replies"
+          >
+            <TkComment
+              v-for="child in comment.children"
+              :key="child.id"
+              :comment="child"
+              :options="options"
+              :is-reply="true"
+              :depth="depth + 1"
+              @reply="$emit('reply', $event)"
+              @liked="$emit('liked')"
+            />
+          </div>
+        </template>
+        <template v-else>
+          <TkComment
+            v-for="child in comment.children"
+            :key="child.id"
+            :comment="child"
+            :options="options"
+            :is-reply="true"
+            :depth="depth + 1"
+            @reply="$emit('reply', $event)"
+            @liked="$emit('liked')"
+          />
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { ThumbsUp, ThumbsDown } from 'lucide-vue-next'
-import { Icon } from '@iconify/vue'
-import { timeago, t } from '../../utils'
+import { ref, computed, watch, nextTick } from 'vue'
+import { timeago, t, sanitizeUrl } from '../../utils'
 import { likeComment, dislikeComment } from '../../utils/api'
 import { renderMarkdown } from '../../utils/marked'
 import { renderLinks, renderMath, toast } from '../../utils'
@@ -91,14 +204,21 @@ interface Props {
   comment: Comment
   options: TakoioConfig
   isReply?: boolean
+  depth?: number
 }
 
-const props = withDefaults(defineProps<Props>(), { isReply: false })
+const props = withDefaults(defineProps<Props>(), { isReply: false, depth: 0 })
 const emit = defineEmits<{ (e: 'reply', comment: Comment): void; (e: 'liked'): void }>()
 
 const renderedContent = ref('')
 const liked = ref(false)
 const disliked = ref(false)
+const liking = ref(false)
+const disliking = ref(false)
+const likeCount = ref(props.comment.like)
+const dislikeCount = ref(props.comment.dislike || 0)
+const contentRef = ref<HTMLElement>()
+const showAllReplies = ref(false)
 
 const onImageError = (e: Event) => {
   const img = e.target as HTMLImageElement
@@ -131,66 +251,104 @@ const renderContent = async (): Promise<void> => {
   const source = props.comment.renderedComment || props.comment.comment || ''
   const html = await renderMarkdown(source)
   renderedContent.value = html
-  setTimeout(async () => {
-    const el = document.querySelector(`.tk-comment[data-id="${props.comment.id}"] .tk-comment-content`)
-    if (el) { renderLinks(el as Element); await renderMath(el as HTMLElement, props.options.katex) }
-  }, 0)
+  await nextTick()
+  if (contentRef.value) {
+    renderLinks(contentRef.value)
+    await renderMath(contentRef.value, props.options.katex)
+  }
 }
-
 const onLike = async (): Promise<void> => {
-  if (liked.value) return
-  try { await likeComment(props.options.envId, props.comment.id); liked.value = true; props.comment.like += 1; emit('liked') }
-  catch { toast(t('submitFailed')) }
+  if (liking.value) return
+  try {
+    if (liked.value) {
+      liked.value = false; likeCount.value -= 1
+    } else {
+      await likeComment(props.options.envId, props.comment.id)
+      liked.value = true; likeCount.value += 1
+      if (disliked.value) { disliked.value = false; dislikeCount.value -= 1 }
+    }
+    emit('liked')
+  } catch { toast(t('actionFailed') || t('submitFailed')) }
 }
 
 const onDislike = async (): Promise<void> => {
-  if (disliked.value) return
-  try { await dislikeComment(props.options.envId, props.comment.id); disliked.value = true; props.comment.dislike = (props.comment.dislike || 0) + 1 }
-  catch { toast(t('submitFailed')) }
+  if (disliking.value) return
+  try {
+    if (disliked.value) {
+      disliked.value = false; dislikeCount.value -= 1
+    } else {
+      await dislikeComment(props.options.envId, props.comment.id)
+      disliked.value = true; dislikeCount.value += 1
+      if (liked.value) { liked.value = false; likeCount.value -= 1 }
+    }
+  } catch { toast(t('actionFailed') || t('submitFailed')) }
 }
 
-onMounted(() => { renderContent() })
+const formatDate = (ts: number): string => {
+  if (!ts) return ''
+  return new Date(ts).toLocaleString((props.options as any).lang || 'zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+}
+
+watch(() => [props.comment.renderedComment, props.comment.comment], () => { renderContent() }, { immediate: true })
 </script>
 
 <style scoped>
-.tk-comment { display: flex; gap: 14px; padding: 16px; }
-.tk-comment-reply { margin-top: 6px; margin-left: 24px; padding-left: 12px; border-left: 1px solid rgba(128,128,128,0.2); border-radius: 0; position: relative; }
-.tk-comment-reply::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 1px; background: rgba(128,128,128,0.12); }
+.tk-icon-12 { width: 12px; height: 12px; flex-shrink: 0; display: inline-block; vertical-align: middle; }
+.tk-icon-14 { width: 14px; height: 14px; flex-shrink: 0; display: inline-block; vertical-align: middle; }
+.tk-comment { display:flex;gap:14px;padding:16px;
+  background:transparent;
+  border-radius:var(--tk-r-card);
+  transition:background .22s cubic-bezier(.22,.61,.36,1);}
+@media(hover:hover){.tk-comment:hover{background:var(--tk-bg-subtle);}}
+.tk-comment-reply { margin-top: 6px; margin-left: 24px; padding-left: 12px; border-left: 1px solid var(--tk-border); border-radius: 0; position: relative; }
+.tk-comment-reply::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 1px; background: var(--tk-border-soft); }
+.tk-comment-reply{background:transparent!important;border:none!important;box-shadow:none!important;}
 .tk-replies .tk-comment-reply { margin-left: 16px; padding-left: 8px; }
 .tk-replies .tk-replies .tk-comment-reply { margin-left: 12px; padding-left: 6px; }
-.tk-replies .tk-replies .tk-comment:hover { background: transparent; }
+.tk-replies .tk-replies .tk-comment:hover { background: var(--tk-bg-subtle); }
 .tk-replies .tk-replies .tk-comment-reply .tk-comment-body { font-size: 13px; opacity: 0.92; }
+.tk-comment-flat { margin-left: 0 !important; padding-left: 0 !important; border-left: none !important; }
+.tk-comment-flat::before { display: none !important; }
+.tk-collapse-btn { display: block; margin: 8px 0 4px 24px; padding: 4px 12px; background: none; border: none; color: var(--tk-brand); font-size: 13px; cursor: pointer; font-family: inherit; opacity: .7; }
+.tk-collapse-btn:hover { opacity: 1; text-decoration: underline; }
 .tk-comment-body { flex: 1; min-width: 0; }
 .tk-comment-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
 .tk-comment-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tk-nick { font-weight: 600; font-size: 14px; color: inherit; }
 .tk-nick a { color: inherit; text-decoration: none; }
 .tk-nick a:hover { text-decoration: underline; }
-.tk-nick.tk-master { color: #d97706; }
-.tk-nick.tk-admin { color: #059669; }
-.tk-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; border: 1px solid; margin-left: 4px; line-height: 1.6; }
-.tk-tag-warning { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-.tk-tag-success { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
-.tk-tag-danger { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
-.tk-tag-info { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
+.tk-nick.tk-master { color:var(--tk-warning); }
+.tk-nick.tk-admin { color:var(--tk-success); }
+.tk-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:600;
+  padding:1px 8px;border-radius:var(--tk-r-pill);border:none;line-height:1.6;margin-left:4px;}
+.tk-tag-warning{background:var(--tk-tag-warning-bg,color-mix(in srgb,var(--tk-warning) 14%,transparent));color:var(--tk-tag-warning-fg,var(--tk-warning));}
+.tk-tag-success{background:var(--tk-tag-success-bg,color-mix(in srgb,var(--tk-success) 14%,transparent));color:var(--tk-tag-success-fg,var(--tk-success));}
+.tk-tag-danger{background:var(--tk-tag-danger-bg,color-mix(in srgb,var(--tk-danger) 14%,transparent));color:var(--tk-tag-danger-fg,var(--tk-danger));}
+.tk-tag-info{background:var(--tk-tag-info-bg,color-mix(in srgb,var(--tk-info) 16%,transparent));color:var(--tk-tag-info-fg,var(--tk-text-2));}
 .tk-time { font-size: 12px; color: inherit; opacity: .6; }
 .tk-comment-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.tk-btn-icon { display: inline-flex; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 6px; color: inherit; opacity: .6; transition: all .15s; border-radius: 4px; font-family: inherit; }
-.tk-btn-icon:hover { opacity: 1; background: rgba(128,128,128,0.06); }
+.tk-btn-icon { display: inline-flex; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 6px; color: inherit; opacity: .55; transition: all .15s; border-radius: var(--tk-r-input); font-family: inherit; }
+.tk-btn-icon:disabled { pointer-events: none; }
+.tk-btn-icon:hover { opacity: 1; background: var(--tk-bg-muted); }
 .tk-btn-icon.tk-liked { color: var(--tk-brand); opacity: 1; font-weight: 600; }
-.tk-btn-icon.tk-disliked { color: #dc2626; opacity: 1; }
-.tk-comment-content { word-break: break-word; line-height: 1.7; font-size: 14px; color: inherit; }
+.tk-btn-icon.tk-disliked { color: var(--tk-danger); opacity: 1; }
+.tk-comment-content { word-break: break-word; line-height: 1.75; font-size: var(--tk-fs-base); color: inherit; }
 .tk-reply-at { color: var(--tk-brand); font-weight: 500; margin-right: 4px; }
-.tk-pending-notice { padding: 8px 12px; background: rgba(128,128,128,0.06); border-radius: 4px; font-size: 13px; color: #d97706; }
-.tk-comment-content :deep(p) { margin: 4px 0; display: inline; }
-.tk-comment-content :deep(blockquote) { border-left: 3px solid var(--tk-brand); padding: 4px 10px; margin: 8px 0; color: inherit; opacity: .7; }
+.tk-pending-notice { padding: 8px 12px; background: var(--tk-bg-muted); border-radius: var(--tk-r-input); font-size: 13px; color: var(--tk-warning); }
+.tk-comment-content :deep(p) { margin: 4px 0; }
+.tk-comment-content :deep(blockquote) { border-left: 3px solid var(--tk-brand-light); padding: 4px 10px; margin: 8px 0; color: inherit; opacity: .7; }
 .tk-comment-content :deep(code) { font-size: .88em; padding: 2px 5px; border-radius: 4px; }
 .tk-comment-content :deep(pre) { margin: 8px 0; }
 .tk-comment-image { margin-top: 8px; }
-.tk-comment-image img { max-width: 200px; max-height: 200px; border-radius: 8px; }
-.tk-img-broken { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px; color: #999; background: rgba(128,128,128,0.08); border-radius: 4px; border: 1px dashed rgba(128,128,128,0.2); }
-.tk-comment-meta { margin-top: 6px; display: flex; align-items: center; gap: 12px; font-size: 11px; color: inherit; opacity: .5; line-height: 1; }
-.tk-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+.tk-comment-image img { max-width: 360px; max-height: 360px; border-radius: var(--tk-r-card); box-shadow: var(--tk-shadow-paper); }
+.tk-img-broken { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px; color: var(--tk-text-3); background: var(--tk-bg-muted); border-radius: var(--tk-r-input); border: 1px dashed var(--tk-border); }
+.tk-comment-content :deep(.tk-owo-emotion) { height: 1.5em; width: 1.5em; vertical-align: middle; display: inline-block; margin: 0 3px; object-fit: contain; }
+.tk-comment-content :deep(.tk-comment-inline-image) { max-width: 100%; max-height: 300px; border-radius: var(--tk-r-card); display: block; margin: 8px 0; }
+.tk-comment-meta { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--tk-border-soft); display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--tk-text-3); line-height: 1; }
+.tk-meta-item { display: inline-flex; align-items: center; gap: 3px; }
 .tk-replies { margin-top: 8px; }
 @media (max-width: 640px) {
   .tk-comment { padding: 12px 10px; gap: 8px; }

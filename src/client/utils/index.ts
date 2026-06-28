@@ -3,6 +3,7 @@
  */
 
 import type { Comment, TakoioConfig } from '../types'
+import pkg from '../../../package.json'
 
 /** 判断是否未设置 */
 export const isNotSet = (option: any): boolean => {
@@ -188,7 +189,6 @@ export const md5 = async (text: string): Promise<string> => {
 }
 
 export {
-  call,
   request,
   getCommentsCountApi,
   getRecentCommentsApi,
@@ -200,7 +200,22 @@ export {
   submitComment,
   likeComment,
   dislikeComment,
+  getReactions,
+  toggleReaction,
 } from './api'
+/** 安全 URL 校验：只允许 http/https，防止 javascript: data: 等伪协议 */
+export const sanitizeUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '#'
+    return parsed.toString()
+  } catch {
+    // 没有协议的，自动加 https:
+    if (/^[a-zA-Z][a-zA-Z0-9+-.]*:/.test(url)) return '#'
+    return `https://${url}`
+  }
+}
+
 // ponytail: tiny DOM toast, replaces ElMessage
 export const toast = (msg: string, type: 'success' | 'error' | 'info' = 'success', duration = 3000): void => {
   const el = document.createElement('div')
@@ -211,6 +226,6 @@ export const toast = (msg: string, type: 'success' | 'error' | 'info' = 'success
 }
 
 export { setLanguage, t } from './i18n'
-export { initOwoEmotions, initMarkedOwo } from './emotion'
 export { timeago } from './timeago'
-export { version } from '../version'
+
+export const version = String(pkg.version)

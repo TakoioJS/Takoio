@@ -1,10 +1,11 @@
 [build]
-  command = "npm install -g pnpm@9 && pnpm install && cd src/server/self-hosted && npx tsc"
+  command = "npm install -g pnpm@9 && pnpm install && cd src/admin && pnpm install && npx vite build && cd ../server/self-hosted && npx tsc"
   publish = "."
 
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  included_files = ["src/admin/dist/**"]
 
 [[redirects]]
   from = "/*"

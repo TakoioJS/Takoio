@@ -1,0 +1,326 @@
+{
+  "颜文字": [
+    {
+      "text": "开心",
+      "icon": "(｡･∀･)ﾉﾞ"
+    },
+    {
+      "text": "大笑",
+      "icon": "╰(￣▽￣)╭"
+    },
+    {
+      "text": "得意",
+      "icon": "(～￣▽￣)～"
+    },
+    {
+      "text": "卖萌",
+      "icon": "(≧∇≦)ﾉ"
+    },
+    {
+      "text": "害羞",
+      "icon": "(✿◡‿◡)"
+    },
+    {
+      "text": "调皮",
+      "icon": "(～﹃～)~zZ"
+    },
+    {
+      "text": "惊讶",
+      "icon": "(°ー°〃)"
+    },
+    {
+      "text": "吃惊",
+      "icon": "Σ(っ °Д °;)っ"
+    },
+    {
+      "text": "生气",
+      "icon": "(╯▔皿▔)╯"
+    },
+    {
+      "text": "可怜",
+      "icon": "(；′⌒`)"
+    },
+    {
+      "text": "委屈",
+      "icon": "╥﹏╥..."
+    },
+    {
+      "text": "难过",
+      "icon": "(ノへ￣、)"
+    },
+    {
+      "text": "无语",
+      "icon": "(￣_￣|||)"
+    },
+    {
+      "text": "困",
+      "icon": "(￣o￣) . z Z"
+    },
+    {
+      "text": "装傻",
+      "icon": "(￣ω￣;)"
+    },
+    {
+      "text": "奋斗",
+      "icon": "(o゜▽゜)o☆"
+    },
+    {
+      "text": "第二",
+      "icon": "╭(╯^╰)╮"
+    },
+    {
+      "text": "学霸",
+      "icon": "(￣～￣;)"
+    },
+    {
+      "text": "投币",
+      "icon": "_(:з」∠)_"
+    },
+    {
+      "text": "猫猫",
+      "icon": "=￣ω￣="
+    },
+    {
+      "text": "兔子",
+      "icon": "／(=･ x ･=)＼"
+    },
+    {
+      "text": "狗狗",
+      "icon": "U•ェ•*U"
+    },
+    {
+      "text": "仓鼠",
+      "icon": "（=´∇｀=）"
+    },
+    {
+      "text": "熊猫",
+      "icon": "(￣(エ)￣)"
+    },
+    {
+      "text": "猪猪",
+      "icon": "( ´(00)` )"
+    },
+    {
+      "text": "青蛙",
+      "icon": "⊂((・⊥・))⊃"
+    },
+    {
+      "text": "鱼",
+      "icon": "˙˚ʚ(´◉`)ɞ˚˙"
+    },
+    {
+      "text": "章鱼",
+      "icon": "くコ:彡"
+    },
+    {
+      "text": "螃蟹",
+      "icon": "(\\/) (°,,°) (\\/)"
+    },
+    {
+      "text": "蝴蝶",
+      "icon": "εїз"
+    },
+    {
+      "text": "蜘蛛",
+      "icon": "/╲/\\( •̀ ω •́ )/\\╱\\"
+    },
+    {
+      "text": "恐龙",
+      "icon": "!(._.)!_(:3 )!_(._.)!"
+    }
+  ],
+  "Emoji": [
+    {
+      "text": "哈哈",
+      "icon": "😄"
+    },
+    {
+      "text": "微笑",
+      "icon": "😊"
+    },
+    {
+      "text": "笑哭",
+      "icon": "😂"
+    },
+    {
+      "text": "呲牙",
+      "icon": "😁"
+    },
+    {
+      "text": "斜眼笑",
+      "icon": "😏"
+    },
+    {
+      "text": "吐舌",
+      "icon": "😛"
+    },
+    {
+      "text": "眨眼",
+      "icon": "😉"
+    },
+    {
+      "text": "呆",
+      "icon": "😶"
+    },
+    {
+      "text": "爱心",
+      "icon": "❤️"
+    },
+    {
+      "text": "亲亲",
+      "icon": "😘"
+    },
+    {
+      "text": "害羞",
+      "icon": "😳"
+    },
+    {
+      "text": "得意",
+      "icon": "😎"
+    },
+    {
+      "text": "生气",
+      "icon": "😡"
+    },
+    {
+      "text": "委屈",
+      "icon": "🥺"
+    },
+    {
+      "text": "大哭",
+      "icon": "😭"
+    },
+    {
+      "text": "害怕",
+      "icon": "😨"
+    },
+    {
+      "text": "无语",
+      "icon": "😑"
+    },
+    {
+      "text": "吐",
+      "icon": "🤮"
+    },
+    {
+      "text": "赞",
+      "icon": "👍"
+    },
+    {
+      "text": "踩",
+      "icon": "👎"
+    },
+    {
+      "text": "OK",
+      "icon": "👌"
+    },
+    {
+      "text": "鼓掌",
+      "icon": "👏"
+    },
+    {
+      "text": "击掌",
+      "icon": "🙌"
+    },
+    {
+      "text": "加油",
+      "icon": "💪"
+    },
+    {
+      "text": "握手",
+      "icon": "🤝"
+    },
+    {
+      "text": "火",
+      "icon": "🔥"
+    },
+    {
+      "text": "星星",
+      "icon": "⭐"
+    },
+    {
+      "text": "太阳",
+      "icon": "☀️"
+    },
+    {
+      "text": "月亮",
+      "icon": "🌙"
+    },
+    {
+      "text": "彩虹",
+      "icon": "🌈"
+    },
+    {
+      "text": "礼物",
+      "icon": "🎁"
+    },
+    {
+      "text": "红包",
+      "icon": "🧧"
+    },
+    {
+      "text": "蛋糕",
+      "icon": "🎂"
+    },
+    {
+      "text": "咖啡",
+      "icon": "☕"
+    },
+    {
+      "text": "啤酒",
+      "icon": "🍺"
+    },
+    {
+      "text": "烟花",
+      "icon": "🎆"
+    },
+    {
+      "text": "100分",
+      "icon": "💯"
+    },
+    {
+      "text": "玫瑰",
+      "icon": "🌹"
+    },
+    {
+      "text": "音乐",
+      "icon": "🎵"
+    },
+    {
+      "text": "思考",
+      "icon": "🤔"
+    }
+  ],
+  "贴纸": [
+    {
+      "text": "笑脸图片",
+      "icon": "https://api.iconify.design/twemoji:grinning-face-with-smiling-eyes.svg",
+      "type": "image"
+    },
+    {
+      "text": "笑哭图片",
+      "icon": "https://api.iconify.design/twemoji:face-with-tears-of-joy.svg",
+      "type": "image"
+    },
+    {
+      "text": "闪烁星光",
+      "icon": "https://api.iconify.design/twemoji:sparkles.svg",
+      "type": "image"
+    },
+    {
+      "text": "鼓掌图片",
+      "icon": "https://api.iconify.design/twemoji:clapping-hands.svg",
+      "type": "image"
+    },
+    {
+      "text": "火箭图片",
+      "icon": "https://api.iconify.design/twemoji:rocket.svg",
+      "type": "image"
+    },
+    {
+      "text": "派对图片",
+      "icon": "https://api.iconify.design/twemoji:partying-face.svg",
+      "type": "image"
+    }
+  ]
+}

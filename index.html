@@ -72,21 +72,126 @@
     #takoio {
       margin-top: 8px;
     }
+
+    /* 日夜切换及暗黑模式样式 */
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .theme-toggle-btn {
+      background: none;
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      border-radius: 50%;
+      cursor: pointer;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    .theme-toggle-btn:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .sun-icon {
+      display: none;
+    }
+
+    .moon-icon {
+      display: block;
+    }
+
+    /* 宿主页面暗黑模式 */
+    body.dark {
+      background: #0f172a;
+      color: #f1f5f9;
+    }
+
+    body.dark .article {
+      background: #1e293b;
+      border-color: #334155;
+      color: #e2e8f0;
+    }
+
+    body.dark .article p {
+      color: #94a3b8;
+    }
+
+    body.dark .article code {
+      background: #334155;
+      color: #f1f5f9;
+    }
+
+    body.dark .subtitle {
+      color: #94a3b8;
+    }
+
+    body.dark .section-title {
+      border-bottom-color: #334155;
+    }
+
+    body.dark .theme-toggle-btn {
+      border-color: #334155;
+      color: #94a3b8;
+    }
+
+    body.dark .theme-toggle-btn:hover {
+      background: #1e293b;
+      color: #f1f5f9;
+    }
+
+    body.dark .sun-icon {
+      display: block;
+    }
+
+    body.dark .moon-icon {
+      display: none;
+    }
   </style>
 </head>
 
 <body>
+  <script>
+    // 立即执行脚本以防止页面闪烁
+    const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    if (currentTheme === 'dark') {
+      document.body.classList.add('dark')
+    }
+  </script>
+
   <div class="container">
-    <h1>Takoio</h1>
-    <p class="subtitle">Vue 3 + Vite 8 + TypeScript</p>
+    <div class="header-row">
+      <div>
+        <h1>Takoio</h1>
+        <p class="subtitle" style="margin-bottom: 0;">Vue 3 + Vite 8 + TypeScript</p>
+      </div>
+      <button id="theme-toggle" class="theme-toggle-btn" aria-label="切换主题">
+        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
     <h3 class="section-title">💬 评论</h3>
     <div id="takoio"></div>
   </div>
 
+  <script>
+    // 注册切换事件
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark')
+      const theme = document.body.classList.contains('dark') ? 'dark' : 'light'
+      localStorage.setItem('theme', theme)
+    })
+  </script>
+
   <script type="module">
     import { createApp } from 'vue'
-    import ElementPlus from 'element-plus'
-    import 'element-plus/dist/index.css'
     import App from './src/client/view/App.vue'
 
     console.log('🚀 Takoio v1.0.0 Dev Server Starting...')
@@ -109,12 +214,11 @@
       }
     })
 
-    app.use(ElementPlus, { size: 'default', zIndex: 3000 })
     app.mount('#takoio')
 
     console.log('✅ Takoio v1.0.0 mounted!')
     console.log('💡 开发模式：后端不可用，评论区 UI 正常预览')
-    console.log('💡 输入 #admin 切换到管理面板')
+    console.log('💡 管理面板：访问 /admin 进入独立管理后台')
   </script>
 </body>
 

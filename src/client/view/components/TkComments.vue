@@ -1,7 +1,7 @@
 <template>
   <div class="tk-comments">
     <TkSubmit
-      :options="options"
+      :options="mergedOptions"
       :site-config="siteConfig"
       :reply-to="replyTarget"
       @posted="onPosted"
@@ -12,43 +12,129 @@
     <div class="tk-comments-header">
       <div class="tk-comments-count">
         <span class="tk-count-text"><strong>{{ total }}</strong> {{ countLabel }}</span>
-        <button class="tk-refresh-btn" title="刷新" @click="fetchComments">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        <button
+          class="tk-refresh-btn"
+          :title="t('refreshTip')"
+          @click="fetchComments"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
         </button>
       </div>
-      <div class="tk-sort" role="tablist">
-        <button v-for="opt in sortOptions" :key="opt.value" :class="['tk-sort-btn', { active: sort === opt.value }]" role="tab" :aria-pressed="sort === opt.value" @click="sort = opt.value">{{ opt.label }}</button>
+      <div
+        class="tk-sort"
+        role="tablist"
+      >
+        <button
+          v-for="opt in sortOptions"
+          :key="opt.value"
+          :class="['tk-sort-btn', { active: sort === opt.value }]"
+          role="tab"
+          :aria-pressed="sort === opt.value"
+          @click="sort = opt.value"
+        >
+          {{ opt.label }}
+        </button>
       </div>
     </div>
 
-    <div v-if="loading" class="tk-loading-skeleton">
-      <div class="tk-skeleton"><div class="tk-skeleton-line" style="width:60%"></div><div class="tk-skeleton-line" style="width:90%"></div><div class="tk-skeleton-line" style="width:40%"></div></div>
-      <div class="tk-skeleton" style="margin-top:16px"><div class="tk-skeleton-line" style="width:70%"></div><div class="tk-skeleton-line" style="width:85%"></div><div class="tk-skeleton-line" style="width:50%"></div></div>
-      <div class="tk-skeleton" style="margin-top:16px"><div class="tk-skeleton-line" style="width:55%"></div><div class="tk-skeleton-line" style="width:80%"></div><div class="tk-skeleton-line" style="width:45%"></div></div>
+    <div
+      v-if="loading"
+      class="tk-loading-skeleton"
+    >
+      <div
+        v-for="i in pageSize"
+        :key="i"
+        class="tk-skeleton"
+        :style="i > 1 ? 'margin-top:16px' : undefined"
+      >
+        <div
+          class="tk-skeleton-line"
+          :style="{ width: `${40 + Math.random() * 50}%` }"
+        /><div
+          class="tk-skeleton-line"
+          :style="{ width: `${60 + Math.random() * 35}%` }"
+        /><div
+          class="tk-skeleton-line"
+          :style="{ width: `${30 + Math.random() * 40}%` }"
+        />
+      </div>
     </div>
 
-    <div v-else-if="errorMsg" class="tk-error-msg">{{ errorMsg }}</div>
-    <div v-else-if="comments.length === 0" class="tk-empty">{{ t('noComment') }}</div>
+    <div
+      v-else-if="errorMsg"
+      class="tk-error-state"
+    >
+      <i class="i-jam-alert tk-icon-32" style="color: var(--tk-danger); margin-bottom: 8px;" />
+      <p>{{ errorMsg }}</p>
+      <button
+        class="tk-btn-retry"
+        @click="fetchComments"
+      >
+        {{ t('retry') || '重试' }}
+      </button>
+    </div>
+    <div
+      v-else-if="comments.length === 0"
+      class="tk-empty-state"
+    >
+      <i class="i-jam-comments tk-icon-48" style="color: var(--tk-text-3); margin-bottom: 10px;" />
+      <p style="color: var(--tk-text-3); font-size: 13px;">{{ t('noComment') }}</p>
+    </div>
 
-    <div v-else class="tk-comments-list">
+    <div
+      v-else
+      class="tk-comments-list"
+    >
       <TransitionGroup name="tk-comment-list">
-        <TkComment v-for="comment in comments" :key="comment.id" :comment="comment" :options="options" @reply="onReplyClick" @liked="onLiked" />
+        <TkComment
+          v-for="comment in comments"
+          :key="comment.id"
+          :comment="comment"
+          :options="mergedOptions"
+          @reply="onReplyClick"
+        />
       </TransitionGroup>
     </div>
 
-    <div v-if="infiniteMode && hasMore" ref="sentinelRef" class="tk-infinite-sentinel">
-      <span v-if="loadingMore" class="tk-loading">{{ t('loading') }}</span>
-      <span v-else class="tk-load-more" @click="loadMore">{{ t('loadMore') }}</span>
+    <div
+      v-if="infiniteMode && hasMore"
+      ref="sentinelRef"
+      class="tk-infinite-sentinel"
+    >
+      <span
+        v-if="loadingMore"
+        class="tk-loading"
+      >{{ t('loading') }}</span>
+      <span
+        v-else
+        class="tk-load-more"
+        @click="loadMore"
+      >{{ t('loadMore') }}</span>
     </div>
 
-    <TkPagination v-if="!infiniteMode && total > pageSize" :current="page" :total="total" :page-size="pageSize" @change="onPageChange" />
-    <TkFooter :options="options" />
+    <TkPagination
+      v-if="!infiniteMode && total > pageSize"
+      :current="page"
+      :total="total"
+      :page-size="pageSize"
+      @change="onPageChange"
+    />
+    <TkFooter :options="mergedOptions" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue'
-import { t, getComments, getCommentsCountApi } from '../../utils'
+import { t, getComments } from '../../utils'
 import type { Comment, TakoioConfig } from '../../types'
 import TkSubmit from './TkSubmit.vue'
 import TkComment from './TkComment.vue'
@@ -59,12 +145,45 @@ interface Props { options: TakoioConfig }
 const props = defineProps<Props>()
 const emit = defineEmits<{ (e: 'admin'): void; (e: 'comment-posted', comment: Comment): void }>()
 
+const siteConfig = ref<Record<string, any>>({})
+
+const mergedOptions = computed(() => {
+  const cfg = siteConfig.value
+  if (!cfg || !Object.keys(cfg).length) return props.options
+  const features = Array.isArray(cfg.COMMENT_FEATURES) ? cfg.COMMENT_FEATURES : []
+  return {
+    ...props.options,
+    ...(cfg.ENABLE_LIKE !== undefined && { enableLike: cfg.ENABLE_LIKE }),
+    ...(cfg.ENABLE_DISLIKE !== undefined && { enableDislike: cfg.ENABLE_DISLIKE }),
+    ...(cfg.ENABLE_EMOTION !== undefined && { enableEmotion: cfg.ENABLE_EMOTION }),
+    ...(cfg.ENABLE_LINK_INPUT !== undefined && { enableLinkInput: cfg.ENABLE_LINK_INPUT }),
+    ...(cfg.COMMENT_LINK_REQUIRED !== undefined && { commentLinkRequired: cfg.COMMENT_LINK_REQUIRED }),
+    ...(cfg.ADMIN_KEYWORD !== undefined && { adminKeyword: cfg.ADMIN_KEYWORD }),
+    ...(cfg.SHOW_IP_REGION !== undefined && { _showIpRegion: cfg.SHOW_IP_REGION }),
+    ...(features.includes('uaInfo') && { _showUaInfo: true }),
+    ...(cfg.SHOW_UA_INFO !== undefined && { _showUaInfo: cfg.SHOW_UA_INFO }),
+    ...(cfg.ENABLE_CODE_HIGHLIGHT !== undefined && { enableCodeHighlight: cfg.ENABLE_CODE_HIGHLIGHT }),
+    ...(cfg.CODE_HIGHLIGHT_THEME !== undefined && { codeHighlightTheme: cfg.CODE_HIGHLIGHT_THEME }),
+    ...(cfg.CODE_SHOW_LANGUAGE !== undefined && { codeShowLanguage: cfg.CODE_SHOW_LANGUAGE }),
+    ...(cfg.CODE_SHOW_COPY !== undefined && { codeShowCopy: cfg.CODE_SHOW_COPY }),
+    ...(cfg.ENABLE_CAPTCHA !== undefined && { enableCaptcha: cfg.ENABLE_CAPTCHA }),
+    ...(cfg.CAPTCHA_PROVIDER !== undefined && { captchaProvider: cfg.CAPTCHA_PROVIDER }),
+    ...(cfg.CAPTCHA_TYPE !== undefined && { captchaType: cfg.CAPTCHA_TYPE }),
+    ...(cfg.CAPTCHA_SITE_KEY !== undefined && { captchaSiteKey: cfg.CAPTCHA_SITE_KEY }),
+    ...(cfg.GLOBAL_COLOR && { brandColor: cfg.GLOBAL_COLOR }),
+    ...(features.includes('like') && { enableLike: true }),
+    ...(features.includes('dislike') && { enableDislike: true }),
+    ...(features.includes('emotion') && { enableEmotion: true }),
+    ...(features.includes('linkInput') && { enableLinkInput: true }),
+    ...(features.includes('articleReaction') && { enableArticleReaction: true }),
+  }
+})
+
 const comments = ref<Comment[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = computed(() => props.options.pageSize || 10)
-const siteConfig = ref<Record<string, any>>({})
-const sort = ref<'newest' | 'oldest' | 'hottest'>(props.options.sort || 'newest')
+const pageSize = computed(() => mergedOptions.value.pageSize || 10)
+const sort = ref<'newest' | 'oldest' | 'hottest'>(mergedOptions.value.sort || 'newest')
 const loading = ref(false)
 const replyTarget = ref<Comment | null>(null)
 const errorMsg = ref('')
@@ -73,30 +192,57 @@ const allComments = ref<Comment[]>([])
 const sentinelRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-const infiniteMode = computed(() => props.options.paginationMode === 'infinite')
+const infiniteMode = computed(() => mergedOptions.value.paginationMode === 'infinite')
 const hasMore = computed(() => allComments.value.length < total.value)
 
-const setBrandColor = (color: string): void => {
-  if (!color) return
-  const root = document.querySelector('.tk-root') as HTMLElement
-  if (!root) return
+const brandColorStyle = computed(() => {
+  const color = mergedOptions.value.brandColor || siteConfig.value?.GLOBAL_COLOR
+  if (!color) return {}
   const hex = color.replace('#', '')
   const m = hex.match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
-  if (!m) return
+  if (!m) return {}
   const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
-  root.style.setProperty('--tk-brand', color)
-  root.style.setProperty('--tk-brand-hover', `rgb(${Math.round(r * 0.9)}, ${Math.round(g * 0.9)}, ${Math.round(b * 0.9)})`)
-  root.style.setProperty('--tk-brand-light', `rgba(${r}, ${g}, ${b}, 0.1)`)
-  root.style.setProperty('--tk-brand-ring', `rgba(${r}, ${g}, ${b}, 0.4)`)
+  return {
+    '--tk-brand': color,
+    '--tk-brand-hover': `rgb(${Math.round(r * 0.9)}, ${Math.round(g * 0.9)}, ${Math.round(b * 0.9)})`,
+    '--tk-brand-light': `rgba(${r}, ${g}, ${b}, 0.1)`,
+    '--tk-brand-ring': `rgba(${r}, ${g}, ${b}, 0.4)`,
+  }
+})
+
+const buildCommentMap = (comments: Comment[]): Map<string, Comment> => {
+  const map = new Map<string, Comment>()
+  const traverse = (list: Comment[]) => {
+    for (const c of list) {
+      map.set(c.id, c)
+      if (c.children?.length) traverse(c.children)
+    }
+  }
+  traverse(comments)
+  return map
+}
+
+const resolveReplyToNick = (comments: Comment[]): void => {
+  const map = buildCommentMap(comments)
+  const resolve = (list: Comment[]) => {
+    for (const c of list) {
+      if (c.rid && c.rid !== c.pid) {
+        const target = map.get(c.rid)
+        if (target) c.replyToNick = target.nick
+      }
+      if (c.children?.length) resolve(c.children)
+    }
+  }
+  resolve(comments)
 }
 
 const loadMore = async (): Promise<void> => {
   if (loadingMore.value || !hasMore.value) return
   loadingMore.value = true; page.value += 1
   try {
-    const result = await getComments(props.options.envId, { url: props.options.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
+    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
     const newComments = result.data || []
-    for (const c of newComments) if (c.children?.length) for (const child of c.children) if (child.rid && child.rid !== child.pid) { const t = c.children.find((x: Comment) => x.id === child.rid); if (t) child.replyToNick = t.nick }
+    resolveReplyToNick(newComments)
     allComments.value = [...allComments.value, ...newComments]; comments.value = allComments.value
     if (result.total !== undefined) total.value = result.total
   } catch { page.value -= 1 } finally { loadingMore.value = false }
@@ -112,39 +258,34 @@ const sortOptions = [
 const fetchComments = async (): Promise<void> => {
   loading.value = true; errorMsg.value = ''
   try {
-    const result = await getComments(props.options.envId, { url: props.options.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
+    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
     const fetched = result.data || []
-    for (const c of fetched) if (c.children?.length) for (const child of c.children) if (child.rid && child.rid !== child.pid) { const t = c.children.find((x: Comment) => x.id === child.rid); if (t) child.replyToNick = t.nick }
+    resolveReplyToNick(fetched)
     if (infiniteMode.value) allComments.value = fetched
     comments.value = fetched; total.value = result.total || 0
     const cfg = result.config
     if (cfg) {
       siteConfig.value = cfg
-      if (cfg.ENABLE_LIKE !== undefined) props.options.enableLike = cfg.ENABLE_LIKE
-      if (cfg.ENABLE_DISLIKE !== undefined) props.options.enableDislike = cfg.ENABLE_DISLIKE
-      if (cfg.ENABLE_EMOTION !== undefined) props.options.enableEmotion = cfg.ENABLE_EMOTION
-      if (cfg.ENABLE_LINK_INPUT !== undefined) props.options.enableLinkInput = cfg.ENABLE_LINK_INPUT
-      if (cfg.COMMENT_LINK_REQUIRED !== undefined) props.options.commentLinkRequired = cfg.COMMENT_LINK_REQUIRED
-      if (cfg.ADMIN_KEYWORD !== undefined) props.options.adminKeyword = cfg.ADMIN_KEYWORD
-      if (cfg.SHOW_IP_REGION !== undefined) props.options._showIpRegion = cfg.SHOW_IP_REGION
-      if (cfg.SHOW_UA_INFO !== undefined) props.options._showUaInfo = cfg.SHOW_UA_INFO
-      if (cfg.ENABLE_CODE_HIGHLIGHT !== undefined) props.options.enableCodeHighlight = cfg.ENABLE_CODE_HIGHLIGHT
-      if (cfg.CODE_HIGHLIGHT_THEME !== undefined) props.options.codeHighlightTheme = cfg.CODE_HIGHLIGHT_THEME
-      if (cfg.CODE_SHOW_LANGUAGE !== undefined) props.options.codeShowLanguage = cfg.CODE_SHOW_LANGUAGE
-      if (cfg.CODE_SHOW_COPY !== undefined) props.options.codeShowCopy = cfg.CODE_SHOW_COPY
-      if (cfg.ENABLE_CAPTCHA !== undefined) props.options.enableCaptcha = cfg.ENABLE_CAPTCHA
-      if (cfg.CAPTCHA_PROVIDER !== undefined) props.options.captchaProvider = cfg.CAPTCHA_PROVIDER
-      if (cfg.CAPTCHA_TYPE !== undefined) props.options.captchaType = cfg.CAPTCHA_TYPE
-      if (cfg.CAPTCHA_SITE_KEY !== undefined) props.options.captchaSiteKey = cfg.CAPTCHA_SITE_KEY
-      if (cfg.GLOBAL_COLOR) { props.options.brandColor = cfg.GLOBAL_COLOR; setBrandColor(cfg.GLOBAL_COLOR) }
     }
-    if (comments.value.length === 0) props.options.onCommentsEmpty?.()
-    else props.options.onCommentsLoaded?.(comments.value)
+    if (comments.value.length === 0) mergedOptions.value.onCommentsEmpty?.()
+    else mergedOptions.value.onCommentsLoaded?.(comments.value)
   } catch (e) {
-    loading.value = false; errorMsg.value = (e as Error).message || 'Failed to load comments'
-    console.warn('[Takoio Dev]', (e as Error).message); props.options.onError?.(e as Error)
+    loading.value = false; errorMsg.value = e instanceof Error ? e.message : 'Failed to load comments'
+    console.warn('[Takoio Dev]', e instanceof Error ? e.message : String(e))
+    if (e instanceof Error) mergedOptions.value.onError?.(e)
     return
   } finally { loading.value = false }
+}
+
+const findCommentInTree = (comments: Comment[], id: string): Comment | null => {
+  for (const c of comments) {
+    if (c.id === id) return c
+    if (c.children?.length) {
+      const found = findCommentInTree(c.children, id)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 const onPosted = (comment: Comment): void => {
@@ -152,18 +293,44 @@ const onPosted = (comment: Comment): void => {
     const parent = comments.value.find(c => c.id === comment.pid)
     if (parent) {
       if (!parent.children) parent.children = []
-      if (comment.rid && comment.rid !== comment.pid) { const t = parent.children.find(c => c.id === comment.rid); if (t) comment.replyToNick = t.nick }
-      parent.children.push(comment); parent.replyCount = parent.children.length
+      if (comment.rid && comment.rid !== comment.pid) {
+        const target = findCommentInTree([parent, ...(parent.children || [])], comment.rid)
+        if (target) comment.replyToNick = target.nick
+      }
+      parent.children.push(comment)
+      parent.replyCount = parent.children.length
+    } else if (!infiniteMode.value) {
+      fetchComments()
     }
-  } else comments.value = [comment, ...comments.value]
+  } else {
+    if (sort.value === 'oldest') comments.value = [...comments.value, comment]
+    else comments.value = [comment, ...comments.value]
+  }
   total.value += 1; replyTarget.value = null; emit('comment-posted', comment)
 }
 
-const onReplyClick = (comment: Comment): void => { replyTarget.value = comment; document.querySelector('.tk-submit')?.scrollIntoView({ behavior: 'smooth' }) }
-const onLiked = (): void => {}
-const onPageChange = (newPage: number): void => { page.value = newPage; fetchComments(); document.querySelector('.tk-comments')?.scrollIntoView({ behavior: 'smooth' }) }
+const onReplyClick = (comment: Comment): void => {
+  replyTarget.value = comment
+  const el = sentinelRef.value || document.querySelector('.tk-submit')
+  el?.scrollIntoView({ behavior: 'smooth' })
+}
+
+const onPageChange = (newPage: number): void => {
+  page.value = newPage
+  replyTarget.value = null
+  fetchComments()
+  const el = document.querySelector('.tk-comments')
+  el?.scrollIntoView({ behavior: 'smooth' })
+}
 
 watch(sort, () => { page.value = 1; fetchComments() })
+
+watch(() => mergedOptions.value.paginationMode, () => {
+  page.value = 1; allComments.value = []; comments.value = []; total.value = 0
+  replyTarget.value = null
+  if (infiniteMode.value) setupInfiniteObserver()
+  else observer?.disconnect()
+})
 
 const setupInfiniteObserver = (): void => {
   if (!infiniteMode.value || typeof IntersectionObserver === 'undefined') return
@@ -171,33 +338,41 @@ const setupInfiniteObserver = (): void => {
   observer = new IntersectionObserver((entries) => { if (entries[0]?.isIntersecting && hasMore.value && !loadingMore.value) loadMore() }, { rootMargin: '200px' })
   if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
-watch(sentinelRef, (el) => { if (el && infiniteMode.value) { if (!observer) setupInfiniteObserver(); else observer.observe(el) } })
+watch(sentinelRef, (el) => { if (el && infiniteMode.value) { observer?.disconnect(); setupInfiniteObserver() } })
 onMounted(() => { fetchComments(); if (infiniteMode.value) setupInfiniteObserver() })
 onBeforeUnmount(() => { observer?.disconnect() })
 </script>
 
 <style scoped>
+.tk-icon-32 { width: 32px; height: 32px; flex-shrink: 0; display: inline-block; vertical-align: middle; }
+.tk-icon-48 { width: 48px; height: 48px; flex-shrink: 0; display: inline-block; vertical-align: middle; }
 .tk-comments { max-width: 100%; margin: 0; padding: 0; }
 .tk-comments-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; margin-bottom: 12px; }
 .tk-comments-count { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: inherit; padding: 4px 8px 4px 12px; border-radius: 16px; }
-.tk-count-text strong { font-weight: 600; }
+.tk-count-text strong { font-weight: 600; font-variant-numeric:tabular-nums; }
 .tk-refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: transparent; border: none; cursor: pointer; opacity: 0.5; border-radius: 50%; color: inherit; padding: 0; }
 .tk-refresh-btn:hover { opacity: 0.8; }
 .tk-sort { display: flex; align-items: center; border-radius: 20px; padding: 3px; gap: 2px; }
 .tk-sort-btn { background: transparent; border: none; color: inherit; opacity: 0.6; font-size: 13px; font-weight: 500; cursor: pointer; padding: 4px 14px; border-radius: 18px; transition: all 0.3s; font-family: inherit; }
-.tk-sort-btn:hover { opacity: 1; background: rgba(128,128,128,0.04); }
-.tk-sort-btn.active { opacity: 1; color: var(--tk-brand); background: rgba(128,128,128,0.06); }
+.tk-sort-btn:hover { opacity: 1; background: var(--tk-bg-muted); }
+.tk-sort-btn.active { opacity: 1; color: var(--tk-brand); background: var(--tk-brand-light); }
 .tk-loading-skeleton { padding: 24px; }
-.tk-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 8px; background: rgba(128,128,128,0.03); }
-.tk-skeleton-line { height: 14px; border-radius: 4px; background: linear-gradient(90deg, rgba(128,128,128,0.08) 25%, rgba(128,128,128,0.15) 50%, rgba(128,128,128,0.08) 75%); background-size: 200% 100%; animation: tk-shimmer 1.5s infinite; }
+.tk-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--tk-r-card); background: var(--tk-bg-subtle); }
+.tk-skeleton-line { height: 14px; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb,currentColor 8%,transparent) 25%, color-mix(in srgb,currentColor 14%,transparent) 50%, color-mix(in srgb,currentColor 8%,transparent) 75%); background-size: 200% 100%; animation: tk-shimmer 1.5s infinite; }
 @keyframes tk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-.tk-loading, .tk-empty, .tk-error-msg { text-align: center; padding: 24px 0; color: inherit; opacity: .6; font-size: 14px; }
+.tk-loading { text-align: center; padding: 24px 0; color: inherit; opacity: .6; font-size: 14px; }
 .tk-infinite-sentinel { text-align: center; padding: 16px 0; }
 .tk-load-more { color: var(--tk-brand); cursor: pointer; font-size: 13px; opacity: 0.7; transition: opacity 0.2s; }
 .tk-load-more:hover { opacity: 1; }
 .tk-comments-list { display: flex; flex-direction: column; gap: 10px; }
-.tk-comment-list-enter-active, .tk-comment-list-leave-active { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-.tk-comment-list-enter-from { opacity: 0; transform: translateY(24px); }
+.tk-comment-list-enter-active, .tk-comment-list-leave-active { transition: all 0.5s cubic-bezier(.22,.61,.36,1); }
+.tk-comment-list-enter-from { opacity: 0; transform: translateY(8px); }
 .tk-comment-list-leave-to { opacity: 0; transform: scale(0.96); }
-.tk-comment-list-move { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.tk-comment-list-move { transition: transform 0.5s cubic-bezier(.22,.61,.36,1); }
+
+/* error / empty state */
+.tk-error-state, .tk-empty-state { display: flex; flex-direction: column; align-items: center; padding: 36px 24px; }
+.tk-error-state p, .tk-empty-state p { margin: 0; }
+.tk-btn-retry { margin-top: 12px; padding: 6px 20px; background: var(--tk-brand); color: #fff; border: none; border-radius: var(--tk-r-input); cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 600; }
+.tk-btn-retry:hover { filter: brightness(1.1); }
 </style>

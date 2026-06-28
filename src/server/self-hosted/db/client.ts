@@ -46,10 +46,10 @@ export async function initDb () {
     is_pinned INTEGER NOT NULL DEFAULT 0,
     image TEXT, sticker TEXT, ip_region TEXT, tags TEXT, rendered_comment TEXT
   )`)
-  await _raw.execute(`CREATE INDEX IF NOT EXISTS idx_comments_url ON comments(url)`)
-  await _raw.execute(`CREATE INDEX IF NOT EXISTS idx_comments_pid ON comments(pid)`)
-  await _raw.execute(`CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created)`)
-  await _raw.execute(`CREATE INDEX IF NOT EXISTS idx_comments_state ON comments(state)`)
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_url ON comments(url)')
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_pid ON comments(pid)')
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created)')
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_state ON comments(state)')
 
   await _raw.execute(`CREATE TABLE IF NOT EXISTS configs (
     key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL
@@ -67,7 +67,7 @@ export async function initDb () {
     url TEXT NOT NULL, emoji TEXT NOT NULL, ip TEXT NOT NULL,
     PRIMARY KEY (url, emoji, ip)
   )`)
-  await _raw.execute(`CREATE INDEX IF NOT EXISTS idx_reactions_url ON reactions(url)`)
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_reactions_url ON reactions(url)')
 
   // Migration tracking table
   await _raw.execute(`CREATE TABLE IF NOT EXISTS migrations (
@@ -75,14 +75,28 @@ export async function initDb () {
   )`)
 
   // Run pending column migrations
-  const applied = await _raw.execute("SELECT name FROM migrations")
+  // Use PRAGMA table_info to check existing columns — avoids "duplicate column" errors
+  // when the DB was created from a newer CREATE TABLE but migrations table has no records.
+  const applied = await _raw.execute('SELECT name FROM migrations')
   const appliedNames = new Set(applied.rows.map((r: any) => r.name))
 
-  const columnMigrations: [string, string][] = []
+  const existingColumns = await _raw.execute('PRAGMA table_info(comments)')
+  const existingColumnNames = new Set(existingColumns.rows.map((r: any) => r.name))
 
-  for (const [name, sql] of columnMigrations) {
+  const columnMigrations: [string, string, string][] = [
+    // v1.0 — ensure optional columns exist for databases created before they were added
+    ['add_comments_image', 'image', 'ALTER TABLE comments ADD COLUMN image TEXT'],
+    ['add_comments_sticker', 'sticker', 'ALTER TABLE comments ADD COLUMN sticker TEXT'],
+    ['add_comments_ip_region', 'ip_region', 'ALTER TABLE comments ADD COLUMN ip_region TEXT'],
+    ['add_comments_tags', 'tags', 'ALTER TABLE comments ADD COLUMN tags TEXT'],
+    ['add_comments_rendered', 'rendered_comment', 'ALTER TABLE comments ADD COLUMN rendered_comment TEXT'],
+  ]
+
+  for (const [name, column, sql] of columnMigrations) {
     if (!appliedNames.has(name)) {
-      await _raw.execute(sql)
+      if (!existingColumnNames.has(column)) {
+        await _raw.execute(sql)
+      }
       await _raw.execute({ sql: 'INSERT INTO migrations (name, applied_at) VALUES (?, ?)', args: [name, Date.now()] })
     }
   }
