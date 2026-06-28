@@ -1,6 +1,6 @@
 {
   "name": "takoio",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A simple, free comment system with Vue 3 + Vite 8",
   "keywords": [
     "takoio",
@@ -42,9 +42,8 @@
     "build:esm": "vite build --mode esm",
     "build:umd": "pnpm vite build --mode umd",
     "build:admin": "cd src/admin && pnpm install && npx vite build",
-    "build:server": "cd src/server/self-hosted && pnpm install && npx tsc",
-    "build:all": "pnpm build && pnpm build:admin && pnpm build:server",
-    "build:analyze": "pnpm ANALYZE=true vite build --mode umd",
+    "build:all": "pnpm build && pnpm build:admin",
+    "build:analyze": "ANALYZE=true vite build --mode umd",
     "preview": "vite preview --host 127.0.0.1 --port 9820",
     "lint": "eslint src/**/*.{ts,vue}",
     "lint:fix": "eslint src/**/*.{ts,vue} --fix",
@@ -52,9 +51,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "docs:dev": "cd docs && yarn docs:dev",
-    "docs:build": "cd docs && yarn docs:build"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "blueimp-md5": "^2.19.0",
