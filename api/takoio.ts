@@ -11,7 +11,7 @@
  *   4. Deploy
  */
 
-import { fetch } from '../src/server/self-hosted/cloud-entry'
+import { fetch } from '../dist/server/cloud-entry.js'
 
 // Vercel auto-discovers this file; rewrite rules route all requests here.
 export { fetch as GET, fetch as POST, fetch as PUT, fetch as DELETE, fetch as PATCH, fetch as HEAD, fetch as OPTIONS }

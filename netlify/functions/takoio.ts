@@ -14,7 +14,7 @@
  *   4. Deploy
  */
 
-import { fetch } from '../../src/server/self-hosted/cloud-entry'
+import { fetch } from '../../src/server/self-hosted/cloud-entry.ts'
 
 interface NetlifyEvent {
   readonly path: string

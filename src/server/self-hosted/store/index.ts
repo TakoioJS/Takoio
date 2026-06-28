@@ -5,10 +5,10 @@ let _sqlite: any = null
 
 async function getImpl () {
   if (DB_TYPE === 'mongodb') {
-    if (!_mongo) _mongo = await import('./mongodb')
+    if (!_mongo) _mongo = await import('./mongodb.js')
     return _mongo
   }
-  if (!_sqlite) _sqlite = await import('./sqlite')
+  if (!_sqlite) _sqlite = await import('./sqlite.js')
   return _sqlite
 }
 

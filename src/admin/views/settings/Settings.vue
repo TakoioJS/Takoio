@@ -185,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   NInput, NInputNumber, NSelect, NSwitch, NCheckbox, NCheckboxGroup,
   NSlider, NColorPicker, NButton, NSpin, NSpace, NIcon, NTooltip,
@@ -288,6 +288,49 @@ const isDirty = computed(() => {
   return false
 })
 
+const parsedAiProviders = ref<any[]>([])
+
+const updateAiProviderOptions = (rawProviders: any) => {
+  const savedProviders: any[] = typeof rawProviders === 'string'
+    ? (() => { try { const p = JSON.parse(rawProviders); return Array.isArray(p) ? p : [] } catch { return [] } })()
+    : Array.isArray(rawProviders) ? rawProviders : []
+  
+  parsedAiProviders.value = savedProviders
+  
+  const options = savedProviders.map((p: any) => ({
+    label: p.name || p.format || '未命名提供商',
+    value: p.name,
+  }))
+  
+  const securitySection = sections.find(s => s.key === 'security')
+  if (securitySection) {
+    const aiProviderField = securitySection.fields.find(f => f.key === 'AUTO_AUDIT_AI_PROVIDER')
+    if (aiProviderField) {
+      aiProviderField.options = options
+    }
+  }
+  
+  updateAiModelOptions(config.AUTO_AUDIT_AI_PROVIDER)
+}
+
+const updateAiModelOptions = (providerName: string) => {
+  const provider = parsedAiProviders.value.find((p: any) => p.name === providerName)
+  const models: string[] = provider?.models ?? []
+  const options = models.map((m: string) => ({ label: m, value: m }))
+  
+  const securitySection = sections.find(s => s.key === 'security')
+  if (securitySection) {
+    const modelField = securitySection.fields.find(f => f.key === 'AUTO_AUDIT_AI_MODEL')
+    if (modelField) {
+      modelField.options = options
+    }
+  }
+}
+
+watch(() => config.AUTO_AUDIT_AI_PROVIDER, (val) => {
+  updateAiModelOptions(val)
+})
+
 const loadConfig = async () => {
   loading.value = true
   try {
@@ -304,6 +347,10 @@ const loadConfig = async () => {
       }
     }
     activePushKeys.value = activeKeys
+    
+    // 动态更新 AI 审核提供商选项
+    updateAiProviderOptions(data.AI_PROVIDERS)
+    
     savedConfig.value = JSON.parse(JSON.stringify(data))
   } catch (e: any) {
     message.error('加载配置失败: ' + (e.message || ''))

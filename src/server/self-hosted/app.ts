@@ -44,6 +44,7 @@ app.get('/', (c) => c.text('Takoio server is running (v1.0.0)'))
 const adminDistDir = [
   join(process.cwd(), 'admin-dist'),
   join(process.cwd(), 'src/admin/dist'),
+  join(process.cwd(), 'dist/admin'),
 ].find(p => existsSync(p))
 
 if (adminDistDir) {

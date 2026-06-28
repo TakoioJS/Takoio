@@ -33,7 +33,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: '../../dist/admin',
     emptyOutDir: true,
     sourcemap: false,
     minify: 'esbuild',

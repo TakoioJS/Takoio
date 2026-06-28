@@ -36,7 +36,7 @@ coverage/
 .nyc_output/
 
 # Twikoo 数据
-data/
+/data/
 *.db
 *.sqlite
 
@@ -54,3 +54,5 @@ data/
 *.d.ts.map
 
 /docs
+.vercel
+.env*

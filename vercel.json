@@ -1,7 +1,8 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build:admin",
+  "buildCommand": "pnpm build:admin && cd src/server/self-hosted && pnpm build",
   "framework": null,
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/takoio" }
   ],
