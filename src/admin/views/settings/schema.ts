@@ -100,7 +100,6 @@ export const sections: ConfigSection[] = [
     fields: [
       { key: 'COMMENT_RATE_LIMIT', label: '评论间隔 (ms)', type: 'number', min: 0, max: 99999 },
       { key: 'IP_PROXY_HEADER', label: 'IP 代理头', type: 'tag-select', clearable: true,
-        hint: '获取客户端真实 IP',
         options: [
           { label: 'X-Forwarded-For', value: 'X-Forwarded-For' },
           { label: 'X-Real-IP', value: 'X-Real-IP' },
@@ -111,7 +110,7 @@ export const sections: ConfigSection[] = [
       { key: 'SHOW_IP_REGION', label: '归属地精度', type: 'select',
         condition: (c) => c.IP_REGION_ENABLED,
         options: [{ label: '完整', value: 'all' }, { label: '仅省份', value: 'city' }] },
-      { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input', full: true,
+      { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input',
         condition: (c) => c.IP_REGION_ENABLED },
       { key: 'AUDIT_MODE', label: '先审后发', type: 'switch' },
       { key: 'AUTO_AUDIT_METHOD', label: '自动审核', type: 'select',
@@ -150,19 +149,6 @@ export const sections: ConfigSection[] = [
         condition: (c) => c.ENABLE_CAPTCHA },
       { key: 'CAPTCHA_SECRET_KEY', label: 'Secret Key', type: 'sensitive',
         condition: (c) => c.ENABLE_CAPTCHA },
-      { key: 'ENABLE_NSFW_DETECTION', label: '启用 NSFW 检测', type: 'switch' },
-      { key: 'NSFW_SERVICE', label: '检测服务', type: 'select',
-        condition: (c) => c.ENABLE_NSFW_DETECTION,
-        options: [
-          { label: '本地检测', value: 'self' },
-          { label: 'ModelArk', value: 'modelark' },
-        ] },
-      { key: 'NSFW_ENDPOINT', label: '检测服务地址', type: 'input',
-        condition: (c) => c.ENABLE_NSFW_DETECTION && c.NSFW_SERVICE === 'self' },
-      { key: 'NSFW_API_KEY', label: 'API Key', type: 'sensitive',
-        condition: (c) => c.ENABLE_NSFW_DETECTION && c.NSFW_SERVICE === 'modelark' },
-      { key: 'NSFW_THRESHOLD', label: '检测阈值', type: 'number', min: 0, max: 1, step: 0.1,
-        condition: (c) => c.ENABLE_NSFW_DETECTION },
     ]
   },
   {
@@ -206,7 +192,7 @@ export const sections: ConfigSection[] = [
       { key: 'SHOW_IP_REGION', label: '归属地精度', type: 'select',
         condition: (c) => c.IP_REGION_ENABLED,
         options: [{ label: '完整', value: 'all' }, { label: '仅省份', value: 'city' }] },
-      { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input', full: true,
+      { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input',
         condition: (c) => c.IP_REGION_ENABLED },
     ]
   },
@@ -231,8 +217,12 @@ export const sections: ConfigSection[] = [
           { label: 'Tokyo Night', value: 'tokyo-night' },
           { label: 'Base16 / Atelier', value: 'base16-atelier' },
         ] },
-      { key: 'CODE_SHOW_LANGUAGE', label: '语言标签', type: 'switch', condition: (c) => c.ENABLE_CODE_HIGHLIGHT },
-      { key: 'CODE_SHOW_COPY', label: '复制按钮', type: 'switch', condition: (c) => c.ENABLE_CODE_HIGHLIGHT },
+      { key: 'CODE_FEATURES', label: '功能', type: 'checkbox-group', full: true,
+        condition: (c) => c.ENABLE_CODE_HIGHLIGHT,
+        options: [
+          { label: '语言标签', value: 'language' },
+          { label: '复制按钮', value: 'copy' },
+        ] },
     ]
   },
   {

@@ -118,7 +118,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 </script>
 
 <template>
-    <div v-if="!replyTo && options.enableArticleReaction !== false" class="tk-article-reactions">
+    <div v-if="!replyTo && options.enableArticleReaction" class="tk-article-reactions">
       <ReactionBar
         :emojis="defaultEmojis"
         :reactions="reactions"
@@ -146,7 +146,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           <input v-model="form.mail" type="email" :aria-label="t('email')" :placeholder="t('email')" class="tk-input" :class="{ 'tk-input-error': errors.mail }">
           <span v-if="errors.mail" class="tk-field-error">{{ errors.mail }}</span>
         </div>
-        <div v-if="options.enableLinkInput !== false" class="tk-meta-item">
+        <div v-if="options.enableLinkInput" class="tk-meta-item">
           <input v-model="form.link" :aria-label="t('link')" :placeholder="t('link')" class="tk-input" :class="{ 'tk-input-error': errors.link }">
           <span v-if="errors.link" class="tk-field-error">{{ errors.link }}</span>
         </div>

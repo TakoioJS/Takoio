@@ -96,28 +96,28 @@
                         <n-input v-else v-model:value="config[field.key]" :placeholder="field.placeholder" size="small" />
                       </div>
                     </div>
+                  </template>
 
-                    <!-- Email test panel (after mail section fields) -->
-                    <div v-if="section.key === 'mail' && isLastVisible(section, section.fields.length - 1)" class="field-row full-row email-test-row">
-                      <div class="field-label-col">
-                        <div class="field-label">测试发送</div>
-                        <p class="field-desc">发送一封测试邮件验证 SMTP 配置</p>
+                  <!-- Email test panel (mail section only, after all fields) -->
+                  <div v-if="section.key === 'mail'" class="field-row full-row email-test-row">
+                    <div class="field-label-col">
+                      <div class="field-label">测试发送</div>
+                      <p class="field-desc">发送一封测试邮件验证 SMTP 配置</p>
+                    </div>
+                    <div class="field-control-col">
+                      <div class="email-test-controls">
+                        <n-input v-model:value="emailTestRecipient" placeholder="收件人邮箱（留空用默认）" size="small" style="flex:1" />
+                        <n-select v-model:value="emailTestTemplate" :options="[{ label: '用户邮件', value: 'user' }, { label: '管理员邮件', value: 'admin' }]" size="small" style="width:120px" />
+                        <n-button type="primary" size="small" :loading="emailTesting" @click="onTestEmail">
+                          <template #icon><n-icon size="14"><MailOutline /></n-icon></template>
+                          发送
+                        </n-button>
                       </div>
-                      <div class="field-control-col">
-                        <div class="email-test-controls">
-                          <n-input v-model:value="emailTestRecipient" placeholder="收件人邮箱（留空用默认）" size="small" style="flex:1" />
-                          <n-select v-model:value="emailTestTemplate" :options="[{ label: '用户邮件', value: 'user' }, { label: '管理员邮件', value: 'admin' }]" size="small" style="width:120px" />
-                          <n-button type="primary" size="small" :loading="emailTesting" @click="onTestEmail">
-                            <template #icon><n-icon size="14"><MailOutline /></n-icon></template>
-                            发送
-                          </n-button>
-                        </div>
-                        <div v-if="emailTestLog" class="email-test-log">
-                          <pre>{{ emailTestLog }}</pre>
-                        </div>
+                      <div v-if="emailTestLog" class="email-test-log">
+                        <pre>{{ emailTestLog }}</pre>
                       </div>
                     </div>
-                  </template>
+                  </div>
                 </template>
 
                 <!-- 推送配置项列表：按需添加与显示 -->
@@ -397,11 +397,18 @@ const loadConfig = async () => {
       }
     }
     activePushKeys.value = activeKeys
-    
+
+    // Convert CODE_SHOW_LANGUAGE/CODE_SHOW_COPY booleans to CODE_FEATURES array
+    const codeFeatures: string[] = []
+    if (data.CODE_SHOW_LANGUAGE) codeFeatures.push('language')
+    if (data.CODE_SHOW_COPY) codeFeatures.push('copy')
+    config.CODE_FEATURES = codeFeatures
+
     // 动态更新 AI 审核提供商选项
     updateAiProviderOptions(data.AI_PROVIDERS)
-    
+
     savedConfig.value = JSON.parse(JSON.stringify(data))
+    savedConfig.value.CODE_FEATURES = [...codeFeatures]
   } catch (e: any) {
     message.error('加载配置失败: ' + (e.message || ''))
   } finally {
@@ -455,6 +462,11 @@ const onSave = async () => {
         payload[field.key] = config[field.key]
       }
     }
+    // Convert CODE_FEATURES array back to boolean fields for server
+    const codeFeatures: string[] = config.CODE_FEATURES || []
+    payload.CODE_SHOW_LANGUAGE = codeFeatures.includes('language')
+    payload.CODE_SHOW_COPY = codeFeatures.includes('copy')
+    delete payload.CODE_FEATURES
     await configApi.save(payload)
     savedConfig.value = JSON.parse(JSON.stringify(payload))
     message.success('配置保存成功')

@@ -45,18 +45,9 @@
               class="tk-tag tk-tag-info"
             >{{ t('pendingReview') }}</span>
           </span>
-          <span
-            class="tk-time"
-            :title="comment.created ? formatDate(comment.created) : undefined"
-          >{{ comment.relativeTime || timeago(comment.created) }}</span>
         </div>
 
         <div class="tk-comment-actions">
-          <CommentReactionBar
-            v-if="options.enableCommentReaction !== false"
-            :comment-id="comment.id"
-            :env-id="options.envId"
-          />
           <button
             class="tk-btn-icon"
             :title="t('reply')"
@@ -93,6 +84,12 @@
           >@{{ comment.replyToNick }} </span>
           <span v-html="renderedContent" />
         </div>
+        <div class="tk-comment-content-footer">
+          <span
+            class="tk-time"
+            :title="comment.created ? formatDate(comment.created) : undefined"
+          >{{ comment.relativeTime || timeago(comment.created) }}</span>
+        </div>
       </div>
 
       <div
@@ -107,7 +104,17 @@
       </div>
 
       <div
-        v-if="(options._showUaInfo !== false && comment.ua) || (options._showIpRegion !== false && comment.ipRegion)"
+        v-if="options.enableCommentReaction"
+        class="tk-comment-reactions"
+      >
+        <CommentReactionBar
+          :comment-id="comment.id"
+          :env-id="options.envId"
+        />
+      </div>
+
+      <div
+        v-if="(options._showUaInfo && comment.ua) || (options._showIpRegion !== false && comment.ipRegion)"
         class="tk-comment-meta"
       >
         <span
@@ -117,7 +124,7 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;flex-shrink:0;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ displayIpRegion }}
         </span>
         <span
-          v-if="options._showUaInfo !== false && comment.ua"
+          v-if="options._showUaInfo && comment.ua"
           class="tk-meta-item"
         >
           <TkUa :ua="comment.ua" />
@@ -272,7 +279,7 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-tag-success{background:var(--tk-tag-success-bg,color-mix(in srgb,var(--tk-success) 14%,transparent));color:var(--tk-tag-success-fg,var(--tk-success));}
 .tk-tag-danger{background:var(--tk-tag-danger-bg,color-mix(in srgb,var(--tk-danger) 14%,transparent));color:var(--tk-tag-danger-fg,var(--tk-danger));}
 .tk-tag-info{background:var(--tk-tag-info-bg,color-mix(in srgb,var(--tk-info) 16%,transparent));color:var(--tk-tag-info-fg,var(--tk-text-2));}
-.tk-time { font-size: 12px; color: inherit; opacity: .6; }
+.tk-time { font-size: 12px; color: inherit; opacity: .5; }
 .tk-comment-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .tk-btn-icon { display: inline-flex; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 6px; color: inherit; opacity: .55; transition: all .15s; border-radius: var(--tk-r-input); font-family: inherit; }
 .tk-btn-icon:disabled { pointer-events: none; }
@@ -280,6 +287,7 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-btn-icon.tk-liked { color: var(--tk-brand); opacity: 1; font-weight: 600; }
 .tk-btn-icon.tk-disliked { color: var(--tk-danger); opacity: 1; }
 .tk-comment-content { word-break: break-word; line-height: 1.75; font-size: var(--tk-fs-base); color: inherit; }
+.tk-comment-content-footer { display: flex; justify-content: flex-end; margin-top: 4px; }
 .tk-reply-at { color: var(--tk-brand); font-weight: 500; margin-right: 4px; }
 .tk-pending-notice { padding: 8px 12px; background: var(--tk-bg-muted); border-radius: var(--tk-r-input); font-size: 13px; color: var(--tk-warning); }
 .tk-comment-content :deep(p) { margin: 4px 0; }
@@ -291,6 +299,7 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-img-broken { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px; color: var(--tk-text-3); background: var(--tk-bg-muted); border-radius: var(--tk-r-input); border: 1px dashed var(--tk-border); }
 .tk-comment-content :deep(.tk-owo-emotion) { height: 1.5em; width: 1.5em; vertical-align: middle; display: inline-block; margin: 0 3px; object-fit: contain; }
 .tk-comment-content :deep(.tk-comment-inline-image) { max-width: 100%; max-height: 300px; border-radius: var(--tk-r-card); display: block; margin: 8px 0; }
+.tk-comment-reactions { margin-top: 6px; }
 .tk-comment-meta { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--tk-border-soft); display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--tk-text-3); line-height: 1; }
 .tk-meta-item { display: inline-flex; align-items: center; gap: 3px; }
 .tk-replies { margin-top: 8px; }

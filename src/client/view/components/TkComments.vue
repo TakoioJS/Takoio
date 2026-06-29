@@ -150,15 +150,26 @@ const siteConfig = ref<Record<string, any>>({})
 const mergedOptions = computed(() => {
   const cfg = siteConfig.value
   if (!cfg || !Object.keys(cfg).length) return props.options
-  const features = Array.isArray(cfg.COMMENT_FEATURES) ? cfg.COMMENT_FEATURES : []
+  const features = Array.isArray(cfg.COMMENT_FEATURES) ? cfg.COMMENT_FEATURES : null
   return {
     ...props.options,
-    ...(cfg.ENABLE_LINK_INPUT !== undefined && { enableLinkInput: cfg.ENABLE_LINK_INPUT }),
+    // 当 COMMENT_FEATURES 数组存在时，以数组为准（在数组中=启用，不在=禁用）
+    // 否则回退到独立配置键，最后回退到用户初始配置
+    enableCommentReaction: features !== null
+      ? features.includes('commentReaction')
+      : (cfg.ENABLE_COMMENT_REACTION !== undefined ? cfg.ENABLE_COMMENT_REACTION : props.options.enableCommentReaction),
+    enableArticleReaction: features !== null
+      ? features.includes('articleReaction')
+      : (cfg.ENABLE_ARTICLE_REACTION !== undefined ? cfg.ENABLE_ARTICLE_REACTION : props.options.enableArticleReaction),
+    enableLinkInput: features !== null
+      ? features.includes('linkInput')
+      : (cfg.ENABLE_LINK_INPUT !== undefined ? cfg.ENABLE_LINK_INPUT : props.options.enableLinkInput),
+    _showUaInfo: features !== null
+      ? features.includes('uaInfo')
+      : (cfg.SHOW_UA_INFO !== undefined ? cfg.SHOW_UA_INFO : props.options._showUaInfo),
+    ...(cfg.SHOW_IP_REGION !== undefined && { _showIpRegion: cfg.SHOW_IP_REGION }),
     ...(cfg.COMMENT_LINK_REQUIRED !== undefined && { commentLinkRequired: cfg.COMMENT_LINK_REQUIRED }),
     ...(cfg.ADMIN_KEYWORD !== undefined && { adminKeyword: cfg.ADMIN_KEYWORD }),
-    ...(cfg.SHOW_IP_REGION !== undefined && { _showIpRegion: cfg.SHOW_IP_REGION }),
-    ...(features.includes('uaInfo') && { _showUaInfo: true }),
-    ...(cfg.SHOW_UA_INFO !== undefined && { _showUaInfo: cfg.SHOW_UA_INFO }),
     ...(cfg.ENABLE_CODE_HIGHLIGHT !== undefined && { enableCodeHighlight: cfg.ENABLE_CODE_HIGHLIGHT }),
     ...(cfg.CODE_HIGHLIGHT_THEME !== undefined && { codeHighlightTheme: cfg.CODE_HIGHLIGHT_THEME }),
     ...(cfg.CODE_SHOW_LANGUAGE !== undefined && { codeShowLanguage: cfg.CODE_SHOW_LANGUAGE }),
@@ -168,9 +179,6 @@ const mergedOptions = computed(() => {
     ...(cfg.CAPTCHA_TYPE !== undefined && { captchaType: cfg.CAPTCHA_TYPE }),
     ...(cfg.CAPTCHA_SITE_KEY !== undefined && { captchaSiteKey: cfg.CAPTCHA_SITE_KEY }),
     ...(cfg.GLOBAL_COLOR && { brandColor: cfg.GLOBAL_COLOR }),
-    ...(features.includes('linkInput') && { enableLinkInput: true }),
-    ...(features.includes('articleReaction') && { enableArticleReaction: true }),
-    ...(features.includes('commentReaction') && { enableCommentReaction: true }),
   }
 })
 
