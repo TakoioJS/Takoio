@@ -478,7 +478,7 @@ export const handleGetRecentComments = async (data: any) => {
   const masterName = rawCfg.MASTER_NAME || ''
 
   const checkMaster = (c: any) => {
-    if ((masterName && c.nick === masterName) || (masterMailMd5 && c.mailMd5 === c.mailMd5)) {
+    if ((masterName && c.nick === masterName) || (masterMailMd5 && c.mailMd5 === masterMailMd5)) {
       c.isMaster = true
     }
   }

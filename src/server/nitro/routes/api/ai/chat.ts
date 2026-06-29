@@ -10,7 +10,16 @@
 
 import { handleKnowledgeChat } from '#core/handlers/knowledge'
 import { getConfig } from '#core/config'
+import { getClientIp } from '#core/utils/ip'
 import { createError } from 'h3'
+
+const chatBuckets = new Map<string, { count: number; reset: number }>()
+const CHAT_RATE_MAX = 10
+const CHAT_RATE_WINDOW = 60_000
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, b] of chatBuckets) if (b.reset < now) chatBuckets.delete(k)
+}, CHAT_RATE_WINDOW).unref()
 
 export default defineHandler(async (event) => {
   if (event.method !== 'POST') {
@@ -27,11 +36,14 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing required field: question' })
   }
 
-  // Rate limit: max 10 questions per minute per IP (simple in-memory)
-  // In production, this should use Redis
-  const ip = getRequestHeader(event, 'x-forwarded-for')?.split(',')[0]?.trim()
-    || getRequestHeader(event, 'x-real-ip')
-    || 'unknown'
+  const ip = await getClientIp(event)
+  const now = Date.now()
+  const bucket = chatBuckets.get(ip)
+  if (!bucket || bucket.reset < now) {
+    chatBuckets.set(ip, { count: 1, reset: now + CHAT_RATE_WINDOW })
+  } else if (++bucket.count > CHAT_RATE_MAX) {
+    throw createError({ statusCode: 429, statusMessage: '请求过于频繁，请稍后再试' })
+  }
 
   return handleKnowledgeChat({
     question: body.question.slice(0, 2000), // limit question length

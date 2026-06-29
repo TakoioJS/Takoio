@@ -80,6 +80,7 @@ export default defineHandler(async (event) => {
 
     // GET /api/comments/:id/ip-region
     if (segments[1] === 'ip-region' && method === 'GET') {
+      await requireAdmin({ token: getToken(event) })
       return handleIpRegionGet({ id })
     }
 
