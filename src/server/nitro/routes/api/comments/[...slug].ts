@@ -7,12 +7,12 @@
 
 import {
   handleCommentUpdate,
-  handleCommentLike, handleCommentDislike, handleCommentDelete,
+  handleCommentDelete,
   handleCommentHide, handleCommentGetAdmin, handleCommentSetTop,
   handleCommentSetSpam, handleCommentApprove,
   handleCounterGet, handleCounterUpdate,
   handleGetCommentsCount, handleGetRecentComments,
-  handleReactionGet, handleReactionSubmit,
+  handleCommentReactionGet, handleCommentReactionSubmit,
 } from '#core/handlers/comment'
 import { handleHiddenFieldsGet, handleIpRegionGet } from '#core/handlers/admin'
 import { requireAdmin } from '#core/auth'
@@ -97,16 +97,6 @@ export default defineHandler(async (event) => {
       return handleCommentDelete({ id })
     }
 
-    // POST /api/comments/:id/like
-    if (segments[1] === 'like' && method === 'POST') {
-      return handleCommentLike({ id, _ip: await getClientIp(event) })
-    }
-
-    // POST /api/comments/:id/dislike
-    if (segments[1] === 'dislike' && method === 'POST') {
-      return handleCommentDislike({ id, _ip: await getClientIp(event) })
-    }
-
     // PATCH /api/comments/:id/hide
     if (segments[1] === 'hide' && method === 'PATCH') {
       const body = await readBody(event)
@@ -136,17 +126,15 @@ export default defineHandler(async (event) => {
 
     // GET /api/comments/:id/reactions
     if (segments[1] === 'reactions' && method === 'GET') {
-      const url = (getQuery(event).url as string) || '/'
       const ip = await getClientIp(event)
-      return handleReactionGet({ url, _ip: ip })
+      return handleCommentReactionGet({ id, _ip: ip })
     }
 
     // POST /api/comments/:id/reactions
     if (segments[1] === 'reactions' && method === 'POST') {
-      const url = (getQuery(event).url as string) || '/'
       const ip = await getClientIp(event)
       const body = await readBody(event).catch(() => ({}))
-      return handleReactionSubmit({ url, emoji: body.emoji, _ip: ip })
+      return handleCommentReactionSubmit({ id, emoji: body.emoji, _ip: ip })
     }
   }
 

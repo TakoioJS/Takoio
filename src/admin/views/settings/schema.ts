@@ -88,10 +88,8 @@ export const sections: ConfigSection[] = [
       { key: 'COMMENT_LENGTH_MAX', label: '最大字数', type: 'number', min: 1, max: 10000 },
       { key: 'COMMENT_FEATURES', label: '功能开关', type: 'checkbox-group', full: true,
         options: [
-          { label: '点赞', value: 'like' },
-          { label: '点踩', value: 'dislike' },
+          { label: '评论反应', value: 'commentReaction' },
           { label: '文章表态', value: 'articleReaction' },
-          { label: '表情功能', value: 'emotion' },
           { label: '网站输入框', value: 'linkInput' },
           { label: 'UA信息', value: 'uaInfo' },
         ] },

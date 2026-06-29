@@ -17,7 +17,6 @@ export const SubmitCommentSchema = z.object({
   rid: z.string().optional(),
   ua: z.string().optional(),
   image: z.string().optional(),
-  sticker: z.string().optional(),
   title: z.string().optional(),
   captchaToken: z.string().optional(),
   _token: z.string().optional(),

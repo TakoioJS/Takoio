@@ -57,6 +57,9 @@ coverage/
 /docs
 .vercel
 .env*
-# Ai
+# AI Agent
 .claude
 .mimocode
+.workbuddy
+.trae
+.omc

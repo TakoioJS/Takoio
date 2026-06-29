@@ -90,14 +90,6 @@ export const getComments = (envId: string, params: {
   return request(`${baseUrl(envId)}/api/comments?${qs}`)
 }
 
-/** Like a comment */
-export const likeComment = (envId: string, id: string): Promise<any> =>
-  request(`${baseUrl(envId)}/api/comments/${id}/like`, { method: 'POST' })
-
-/** Dislike a comment */
-export const dislikeComment = (envId: string, id: string): Promise<any> =>
-  request(`${baseUrl(envId)}/api/comments/${id}/dislike`, { method: 'POST' })
-
 /** Get comments count for multiple URLs */
 export const getCommentsCountApi = async (options: {
   envId: string; urls: string[]; funcName?: string
@@ -158,6 +150,16 @@ export const getReactions = (envId: string, url: string): Promise<{ reactions: R
 /** Toggle a reaction on a URL */
 export const toggleReaction = (envId: string, url: string, emoji: string): Promise<{ reactions: Record<string, number>; myReactions: string[] }> =>
   request(`${baseUrl(envId)}/api/reactions?url=${encodeURIComponent(url)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }),
+  })
+
+/** Get reactions for a comment */
+export const getCommentReactions = (envId: string, commentId: string): Promise<{ reactions: Record<string, number>; myReaction: string | null }> =>
+  request(`${baseUrl(envId)}/api/comments/${commentId}/reactions`)
+
+/** Toggle a reaction on a comment */
+export const toggleCommentReaction = (envId: string, commentId: string, emoji: string): Promise<{ reactions: Record<string, number>; myReaction: string | null }> =>
+  request(`${baseUrl(envId)}/api/comments/${commentId}/reactions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }),
   })
 

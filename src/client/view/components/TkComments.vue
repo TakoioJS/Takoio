@@ -153,9 +153,6 @@ const mergedOptions = computed(() => {
   const features = Array.isArray(cfg.COMMENT_FEATURES) ? cfg.COMMENT_FEATURES : []
   return {
     ...props.options,
-    ...(cfg.ENABLE_LIKE !== undefined && { enableLike: cfg.ENABLE_LIKE }),
-    ...(cfg.ENABLE_DISLIKE !== undefined && { enableDislike: cfg.ENABLE_DISLIKE }),
-    ...(cfg.ENABLE_EMOTION !== undefined && { enableEmotion: cfg.ENABLE_EMOTION }),
     ...(cfg.ENABLE_LINK_INPUT !== undefined && { enableLinkInput: cfg.ENABLE_LINK_INPUT }),
     ...(cfg.COMMENT_LINK_REQUIRED !== undefined && { commentLinkRequired: cfg.COMMENT_LINK_REQUIRED }),
     ...(cfg.ADMIN_KEYWORD !== undefined && { adminKeyword: cfg.ADMIN_KEYWORD }),
@@ -171,11 +168,9 @@ const mergedOptions = computed(() => {
     ...(cfg.CAPTCHA_TYPE !== undefined && { captchaType: cfg.CAPTCHA_TYPE }),
     ...(cfg.CAPTCHA_SITE_KEY !== undefined && { captchaSiteKey: cfg.CAPTCHA_SITE_KEY }),
     ...(cfg.GLOBAL_COLOR && { brandColor: cfg.GLOBAL_COLOR }),
-    ...(features.includes('like') && { enableLike: true }),
-    ...(features.includes('dislike') && { enableDislike: true }),
-    ...(features.includes('emotion') && { enableEmotion: true }),
     ...(features.includes('linkInput') && { enableLinkInput: true }),
     ...(features.includes('articleReaction') && { enableArticleReaction: true }),
+    ...(features.includes('commentReaction') && { enableCommentReaction: true }),
   }
 })
 

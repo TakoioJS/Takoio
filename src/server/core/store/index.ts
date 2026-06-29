@@ -48,8 +48,8 @@ export interface CommentStore {
   getCommentsCount (urls: string[]): Promise<{ url: string; count: number }[]>
   getRecentComments (limit?: number): Promise<any[]>
   getRawRecentComments (limit?: number): Promise<any[]>
-  likeComment (id: string): Promise<boolean>
-  dislikeComment (id: string): Promise<boolean>
+  getCommentReactions (commentId: string): Promise<Record<string, { count: number, ips: string[] }>>
+  toggleCommentReaction (commentId: string, emoji: string, ip: string): Promise<Record<string, { count: number, ips: string[] }>>
   setCommentState (id: string, state: string): Promise<boolean>
   hideComment (id: string): Promise<boolean>
   showComment (id: string): Promise<boolean>

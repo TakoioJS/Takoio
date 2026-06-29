@@ -3,7 +3,6 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { t, getUrl, getHref, getUserAgent } from '../../utils'
 import { submitComment } from '../../utils/api'
 import { renderMarkdown } from '../../utils/marked'
-import { getEmotions, type EmotionItem } from '../../utils/emotion'
 import { toast } from '../../utils'
 import type { TakoioConfig, Comment } from '../../types'
 
@@ -18,7 +17,6 @@ import ImagePreview from './submit/components/ImagePreview.vue'
 import ReactionBar from './submit/components/ReactionBar.vue'
 import CaptchaWidget from './submit/components/CaptchaWidget.vue'
 import MarkdownToolbar from './submit/components/MarkdownToolbar.vue'
-import EmotionPicker from './submit/components/EmotionPicker.vue'
 
 interface Props { options: TakoioConfig; siteConfig?: Record<string, any>; replyTo?: Comment | null }
 const props = defineProps<Props>()
@@ -80,36 +78,6 @@ const { imageUploading, uploadedImages, uploadRef, removeImage, triggerUpload, o
   form,
   enabled: !!showUploadBtn.value,
 })
-
-// --- Emotion picker ---
-const showEmotion = ref(false)
-const emotions = ref<Record<string, EmotionItem[]>>({})
-
-const loadEmotions = async (): Promise<void> => {
-  if (Object.keys(emotions.value).length === 0) {
-    emotions.value = await getEmotions(props.options)
-  }
-}
-
-const toggleEmotionPanel = (): void => {
-  if (!showEmotion.value) loadEmotions()
-  showEmotion.value = !showEmotion.value
-}
-
-const insertEmotion = (em: { text: string; icon: string; type?: 'text' | 'image' }): void => {
-  const textToInsert = em.type === 'image' ? `![${em.text}](${em.icon})` : em.icon
-  const ta = editorRef.value
-  showEmotion.value = false
-  if (!ta) { form.comment += textToInsert; return }
-  ta.focus()
-  const s = ta.selectionStart; const e = ta.selectionEnd
-  let inserted = false
-  try { inserted = document.execCommand('insertText', false, textToInsert) } catch {}
-  if (!inserted) {
-    form.comment = form.comment.substring(0, s) + textToInsert + form.comment.substring(e)
-    setTimeout(() => { ta.setSelectionRange(s + textToInsert.length, s + textToInsert.length) }, 0)
-  }
-}
 
 // --- Captcha (delegated to CaptchaWidget) ---
 const captchaToken = ref('')
@@ -219,22 +187,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
       <div class="tk-toolbar">
         <div class="tk-toolbar-left">
-          <div v-if="options.enableEmotion !== false" style="position: relative; display: inline-block;">
-            <button type="button" class="tk-btn-circle" :data-tip="t('emotion')" :aria-label="t('emotion')" @click="toggleEmotionPanel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" />
-              </svg>
-            </button>
-            <EmotionPicker
-              :groups="emotions"
-              :show="showEmotion"
-              :search-placeholder="t('searchEmotion')"
-              :empty-text="t('noEmotionFound')"
-              @select="insertEmotion"
-            />
-          </div>
-
           <MarkdownToolbar :editor-ref="{ value: editorRef }" v-model="form.comment" />
         </div>
 

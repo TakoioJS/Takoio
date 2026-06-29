@@ -69,7 +69,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const validation = safeValidate(SubmitCommentSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
 
-  const { url, nick, mail, link, comment, pid, rid, ua, sticker, image, title, captchaToken } = validation.data
+  const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken } = validation.data
 
   const cfg = await getConfig()
 
@@ -109,7 +109,6 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     isSpam: false,
     isTop: false,
     image: image || null,
-    sticker: sticker || null,
     ipRegion: null as string | null,
     renderedComment: null as string | null,
   }
@@ -290,46 +289,35 @@ export const handleCommentUpdate = async (data: UpdateCommentData) => {
   return { success: true }
 }
 
-// In-memory dedup: track like/dislike by comment+ip
-const reactionIps = new Map<string, Set<string>>()
-const REACTION_TTL = 24 * 60 * 60 * 1000 // 24 hours
-setInterval(() => reactionIps.clear(), REACTION_TTL).unref()
+// ========== Comment Reaction ==========
 
-const hasReacted = (commentId: string, ip: string): boolean => {
-  const set = reactionIps.get(commentId)
-  return set ? set.has(ip) : false
+export const handleCommentReactionGet = async (data: { id: string, _ip?: string }) => {
+  const { id, _ip } = data
+  const ip = _ip || 'unknown'
+  const raw = await commentStore.getCommentReactions(id)
+  return formatCommentReactions(raw, ip)
 }
 
-const markReacted = (commentId: string, ip: string): void => {
-  let set = reactionIps.get(commentId)
-  if (!set) { set = new Set(); reactionIps.set(commentId, set) }
-  set.add(ip)
+export const handleCommentReactionSubmit = async (data: { id: string, emoji?: string, _ip?: string }) => {
+  const { id, emoji, _ip } = data
+  const ip = _ip || 'unknown'
+  if (!emoji || typeof emoji !== 'string') {
+    throw new AppError('INVALID_INPUT', 'Invalid emoji', 400)
+  }
+  const raw = await commentStore.toggleCommentReaction(id, emoji, ip)
+  return formatCommentReactions(raw, ip)
 }
 
-// ========== Comment Like ==========
-
-export const handleCommentLike = async (data: CommentIdData & { _ip?: string }) => {
-  const validation = safeValidate(CommentIdSchema, data)
-  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  const { id } = validation.data
-  const ip = data._ip || ''
-  if (ip && hasReacted(id, ip)) return { success: false, message: 'already_reacted' }
-  const result = await commentStore.likeComment(id)
-  if (result && ip) markReacted(id, ip)
-  return { success: result }
-}
-
-// ========== Comment Dislike ==========
-
-export const handleCommentDislike = async (data: CommentIdData & { _ip?: string }) => {
-  const validation = safeValidate(CommentIdSchema, data)
-  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  const { id } = validation.data
-  const ip = data._ip || ''
-  if (ip && hasReacted(id, ip)) return { success: false, message: 'already_reacted' }
-  const result = await commentStore.dislikeComment(id)
-  if (result && ip) markReacted(id, ip)
-  return { success: result }
+function formatCommentReactions (raw: Record<string, { count: number, ips: string[] }>, ip: string) {
+  const reactions: Record<string, number> = {}
+  let myReaction: string | null = null
+  for (const [emoji, info] of Object.entries(raw)) {
+    if (info.ips.length > 0) {
+      reactions[emoji] = info.count
+      if (info.ips.includes(ip)) myReaction = emoji
+    }
+  }
+  return { reactions, myReaction }
 }
 
 // ========== Comment Delete ==========

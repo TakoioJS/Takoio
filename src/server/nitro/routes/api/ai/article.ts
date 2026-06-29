@@ -20,11 +20,13 @@ const MAX_TITLE_LEN = 200
 const ARTICLE_RATE_MAX = 5
 const ARTICLE_RATE_WINDOW = 60_000
 
-function isValidHttpUrl (str: string): boolean {
+function isSafeUrlPath (str: string): boolean {
   try {
     const u = new URL(str)
     return u.protocol === 'http:' || u.protocol === 'https:'
-  } catch { return false }
+  } catch {
+    return str.startsWith('/') && !/[*?{}\[\]]/.test(str)
+  }
 }
 
 export default defineHandler(async (event) => {
@@ -47,9 +49,9 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 413, statusMessage: 'Content too long' })
   }
 
-  // C1: url must be a valid http(s) URL — prevents glob injection into Redis KEYS
-  if (!body.url || typeof body.url !== 'string' || !isValidHttpUrl(body.url)) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid url: must be a valid http(s) URL' })
+  // C1: url must be a safe path — prevents glob injection into Redis KEYS
+  if (!body.url || typeof body.url !== 'string' || !isSafeUrlPath(body.url)) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid url' })
   }
 
   if (body.title && typeof body.title === 'string' && body.title.length > MAX_TITLE_LEN) {

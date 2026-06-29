@@ -52,32 +52,11 @@
         </div>
 
         <div class="tk-comment-actions">
-          <template v-if="options.enableLike !== false">
-            <button
-              :class="['tk-btn-icon', { 'tk-liked': liked }]"
-              :aria-pressed="liked"
-              :aria-label="liked ? (t('liked') || '已点赞') : (t('like') || '点赞')"
-              :title="t('like')"
-              :disabled="liking"
-              @click="onLike"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-              <span v-if="likeCount > 0">{{ likeCount }}</span>
-            </button>
-          </template>
-          <template v-if="options.enableDislike !== false">
-            <button
-              :class="['tk-btn-icon', { 'tk-disliked': disliked }]"
-              :aria-pressed="disliked"
-              :aria-label="disliked ? (t('disliked') || '已点踩') : (t('dislike') || '点踩')"
-              :title="t('dislike')"
-              :disabled="disliking"
-              @click="onDislike"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
-              <span v-if="dislikeCount > 0">{{ dislikeCount }}</span>
-            </button>
-          </template>
+          <CommentReactionBar
+            v-if="options.enableCommentReaction !== false"
+            :comment-id="comment.id"
+            :env-id="options.envId"
+          />
           <button
             class="tk-btn-icon"
             :title="t('reply')"
@@ -169,7 +148,6 @@
               :is-reply="true"
               :depth="depth + 1"
               @reply="$emit('reply', $event)"
-              @liked="$emit('liked')"
             />
           </div>
         </template>
@@ -177,13 +155,12 @@
           <TkComment
             v-for="child in comment.children"
             :key="child.id"
-            :comment="child"
-            :options="options"
-            :is-reply="true"
-            :depth="depth + 1"
-            @reply="$emit('reply', $event)"
-            @liked="$emit('liked')"
-          />
+              :comment="child"
+              :options="options"
+              :is-reply="true"
+              :depth="depth + 1"
+              @reply="$emit('reply', $event)"
+            />
         </template>
       </div>
     </div>
@@ -193,12 +170,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { timeago, t, sanitizeUrl } from '../../utils'
-import { likeComment, dislikeComment } from '../../utils/api'
 import { renderMarkdown } from '../../utils/marked'
-import { renderLinks, renderMath, toast } from '../../utils'
+import { renderLinks, renderMath } from '../../utils'
 import type { Comment, TakoioConfig } from '../../types'
 import TkAvatar from './TkAvatar.vue'
 import TkUa from './TkUa.vue'
+import CommentReactionBar from './submit/components/CommentReactionBar.vue'
 
 interface Props {
   comment: Comment
@@ -208,15 +185,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), { isReply: false, depth: 0 })
-const emit = defineEmits<{ (e: 'reply', comment: Comment): void; (e: 'liked'): void }>()
+defineEmits<{ (e: 'reply', comment: Comment): void }>()
 
 const renderedContent = ref('')
-const liked = ref(false)
-const disliked = ref(false)
-const liking = ref(false)
-const disliking = ref(false)
-const likeCount = ref(props.comment.like)
-const dislikeCount = ref(props.comment.dislike || 0)
 const contentRef = ref<HTMLElement>()
 const showAllReplies = ref(false)
 
@@ -257,33 +228,6 @@ const renderContent = async (): Promise<void> => {
     await renderMath(contentRef.value, props.options.katex)
   }
 }
-const onLike = async (): Promise<void> => {
-  if (liking.value) return
-  try {
-    if (liked.value) {
-      liked.value = false; likeCount.value -= 1
-    } else {
-      await likeComment(props.options.envId, props.comment.id)
-      liked.value = true; likeCount.value += 1
-      if (disliked.value) { disliked.value = false; dislikeCount.value -= 1 }
-    }
-    emit('liked')
-  } catch { toast(t('actionFailed') || t('submitFailed')) }
-}
-
-const onDislike = async (): Promise<void> => {
-  if (disliking.value) return
-  try {
-    if (disliked.value) {
-      disliked.value = false; dislikeCount.value -= 1
-    } else {
-      await dislikeComment(props.options.envId, props.comment.id)
-      disliked.value = true; dislikeCount.value += 1
-      if (liked.value) { liked.value = false; likeCount.value -= 1 }
-    }
-  } catch { toast(t('actionFailed') || t('submitFailed')) }
-}
-
 const formatDate = (ts: number): string => {
   if (!ts) return ''
   return new Date(ts).toLocaleString((props.options as any).lang || 'zh-CN', {

@@ -157,16 +157,32 @@ export const commentStore = {
     return rows.map(r => normalizeDoc(r))
   },
 
-  async likeComment (id: string) {
+  async getCommentReactions (commentId: string) {
     const db = await getDb()
-    const result = await col(db, 'comments').updateOne({ _id: id }, { $inc: { like: 1 } })
-    return result.matchedCount > 0
+    const rows = await col(db, 'comment_reactions').find({ commentId }).toArray()
+    const result: Record<string, { count: number, ips: string[] }> = {}
+    for (const r of rows) {
+      if (!result[r.emoji]) result[r.emoji] = { count: 0, ips: [] }
+      result[r.emoji].count += 1
+      result[r.emoji].ips.push(r.ip)
+    }
+    return result
   },
 
-  async dislikeComment (id: string) {
+  async toggleCommentReaction (commentId: string, emoji: string, ip: string) {
     const db = await getDb()
-    const result = await col(db, 'comments').updateOne({ _id: id }, { $inc: { dislike: 1 } })
-    return result.matchedCount > 0
+    const coll = col(db, 'comment_reactions')
+    const existing = await coll.findOne({ commentId, ip })
+    if (existing) {
+      if (existing.emoji === emoji) {
+        await coll.deleteOne({ commentId, ip })
+      } else {
+        await coll.updateOne({ commentId, ip }, { $set: { emoji } })
+      }
+    } else {
+      await coll.insertOne({ commentId, emoji, ip, createdAt: Date.now() })
+    }
+    return commentStore.getCommentReactions(commentId)
   },
 
   async setCommentState (id: string, state: string) {
@@ -424,6 +440,7 @@ export async function getStore () {
     visitors: {},
     sessions: allSessions,
     reactions: {},
+    commentReactions: {},
   }
   for (const c of allConfigs) store.configs[c._id] = { value: c.value, updatedAt: c.updatedAt }
   for (const v of allVisitors) store.visitors[v._id] = { title: v.title, count: v.count, updatedAt: v.updatedAt }
@@ -436,6 +453,15 @@ export async function getStore () {
     reactMap[r.url][r.emoji].push(r.ip)
   }
   store.reactions = reactMap
+
+  const allCommentReactions = await col(db, 'comment_reactions').find({}).toArray()
+  const cReactMap: Record<string, Record<string, string[]>> = {}
+  for (const r of allCommentReactions) {
+    if (!cReactMap[r.commentId]) cReactMap[r.commentId] = {}
+    if (!cReactMap[r.commentId][r.emoji]) cReactMap[r.commentId][r.emoji] = []
+    cReactMap[r.commentId][r.emoji].push(r.ip)
+  }
+  store.commentReactions = cReactMap
 
   return store
 }
@@ -496,6 +522,16 @@ export async function importStore (data: any) {
       }
     }
   }
+  if (data.commentReactions) {
+    const coll = col(db, 'comment_reactions')
+    for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
+      for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+        for (const ip of ips) {
+          await coll.replaceOne({ commentId, ip }, { commentId, emoji, ip, createdAt: Date.now() }, { upsert: true })
+        }
+      }
+    }
+  }
 }
 
 export async function ensureDb () {
@@ -513,4 +549,7 @@ export async function ensureDb () {
     { expireAfterSeconds: 86400 }
   )
   await col(db, 'reactions').createIndex({ url: 1 })
+  // Comment reactions: unique (commentId, ip) enforces one reaction per visitor per comment
+  await col(db, 'comment_reactions').createIndex({ commentId: 1, ip: 1 }, { unique: true })
+  await col(db, 'comment_reactions').createIndex({ commentId: 1 })
 }

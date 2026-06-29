@@ -59,3 +59,13 @@ export const reactions = sqliteTable('reactions', {
   primaryKey({ columns: [table.url, table.emoji, table.ip] }),
   index('idx_reactions_url').on(table.url),
 ])
+
+export const commentReactions = sqliteTable('comment_reactions', {
+  commentId: text('comment_id').notNull(),
+  emoji: text('emoji').notNull(),
+  ip: text('ip').notNull(),
+  createdAt: integer('created_at'),
+}, (table) => [
+  primaryKey({ columns: [table.commentId, table.ip] }),
+  index('idx_comment_reactions_commentId').on(table.commentId),
+])

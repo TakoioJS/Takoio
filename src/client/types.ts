@@ -19,8 +19,6 @@ export interface Comment {
   updated?: number
   pid?: string
   rid?: string
-  like: number
-  dislike?: number
   isSpam?: boolean
   isTop?: boolean
   isPinned?: boolean
@@ -31,7 +29,6 @@ export interface Comment {
   replyCount?: number
   isAdmin?: boolean
   isMaster?: boolean
-  sticker?: string
   image?: string
   tags?: string[]
   ipRegion?: string
@@ -75,8 +72,6 @@ export interface TakoioConfig {
   title?: string
   /** 语言 */
   lang?: 'zh-CN' | 'zh-TW' | 'en' | string
-  /** 表情包选择器 */
-  emoticons?: string[]
   /** 评论框占位符 */
   placeholder?: string
   /** 无头像时跳转链接 */
@@ -95,16 +90,12 @@ export interface TakoioConfig {
   autoExpand?: boolean
   /** 是否启用文章表态 */
   enableArticleReaction?: boolean
-  /** 是否启用表情包 */
-  enableEmotion?: boolean
+  /** 是否启用评论反应 */
+  enableCommentReaction?: boolean
   /** 是否显示浏览量 */
   visitorCounter?: boolean
   /** 评论分页模式 */
   paginationMode?: 'pagination' | 'infinite'
-  /** 是否启用点赞/点踩 */
-  enableLike?: boolean
-  /** 是否启用点踩 */
-  enableDislike?: boolean
   /** 是否显示网址输入框 */
   enableLinkInput?: boolean
   /** 网址是否必填 */

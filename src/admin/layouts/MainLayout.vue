@@ -6,9 +6,9 @@
         <!-- 左侧 Brand -->
         <div class="brand-section">
           <div class="brand-logo">
-            <LogoMark />
+            <img src="/icon/icon_108x108.png" alt="Takoio" class="brand-img" />
           </div>
-          <span class="brand-text">Takoio Admin</span>
+          <span class="brand-text">Takoio</span>
         </div>
 
         <!-- 中间 导航栏 -->
@@ -56,6 +56,19 @@
         <!-- 右侧 操作按钮 -->
         <div class="header-actions">
           <n-tag v-if="isDev" size="tiny" type="warning" round class="dev-badge">热开发环境</n-tag>
+          <n-button
+            quaternary
+            circle
+            title="GitHub"
+            tag="a"
+            href="https://github.com/ArsFuturum/Takoio"
+            target="_blank"
+            rel="noopener"
+          >
+            <template #icon>
+              <n-icon size="18"><LogoGithub /></n-icon>
+            </template>
+          </n-button>
           <n-button
             quaternary
             circle
@@ -136,10 +149,9 @@ import {
 import {
   GridOutline, ChatbubblesOutline, SettingsOutline, ServerOutline,
   SunnyOutline, MoonOutline, LogOutOutline, KeyOutline, CubeOutline,
-  ChevronDownOutline,
+  ChevronDownOutline, LogoGithub,
 } from '@vicons/ionicons5'
 import { setUnauthorizedHandler, api } from '../api/client'
-import LogoMark from '../components/LogoMark.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -264,12 +276,16 @@ html.dark .admin-header {
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  background: var(--ink);
-  color: var(--paper);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.brand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .brand-text {
   font-size: 14px;

@@ -210,7 +210,7 @@ const downloadFile = (content: string, filename: string, type: string) => {
 }
 
 const formatCsv = (comments: any[]): string => {
-  const headers = ['id', 'url', 'nick', 'mail', 'link', 'comment', 'pid', 'rid', 'ua', 'ip', 'state', 'created', 'like']
+  const headers = ['id', 'url', 'nick', 'mail', 'link', 'comment', 'pid', 'rid', 'ua', 'ip', 'state', 'created']
   const escape = (v: any): string => '"' + String(v ?? '').replace(/"/g, '""').replace(/\n/g, '\\n') + '"'
   const lines = [headers.join(',')]
   for (const c of comments) {

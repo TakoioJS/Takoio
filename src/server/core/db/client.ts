@@ -78,6 +78,12 @@ export async function initDb () {
   )`)
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_reactions_url ON reactions(url)')
 
+  await _raw.execute(`CREATE TABLE IF NOT EXISTS comment_reactions (
+    comment_id TEXT NOT NULL, emoji TEXT NOT NULL, ip TEXT NOT NULL, created_at INTEGER,
+    PRIMARY KEY (comment_id, ip)
+  )`)
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comment_reactions_commentId ON comment_reactions(comment_id)')
+
   // Migration tracking table
   await _raw.execute(`CREATE TABLE IF NOT EXISTS migrations (
     name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL

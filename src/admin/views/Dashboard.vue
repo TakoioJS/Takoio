@@ -3,17 +3,18 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <h1 class="page-title">概览</h1>
-        <span v-if="lastRefreshTs" class="refresh-time">
-          最后刷新：{{ formatRefreshTime(lastRefreshTs) }}
-        </span>
+        <h1 class="page-title">欢迎回来</h1>
       </div>
-      <n-button size="small" secondary :loading="refreshing" @click="onRefresh">
-        <template #icon>
-          <n-icon><RefreshOutline /></n-icon>
-        </template>
-        刷新
-      </n-button>
+      <div class="header-right">
+        <span v-if="lastRefreshTs" class="refresh-time">
+          {{ formatRefreshTime(lastRefreshTs) }}
+        </span>
+        <n-button size="small" quaternary circle :title="`最后刷新：${lastRefreshTs ? formatRefreshTime(lastRefreshTs) : '未知'}`" :loading="refreshing" @click="onRefresh">
+          <template #icon>
+            <n-icon><RefreshOutline /></n-icon>
+          </template>
+        </n-button>
+      </div>
     </div>
 
     <!-- 统计卡片 -->
@@ -41,63 +42,8 @@
             <n-skeleton v-if="statsLoading" text :width="56" :repeat="1" />
             <template v-else>{{ formatNumber(stat.value) }}</template>
           </div>
-          <div v-if="stat.delta !== undefined && !statsLoading" class="stat-delta" :class="stat.deltaClass">
-            {{ stat.deltaText }}
-          </div>
         </div>
       </component>
-    </div>
-
-    <!-- 系统状态 + 数据管理 -->
-    <div class="system-grid">
-      <!-- 系统状态 -->
-      <div class="panel-card">
-        <div class="card-header">
-          <span class="card-title">系统状态</span>
-          <n-button size="tiny" quaternary @click="loadSystem" :loading="systemLoading">刷新</n-button>
-        </div>
-        <div class="card-body system-body">
-          <div class="sys-row">
-            <span class="sys-label">运行环境</span>
-            <n-tag v-if="systemInfo.dev" size="small" type="warning" round>热开发环境</n-tag>
-            <n-tag v-else size="small" type="success" round>生产环境</n-tag>
-          </div>
-          <div class="sys-row">
-            <span class="sys-label">数据库</span>
-            <n-tag size="small" round>{{ systemInfo.dbType || '—' }}</n-tag>
-          </div>
-          <div class="sys-row">
-            <span class="sys-label">Redis</span>
-            <n-tag v-if="systemInfo.redisSkipped" size="small" type="warning" round>可能</n-tag>
-            <n-tag v-else :type="systemInfo.redisAvailable ? 'success' : 'error'" size="small" round>
-              {{ systemInfo.redisAvailable ? '已连接' : '未连接' }}
-            </n-tag>
-          </div>
-          <div class="sys-row">
-            <span class="sys-label">AI 摘要缓存</span>
-            <span class="sys-value">{{ systemInfo.summaryCount ?? '—' }} 条</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 数据管理 -->
-      <div class="panel-card">
-        <div class="card-header">
-          <span class="card-title">数据管理</span>
-        </div>
-        <div class="card-body system-body">
-          <div class="data-mgmt-row">
-            <span class="sys-label">清除摘要缓存</span>
-            <n-tooltip v-if="systemInfo.redisSkipped" trigger="hover">
-              <template #trigger>
-                <n-button size="small" type="error" secondary disabled>清除</n-button>
-              </template>
-              热开发环境未检测 Redis
-            </n-tooltip>
-            <n-button v-else size="small" type="error" secondary @click="onClearSummaries" :loading="clearingSummaries" :disabled="!systemInfo.redisAvailable">清除</n-button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- 最近评论 -->
@@ -122,7 +68,7 @@
             <p>暂无评论</p>
           </div>
           <div v-else class="recent-grid">
-            <div v-for="c in recentComments" :key="c.id" class="recent-item">
+            <router-link v-for="c in recentComments" :key="c.id" :to="`/comments?filter=all`" class="recent-item">
               <!-- header 行 -->
               <div class="recent-header">
                 <div class="avatar-wrap" :style="{ background: avatarColor(c.nick) }">
@@ -145,27 +91,16 @@
                     <span class="recent-time">{{ formatTime(c.created) }}</span>
                   </div>
                   <!-- 原文链接行 -->
-                  <div v-if="c.url || c.href" class="recent-link" :title="c.href || c.url">
+                  <a v-if="c.url || c.href" :href="c.href || c.url" target="_blank" rel="noopener" class="recent-link" :title="c.href || c.url" @click.stop>
                     <n-icon size="12"><LinkOutline /></n-icon>
                     <span>{{ c.url || c.href }}</span>
-                  </div>
+                  </a>
                   <!-- 内容 -->
                   <div class="recent-content" v-html="(c as any)._safeContent || ''" />
                 </div>
+                <n-icon size="16" class="recent-arrow" :depth="3"><ChevronForwardOutline /></n-icon>
               </div>
-              <!-- 操作栏 -->
-              <div class="recent-actions">
-                <n-button v-if="c.state === 'pending'" size="tiny" type="success" secondary @click="approveOne(c)">通过</n-button>
-                <n-button size="tiny" secondary @click="toggleHide(c)">
-                  {{ c.state === 'hidden' ? '显示' : '隐藏' }}
-                </n-button>
-                <n-button size="tiny" :type="c.isSpam ? 'warning' : 'error'" secondary @click="toggleSpam(c)">
-                  {{ c.isSpam ? '取消垃圾' : '标垃圾' }}
-                </n-button>
-                <n-button size="tiny" type="error" secondary @click="deleteOne(c)">删除</n-button>
-                <router-link :to="`/comments?filter=all`" class="more-link">更多</router-link>
-              </div>
-            </div>
+            </router-link>
           </div>
         </n-spin>
       </div>
@@ -177,80 +112,46 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  NButton, NIcon, NTag, NSpin, NSkeleton, NTooltip, useMessage, useDialog,
+  NButton, NIcon, NTag, NSpin, NSkeleton, useMessage,
 } from 'naive-ui'
 import {
-  ChatbubblesOutline, ChatbubbleEllipsesOutline, EyeOffOutline, ShieldOutline,
+  ChatbubblesOutline, EyeOffOutline, ShieldOutline,
   ArrowForwardOutline, RefreshOutline, LinkOutline, AlertCircleOutline,
+  ChevronForwardOutline,
 } from '@vicons/ionicons5'
-import { commentsApi, type DashboardStats, type DashboardTrendPoint } from '../api/comments'
-import { api } from '../api/client'
+import { commentsApi, type DashboardStats } from '../api/comments'
 import { renderMarkdown } from '@shared/utils/marked'
 import type { Comment } from '@shared/types'
 
 const message = useMessage()
-const dialog = useDialog()
 const router = useRouter()
 
-const brandColor = '#18a058'
 const CACHE_KEY = 'takoio:dashboard:cache'
 const CACHE_TTL = 5 * 60 * 1000
 
 interface CachedData {
   ts: number
   stats: DashboardStats
-  trend: DashboardTrendPoint[]
   comments: Comment[]
 }
 
 const statsLoading = ref(false)
-const trendLoading = ref(false)
 const commentsLoading = ref(false)
 const refreshing = ref(false)
 const loadError = ref(false)
 const lastRefreshTs = ref(0)
 
 const statsData = ref<DashboardStats | null>(null)
-const trend = ref<DashboardTrendPoint[]>([])
 const recentComments = ref<(Comment & { _avatarError?: boolean })[]>([])
-
-// System status
-const systemLoading = ref(false)
-const systemInfo = ref<any>({})
-const clearingSummaries = ref(false)
 
 // 统计卡片定义
 const stats = computed(() => {
   const s = statsData.value
-  const today = s?.today ?? 0
-  const yesterday = s?.yesterday ?? 0
-  let deltaText = ''
-  let deltaClass = ''
-  let delta: number | undefined
-  if (s) {
-    delta = today - yesterday
-    if (delta > 0) {
-      deltaText = `↑ 较昨日 +${delta}`
-      deltaClass = 'delta-up'
-    } else if (delta < 0) {
-      deltaText = `↓ 较昨日 ${delta}`
-      deltaClass = 'delta-down'
-    } else {
-      deltaText = '→ 与昨日持平'
-      deltaClass = 'delta-flat'
-    }
-  }
   return [
     {
       key: 'total', label: '总评论数', value: s?.total ?? 0,
       icon: ChatbubblesOutline, bgColor: 'var(--accent-soft)', iconColor: 'var(--accent)',
       clickable: true, to: '/comments',
-    },
-    {
-      key: 'today', label: '今日新增', value: today,
-      icon: ChatbubbleEllipsesOutline, bgColor: 'var(--edge-soft)', iconColor: 'var(--ink-3)',
-      clickable: false, to: '/comments',
-      delta, deltaText, deltaClass,
     },
     {
       key: 'pending', label: '待审核', value: s?.pending ?? 0,
@@ -263,40 +164,6 @@ const stats = computed(() => {
       clickable: true, to: '/comments?filter=spam',
     },
   ]
-})
-
-// ===== 趋势图 =====
-const chartW = 700
-const chartH = 120
-const gradId = 'trendGrad'
-const points = computed(() => {
-  if (!trend.value.length) return []
-  const max = Math.max(1, ...trend.value.map(t => t.count))
-  const padX = 20
-  const padY = 12
-  const w = chartW - padX * 2
-  const h = chartH - padY * 2
-  return trend.value.map((t, i) => ({
-    x: padX + (trend.value.length === 1 ? w / 2 : (w * i) / (trend.value.length - 1)),
-    y: padY + h - (h * t.count) / max,
-    count: t.count,
-    date: t.date,
-  }))
-})
-const linePath = computed(() => {
-  if (!points.value.length) return ''
-  return points.value.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-})
-const areaPath = computed(() => {
-  if (!points.value.length) return ''
-  const first = points.value[0]
-  const last = points.value[points.value.length - 1]
-  return `${linePath.value} L${last.x.toFixed(1)},${chartH - 12} L${first.x.toFixed(1)},${chartH - 12} Z`
-})
-const trendTotal = computed(() => trend.value.reduce((a, b) => a + b.count, 0))
-const trendAvg = computed(() => {
-  if (!trend.value.length) return 0
-  return Math.round(trendTotal.value / trend.value.length)
 })
 
 // ===== 工具函数 =====
@@ -364,18 +231,6 @@ const loadStats = async () => {
   }
 }
 
-const loadTrend = async () => {
-  trendLoading.value = true
-  try {
-    trend.value = await commentsApi.getDashboardTrend(7)
-  } catch (e: any) {
-    // 趋势失败不阻塞，静默处理
-    trend.value = []
-  } finally {
-    trendLoading.value = false
-  }
-}
-
 const loadComments = async () => {
   commentsLoading.value = true
   try {
@@ -399,7 +254,6 @@ const loadAll = async (force = false) => {
     const cached = readCache()
     if (cached) {
       statsData.value = cached.stats
-      trend.value = cached.trend
       recentComments.value = cached.comments as any
       lastRefreshTs.value = cached.ts
     }
@@ -407,13 +261,12 @@ const loadAll = async (force = false) => {
   // 后台刷新
   refreshing.value = force
   loadError.value = false
-  await Promise.all([loadStats(), loadTrend(), loadComments()])
+  await Promise.all([loadStats(), loadComments()])
   if (statsData.value && !loadError.value) {
     // 写入缓存时清除头像错误标记，恢复后重新尝试加载头像
     const commentsClean = recentComments.value.map(({ _avatarError, ...rest }) => rest) as any
     writeCache({
       stats: statsData.value,
-      trend: trend.value,
       comments: commentsClean,
     })
     lastRefreshTs.value = Date.now()
@@ -423,94 +276,8 @@ const loadAll = async (force = false) => {
 
 const onRefresh = () => loadAll(true)
 
-// ===== 系统状态 + 数据管理 =====
-const loadSystem = async () => {
-  systemLoading.value = true
-  try {
-    systemInfo.value = await api.get('/api/admin/system')
-  } catch (e: any) {
-    console.warn('系统状态加载失败', e)
-  } finally {
-    systemLoading.value = false
-  }
-}
-
-const onClearSummaries = () => {
-  dialog.warning({
-    title: '确认清除',
-    content: '确定要清空所有 AI 摘要缓存吗？',
-    positiveText: '确认',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      clearingSummaries.value = true
-      try {
-        const r = await api.delete('/api/admin/data/redis/summaries')
-        message.success(r.message || '已清除')
-        await loadSystem()
-      } catch (e: any) {
-        message.error('清除失败: ' + (e.message || ''))
-      } finally {
-        clearingSummaries.value = false
-      }
-    },
-  })
-}
-
-// ===== 行内操作 =====
-const approveOne = async (c: Comment) => {
-  try {
-    await commentsApi.approve(c.id)
-    c.state = 'visible'
-    message.success('已通过审核')
-  } catch (e: any) {
-    message.error('操作失败：' + (e.message || ''))
-  }
-}
-
-const toggleHide = async (c: Comment) => {
-  const hide = c.state !== 'hidden'
-  try {
-    await commentsApi.hide(c.id, hide)
-    c.state = hide ? 'hidden' : 'visible'
-    message.success(hide ? '已隐藏' : '已显示')
-  } catch (e: any) {
-    message.error('操作失败：' + (e.message || ''))
-  }
-}
-
-const toggleSpam = async (c: Comment) => {
-  const isSpam = !c.isSpam
-  try {
-    await commentsApi.setSpam(c.id, isSpam)
-    c.isSpam = isSpam
-    c.state = isSpam ? 'spam' : 'visible'
-    message.success('操作成功')
-  } catch (e: any) {
-    message.error('操作失败：' + (e.message || ''))
-  }
-}
-
-const deleteOne = (c: Comment) => {
-  dialog.warning({
-    title: '确认删除',
-    content: '确定要删除这条评论吗？此操作不可恢复。',
-    positiveText: '删除',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await commentsApi.delete(c.id)
-        recentComments.value = recentComments.value.filter(x => x.id !== c.id)
-        message.success('已删除')
-      } catch (e: any) {
-        message.error('删除失败：' + (e.message || ''))
-      }
-    },
-  })
-}
-
 onMounted(() => {
   loadAll(false)
-  loadSystem()
 })
 
 </script>
@@ -537,7 +304,7 @@ onMounted(() => {
 }
 .page-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--ink);
   font-family: var(--font-display);
@@ -546,6 +313,11 @@ onMounted(() => {
 .refresh-time {
   font-size: 12px;
   color: var(--ink-3);
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ===== 统计卡片 ===== */
@@ -566,17 +338,6 @@ onMounted(() => {
   text-decoration: none;
   box-shadow: var(--shadow-paper);
   transition: transform 0.22s cubic-bezier(.22,.61,.36,1), box-shadow 0.22s cubic-bezier(.22,.61,.36,1), border-color 0.22s;
-  position: relative;
-}
-.stat-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--accent);
 }
 .stat-card.clickable {
   cursor: pointer;
@@ -596,6 +357,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  opacity: 0.85;
 }
 .stat-info {
   flex: 1;
@@ -607,7 +369,7 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 .stat-value {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 600;
   color: var(--ink);
   line-height: 1.2;
@@ -615,13 +377,6 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
-.stat-delta {
-  font-size: 11px;
-  margin-top: 4px;
-}
-.delta-up { color: var(--accent); }
-.delta-down { color: var(--danger); }
-.delta-flat { color: var(--ink-3); }
 
 /* ===== 面板卡片 ===== */
 .panel-card {
@@ -643,53 +398,12 @@ onMounted(() => {
   padding: 4px 16px;
 }
 
-/* 系统状态 + 数据管理 */
-.system-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-@media (max-width: 768px) {
-  .system-grid { grid-template-columns: 1fr; }
-}
-.system-body { padding: 14px 16px !important; }
-.sys-row, .data-mgmt-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-}
-.sys-label { font-size: 13px; color: var(--ink-2); }
-.sys-value { font-size: 13px; color: var(--ink); font-weight: 500; }
-
 .card-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
 }
-.trend-summary {
-  font-size: 12px;
-  color: var(--ink-3);
-}
-.trend-body { min-height: 80px; }
-.trend-chart { width: 100%; }
-.trend-svg {
-  width: 100%;
-  height: 120px;
-  display: block;
-}
-.trend-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  padding: 0 12px;
-  font-size: 11px;
-  color: var(--ink-3);
-}
-
 /* ===== 空状态 / 错误 ===== */
-.empty-hint,
 .empty-state {
   text-align: center;
   padding: 32px 0;
@@ -721,15 +435,14 @@ onMounted(() => {
 }
 .view-all-link:hover { opacity: 0.8; }
 
-.recent-list {
-  display: flex;
-  flex-direction: column;
-}
 .recent-item {
   padding: 12px 0;
-  border-bottom: 1px solid var(--edge-soft);
+  text-decoration: none;
+  color: inherit;
+  display: block;
 }
 .recent-item:last-child { border-bottom: none; }
+.recent-item:hover .recent-arrow { color: var(--accent); }
 
 .recent-header {
   display: flex;
@@ -790,7 +503,9 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration: none;
 }
+.recent-link:hover { color: var(--accent); }
 .recent-content {
   font-size: 13px;
   color: var(--ink-2);
@@ -810,22 +525,13 @@ onMounted(() => {
   vertical-align: middle;
 }
 
-.recent-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--edge-soft);
-  flex-wrap: wrap;
+.recent-arrow {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 4px;
+  color: var(--ink-4);
+  transition: color 0.2s;
 }
-.more-link {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--ink-3);
-  text-decoration: none;
-}
-.more-link:hover { color: var(--accent); }
 .recent-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -852,16 +558,13 @@ onMounted(() => {
     height: 36px;
   }
   .stat-value {
-    font-size: 18px;
+    font-size: 20px;
   }
   .panel-card .card-body {
     padding: 4px 12px;
   }
   .recent-item {
     padding: 10px 0;
-  }
-  .recent-actions {
-    gap: 4px;
   }
 }
 </style>

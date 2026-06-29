@@ -198,8 +198,6 @@ export {
   uploadImage,
   getComments,
   submitComment,
-  likeComment,
-  dislikeComment,
   getReactions,
   toggleReaction,
 } from './api'

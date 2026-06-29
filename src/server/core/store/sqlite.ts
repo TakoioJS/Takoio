@@ -1,5 +1,5 @@
 import { getDb, initDb } from '../db/client'
-import { comments, configs, visitors, sessions, reactions } from '../db/schema'
+import { comments, configs, visitors, sessions, reactions, commentReactions } from '../db/schema'
 import { eq, and, inArray, like, or, sql, asc, desc, count as drizzleCount } from 'drizzle-orm'
 
 export const COMMENT_STATE = {
@@ -119,14 +119,35 @@ export const commentStore = {
     return rows.map(r => fromRow(r))
   },
 
-  async likeComment (id: string) {
-    const result = await db().update(comments).set({ like: sql`${comments.like} + 1` }).where(eq(comments.id, id)).run()
-    return result.rowsAffected > 0
+  async getCommentReactions (commentId: string) {
+    const rows = await db().select().from(commentReactions).where(eq(commentReactions.commentId, commentId)).all()
+    const result: Record<string, { count: number, ips: string[] }> = {}
+    for (const r of rows) {
+      if (!result[r.emoji]) result[r.emoji] = { count: 0, ips: [] }
+      result[r.emoji].count += 1
+      result[r.emoji].ips.push(r.ip)
+    }
+    return result
   },
 
-  async dislikeComment (id: string) {
-    const result = await db().update(comments).set({ dislike: sql`${comments.dislike} + 1` }).where(eq(comments.id, id)).run()
-    return result.rowsAffected > 0
+  async toggleCommentReaction (commentId: string, emoji: string, ip: string) {
+    const existing = await db().select().from(commentReactions)
+      .where(and(eq(commentReactions.commentId, commentId), eq(commentReactions.ip, ip)))
+      .get()
+    if (existing) {
+      if (existing.emoji === emoji) {
+        await db().delete(commentReactions)
+          .where(and(eq(commentReactions.commentId, commentId), eq(commentReactions.ip, ip)))
+          .run()
+      } else {
+        await db().update(commentReactions).set({ emoji })
+          .where(and(eq(commentReactions.commentId, commentId), eq(commentReactions.ip, ip)))
+          .run()
+      }
+    } else {
+      await db().insert(commentReactions).values({ commentId, emoji, ip, createdAt: Date.now() }).run()
+    }
+    return commentStore.getCommentReactions(commentId)
   },
 
   async setCommentState (id: string, state: string) {
@@ -371,6 +392,7 @@ export async function getStore () {
     visitors: {},
     sessions: allSessions,
     reactions: {},
+    commentReactions: {},
   }
   for (const c of allConfigs) store.configs[c.key] = { value: c.value, updatedAt: c.updatedAt }
   for (const v of allVisitors) store.visitors[v.url] = { title: v.title, count: v.count, updatedAt: v.updatedAt }
@@ -383,6 +405,15 @@ export async function getStore () {
     reactMap[r.url][r.emoji].push(r.ip)
   }
   store.reactions = reactMap
+
+  const allCommentReactions = await db().select().from(commentReactions).all()
+  const cReactMap: Record<string, Record<string, string[]>> = {}
+  for (const r of allCommentReactions) {
+    if (!cReactMap[r.commentId]) cReactMap[r.commentId] = {}
+    if (!cReactMap[r.commentId][r.emoji]) cReactMap[r.commentId][r.emoji] = []
+    cReactMap[r.commentId][r.emoji].push(r.ip)
+  }
+  store.commentReactions = cReactMap
 
   return store
 }
@@ -438,6 +469,16 @@ export async function importStore (data: any) {
       for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
         for (const ip of ips) {
           await db().insert(reactions).values({ url, emoji, ip })
+            .onConflictDoNothing().run()
+        }
+      }
+    }
+  }
+  if (data.commentReactions) {
+    for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
+      for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+        for (const ip of ips) {
+          await db().insert(commentReactions).values({ commentId, emoji, ip, createdAt: Date.now() })
             .onConflictDoNothing().run()
         }
       }
