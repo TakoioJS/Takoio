@@ -89,46 +89,6 @@
         </div>
       </div>
 
-      <!-- 知识库 -->
-      <div class="section-card">
-        <div class="section-header">
-          <n-icon size="18" class="section-icon"><SearchOutline /></n-icon>
-          <span class="section-title">知识库</span>
-        </div>
-        <div class="section-body">
-          <div class="form-field switch-field">
-            <label class="form-label">启用知识库</label>
-            <n-switch v-model:value="config.AI_KB_ENABLED" />
-          </div>
-          <template v-if="config.AI_KB_ENABLED">
-            <div class="form-field">
-              <label class="form-label">Redis 地址</label>
-              <n-input v-model:value="config.REDIS_URL" />
-            </div>
-            <div class="form-field">
-              <label class="form-label">Embedding 提供商</label>
-              <n-select v-model:value="config.AI_EMBEDDING_PROVIDER" :options="aiProviderNameOptions" clearable />
-            </div>
-            <div class="form-field">
-              <label class="form-label">Embedding 模型</label>
-              <n-select v-model:value="config.AI_EMBEDDING_MODEL" :options="embeddingModelOptions" filterable tag clearable />
-            </div>
-            <div class="form-field">
-              <label class="form-label">对话提供商</label>
-              <n-select v-model:value="config.AI_CHAT_PROVIDER" :options="aiProviderNameOptions" clearable />
-            </div>
-            <div class="form-field">
-              <label class="form-label">对话模型</label>
-              <n-select v-model:value="config.AI_CHAT_MODEL" :options="chatModelOptions" filterable tag clearable />
-            </div>
-            <div class="form-field switch-field">
-              <label class="form-label">访客端对话浮窗</label>
-              <n-switch v-model:value="config.AI_KB_CHAT_ENABLED" />
-            </div>
-          </template>
-        </div>
-      </div>
-
 
       <!-- NSFW 检测 -->
       <div class="section-card">
@@ -181,7 +141,7 @@ import {
   useMessage, useDialog,
 } from 'naive-ui'
 import {
-  CubeOutline, EyeOffOutline, DocumentTextOutline, SearchOutline,
+  CubeOutline, EyeOffOutline, DocumentTextOutline,
   AddOutline, TrashOutline, DownloadOutline,
 } from '@vicons/ionicons5'
 import { configApi } from '../../api/config'
@@ -277,18 +237,12 @@ const onFetchModels = async (idx: number) => {
 const aiFieldKeys = [
   'ENABLE_NSFW_DETECTION', 'NSFW_SERVICE', 'NSFW_ENDPOINT', 'NSFW_API_KEY', 'NSFW_THRESHOLD',
   'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL',
-  'AI_KB_ENABLED', 'AI_KB_CHAT_ENABLED', 'REDIS_URL',
-  'AI_EMBEDDING_PROVIDER', 'AI_EMBEDDING_MODEL',
-  'AI_CHAT_PROVIDER', 'AI_CHAT_MODEL',
 ]
 
 const getDefaultValue = (key: string): any => {
   if (key === 'ENABLE_NSFW_DETECTION') return false
   if (key === 'AI_SUMMARY_ENABLED') return true
-  if (key === 'AI_KB_ENABLED') return false
-  if (key === 'AI_KB_CHAT_ENABLED') return false
   if (key === 'NSFW_THRESHOLD') return 0.5
-  if (key === 'REDIS_URL') return 'redis://localhost:6379'
   if (key === 'AI_EMBEDDING_MODEL') return 'text-embedding-3-small'
   return ''
 }
@@ -296,16 +250,6 @@ const getDefaultValue = (key: string): any => {
 // Dynamic model options for each AI feature based on selected provider
 const summaryModelOptions = computed(() => {
   const p = aiProviders.find(p => p.name === config.AI_SUMMARY_PROVIDER)
-  return (p?.models || []).map((m: string) => ({ label: m, value: m }))
-})
-
-const embeddingModelOptions = computed(() => {
-  const p = aiProviders.find(p => p.name === config.AI_EMBEDDING_PROVIDER)
-  return (p?.models || []).map((m: string) => ({ label: m, value: m }))
-})
-
-const chatModelOptions = computed(() => {
-  const p = aiProviders.find(p => p.name === config.AI_CHAT_PROVIDER)
   return (p?.models || []).map((m: string) => ({ label: m, value: m }))
 })
 

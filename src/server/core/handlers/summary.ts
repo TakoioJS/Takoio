@@ -10,6 +10,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { getConfig } from '../config'
+import { isRedisAvailable } from '../store/redis'
 
 type AiFormat = 'openai' | 'anthropic' | 'gemini'
 
@@ -57,6 +58,15 @@ export async function handleArticleSummary (data: {
 
   if (!data.content || data.content.trim().length < 10) {
     return { success: false, message: '文章内容过短，无法生成摘要', summary: '', keywords: [] }
+  }
+
+  // AI 摘要功能要求 Redis 可用（开发环境跳过检查；AI 审核和 NSFW 检测豁免）
+  const isDev = !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
+  if (!isDev) {
+    const redisOk = await isRedisAvailable()
+    if (!redisOk) {
+      return { success: false, message: 'Redis 不可用，AI 摘要功能需要 Redis。请配置 REDIS_URL 环境变量', summary: '', keywords: [] }
+    }
   }
 
   // Resolve AI provider

@@ -17,6 +17,7 @@ import { sessionStore } from '#core/store/index'
 import { AppError } from '#core/config'
 import { requireAdmin } from '#core/auth'
 import { getClientIp } from '#core/utils/ip'
+import { isRedisAvailable, listSummaryCaches, clearAllSummaryCaches } from '#core/store/redis'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
 import { LoginSchema, PasswordSetSchema } from '#core/schemas'
 
@@ -151,6 +152,34 @@ export default defineHandler(async (event) => {
     const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
     return handleImport(source, body)
+  }
+
+  // GET /api/admin/system — system status (dev mode, DB, Redis, AI stats)
+  if (segments[0] === 'system' && method === 'GET') {
+    await requireAdmin({ token: getToken(event) })
+    const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
+    const dev = !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
+    if (dev) {
+      return { dev: true, dbType, redisSkipped: true, summaryCount: 0 }
+    }
+    const redisOk = await isRedisAvailable()
+    let summaryCount = 0
+    if (redisOk) {
+      try { summaryCount = (await listSummaryCaches()).length } catch { summaryCount = 0 }
+    }
+    return {
+      dev: false,
+      dbType,
+      redisAvailable: redisOk,
+      summaryCount,
+    }
+  }
+
+  // DELETE /api/admin/data/redis/summaries — clear all summary caches
+  if (segments[0] === 'data' && segments[1] === 'redis' && segments[2] === 'summaries' && method === 'DELETE') {
+    await requireAdmin({ token: getToken(event) })
+    const deleted = await clearAllSummaryCaches()
+    return { success: true, deleted, message: `已清空 ${deleted} 条摘要缓存` }
   }
 
   throw createError({ statusCode: 404, statusMessage: 'Not Found' })

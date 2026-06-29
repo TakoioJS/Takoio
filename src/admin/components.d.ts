@@ -13,6 +13,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     LogoMark: typeof import('./components/LogoMark.vue')['default']
+    NTag: typeof import('naive-ui')['NTag']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SensitiveInput: typeof import('./components/SensitiveInput.vue')['default']
@@ -22,6 +23,7 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const LogoMark: typeof import('./components/LogoMark.vue')['default']
+  const NTag: typeof import('naive-ui')['NTag']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
   const SensitiveInput: typeof import('./components/SensitiveInput.vue')['default']

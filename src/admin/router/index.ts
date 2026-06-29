@@ -34,7 +34,13 @@ const routes: RouteRecordRaw[] = [
         path: 'ai',
         name: 'ai',
         component: () => import('../views/ai/Ai.vue'),
-        meta: { title: 'AI', icon: 'cube-outline' },
+        meta: { title: 'AI 配置', icon: 'cube-outline' },
+      },
+      {
+        path: 'ai/summary',
+        name: 'ai-summary',
+        component: () => import('../views/ai/Summary.vue'),
+        meta: { title: '摘要管理', icon: 'document-text-outline' },
       },
       {
         path: 'data',

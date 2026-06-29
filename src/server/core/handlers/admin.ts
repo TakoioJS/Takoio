@@ -5,7 +5,7 @@
 import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema } from '../schemas'
 import type { LoginData, PasswordSetData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
-import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
+import { getConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
 import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
 import { verifyPassword } from '../utils/crypto'
 import { lookupIpRegion } from '../ip-region'
@@ -72,7 +72,7 @@ export const handleLogout = async (data: any) => {
 
 // ========== Get Config ==========
 
-export const handleGetConfig = async (_: any) => ({ data: maskSensitiveConfig(await getConfig()) })
+export const handleGetConfig = async (_: any) => ({ data: await getConfig() })
 
 // ========== Set Config ==========
 

@@ -3,6 +3,10 @@
     class="tk-root"
     :data-theme="isDark ? 'dark' : 'light'"
   >
+    <TkSummary
+      v-if="options.enableSummary && options.articleContent"
+      :options="options"
+    />
     <TkComments
       :options="options"
       @comment-posted="onCommentPosted"
@@ -16,6 +20,7 @@ import { version } from '../utils'
 import { logger } from '../utils'
 import type { TakoioConfig, Comment } from '../types'
 import TkComments from './components/TkComments.vue'
+import TkSummary from './components/TkSummary.vue'
 
 interface Props {
   options: TakoioConfig

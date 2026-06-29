@@ -167,6 +167,10 @@ export interface TakoioConfig {
   maxNestDepth?: number
   /** 折叠阈值，子评论超过此数量时显示"展开全部"按钮（默认 3） */
   collapseThreshold?: number
+  /** 文章正文内容（启用 AI 摘要时必传） */
+  articleContent?: string
+  /** 是否启用 AI 摘要展示 */
+  enableSummary?: boolean
 }
 
 /** 评论计数响应 */

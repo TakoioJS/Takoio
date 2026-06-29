@@ -10,6 +10,14 @@ import { getClientIp } from '#core/utils/ip'
 
 const THROTTLE_MS = parseInt(process.env.TAKOIO_THROTTLE || '250', 10)
 
+// Skip artificial throttle delay on serverless — it wastes billed execution time
+function isServerlessPreset (): boolean {
+  const preset = (process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || '').toLowerCase()
+  return preset === 'vercel' || preset === 'netlify' || preset === 'cloudflare'
+}
+
+const skipThrottle = isServerlessPreset()
+
 export default defineMiddleware(async (event) => {
   const ip = await getClientIp(event)
 
@@ -19,7 +27,7 @@ export default defineMiddleware(async (event) => {
     return { result: { message: '请求过于频繁，请稍后再试' } }
   }
 
-  if (THROTTLE_MS > 0) {
+  if (!skipThrottle && THROTTLE_MS > 0) {
     await new Promise(r => setTimeout(r, THROTTLE_MS))
   }
 

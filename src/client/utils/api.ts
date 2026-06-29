@@ -184,3 +184,13 @@ export const uploadImage = async (envId: string, image: string): Promise<{ url: 
 
 /** Submit comment */
 export const submitCommentFn = submitComment
+
+/** Get AI article summary (public, cached server-side) */
+export const getArticleSummary = (envId: string, data: {
+  content: string; url: string; title?: string
+}): Promise<{ success: boolean; message: string; summary: string; keywords: string[]; cached: boolean }> =>
+  request(`${baseUrl(envId)}/api/ai/article`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })

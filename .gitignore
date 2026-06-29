@@ -57,3 +57,6 @@ coverage/
 /docs
 .vercel
 .env*
+# Ai
+.claude
+.mimocode

@@ -115,13 +115,6 @@ export interface TakoioConfig {
   AI_SUMMARY_ENABLED: boolean
   AI_SUMMARY_PROVIDER: string
   AI_SUMMARY_MODEL: string
-  AI_EMBEDDING_PROVIDER: string
-  AI_EMBEDDING_MODEL: string
-  AI_CHAT_PROVIDER: string
-  AI_CHAT_MODEL: string
-  AI_KB_ENABLED: boolean
-  AI_KB_CHAT_ENABLED: boolean
-  REDIS_URL: string
   AKISMET_KEY?: string
   ENABLE_ANTI_SPAM?: boolean
   CORS_ORIGINS: string
@@ -220,13 +213,6 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   AI_SUMMARY_ENABLED: true,
   AI_SUMMARY_PROVIDER: '',
   AI_SUMMARY_MODEL: '',
-  AI_EMBEDDING_PROVIDER: '',
-  AI_EMBEDDING_MODEL: 'text-embedding-3-small',
-  AI_CHAT_PROVIDER: '',
-  AI_CHAT_MODEL: '',
-  AI_KB_ENABLED: false,
-  AI_KB_CHAT_ENABLED: false,
-  REDIS_URL: 'redis://localhost:6379',
   MAIL_SUBJECT: '有人在 {title} 中回复了你',
   MAIL_TEMPLATE: `<div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#333">
   <div style="text-align:center;padding:16px 0;font-size:22px;font-weight:700;color:#10b981">{{ siteName }}</div>
@@ -316,11 +302,25 @@ export const maskSensitiveValue = (value: string): string => {
   return `${value.slice(0, 3)}****${value.slice(-4)}`
 }
 
+// C2/H3: Keys that must NEVER appear in the public config response.
+// AI_PROVIDERS is a JSON string containing cleartext LLM API keys — masking the whole blob is insufficient.
+// REDIS_URL may contain a password (redis://:secret@host). AKISMET_KEY is a secret token.
+// These are dropped entirely from the public response; admin panel reads them via the admin-gated endpoints.
+export const PUBLIC_EXCLUDED_KEYS = new Set([
+  'AI_PROVIDERS',
+  'AKISMET_KEY',
+  'AUTO_AUDIT_AI_PROMPT',
+])
+
 export const maskSensitiveConfig = (cfg: TakoioConfig): TakoioConfig => {
   const ALLOWED = new Set<string>(ALLOWED_CONFIG_KEYS)
   const masked: Record<string, any> = {}
   for (const key of ALLOWED) {
     if (key in cfg) masked[key] = cfg[key as keyof TakoioConfig]
+  }
+  // Drop secrets that must not be exposed at all (C2/H3)
+  for (const key of PUBLIC_EXCLUDED_KEYS) {
+    delete masked[key]
   }
   for (const key of SENSITIVE_CONFIG_KEYS) {
     if (masked[key] && typeof masked[key] === 'string' && masked[key].length > 0) {

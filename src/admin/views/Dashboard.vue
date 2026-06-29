@@ -48,6 +48,58 @@
       </component>
     </div>
 
+    <!-- 系统状态 + 数据管理 -->
+    <div class="system-grid">
+      <!-- 系统状态 -->
+      <div class="panel-card">
+        <div class="card-header">
+          <span class="card-title">系统状态</span>
+          <n-button size="tiny" quaternary @click="loadSystem" :loading="systemLoading">刷新</n-button>
+        </div>
+        <div class="card-body system-body">
+          <div class="sys-row">
+            <span class="sys-label">运行环境</span>
+            <n-tag v-if="systemInfo.dev" size="small" type="warning" round>热开发环境</n-tag>
+            <n-tag v-else size="small" type="success" round>生产环境</n-tag>
+          </div>
+          <div class="sys-row">
+            <span class="sys-label">数据库</span>
+            <n-tag size="small" round>{{ systemInfo.dbType || '—' }}</n-tag>
+          </div>
+          <div class="sys-row">
+            <span class="sys-label">Redis</span>
+            <n-tag v-if="systemInfo.redisSkipped" size="small" type="warning" round>可能</n-tag>
+            <n-tag v-else :type="systemInfo.redisAvailable ? 'success' : 'error'" size="small" round>
+              {{ systemInfo.redisAvailable ? '已连接' : '未连接' }}
+            </n-tag>
+          </div>
+          <div class="sys-row">
+            <span class="sys-label">AI 摘要缓存</span>
+            <span class="sys-value">{{ systemInfo.summaryCount ?? '—' }} 条</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 数据管理 -->
+      <div class="panel-card">
+        <div class="card-header">
+          <span class="card-title">数据管理</span>
+        </div>
+        <div class="card-body system-body">
+          <div class="data-mgmt-row">
+            <span class="sys-label">清除摘要缓存</span>
+            <n-tooltip v-if="systemInfo.redisSkipped" trigger="hover">
+              <template #trigger>
+                <n-button size="small" type="error" secondary disabled>清除</n-button>
+              </template>
+              热开发环境未检测 Redis
+            </n-tooltip>
+            <n-button v-else size="small" type="error" secondary @click="onClearSummaries" :loading="clearingSummaries" :disabled="!systemInfo.redisAvailable">清除</n-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 最近评论 -->
     <div class="panel-card recent-card">
       <div class="card-header">
@@ -125,13 +177,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  NButton, NIcon, NTag, NSpin, NSkeleton, useMessage, useDialog,
+  NButton, NIcon, NTag, NSpin, NSkeleton, NTooltip, useMessage, useDialog,
 } from 'naive-ui'
 import {
   ChatbubblesOutline, ChatbubbleEllipsesOutline, EyeOffOutline, ShieldOutline,
   ArrowForwardOutline, RefreshOutline, LinkOutline, AlertCircleOutline,
 } from '@vicons/ionicons5'
 import { commentsApi, type DashboardStats, type DashboardTrendPoint } from '../api/comments'
+import { api } from '../api/client'
 import { renderMarkdown } from '@shared/utils/marked'
 import type { Comment } from '@shared/types'
 
@@ -160,6 +213,11 @@ const lastRefreshTs = ref(0)
 const statsData = ref<DashboardStats | null>(null)
 const trend = ref<DashboardTrendPoint[]>([])
 const recentComments = ref<(Comment & { _avatarError?: boolean })[]>([])
+
+// System status
+const systemLoading = ref(false)
+const systemInfo = ref<any>({})
+const clearingSummaries = ref(false)
 
 // 统计卡片定义
 const stats = computed(() => {
@@ -365,6 +423,39 @@ const loadAll = async (force = false) => {
 
 const onRefresh = () => loadAll(true)
 
+// ===== 系统状态 + 数据管理 =====
+const loadSystem = async () => {
+  systemLoading.value = true
+  try {
+    systemInfo.value = await api.get('/api/admin/system')
+  } catch (e: any) {
+    console.warn('系统状态加载失败', e)
+  } finally {
+    systemLoading.value = false
+  }
+}
+
+const onClearSummaries = () => {
+  dialog.warning({
+    title: '确认清除',
+    content: '确定要清空所有 AI 摘要缓存吗？',
+    positiveText: '确认',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      clearingSummaries.value = true
+      try {
+        const r = await api.delete('/api/admin/data/redis/summaries')
+        message.success(r.message || '已清除')
+        await loadSystem()
+      } catch (e: any) {
+        message.error('清除失败: ' + (e.message || ''))
+      } finally {
+        clearingSummaries.value = false
+      }
+    },
+  })
+}
+
 // ===== 行内操作 =====
 const approveOne = async (c: Comment) => {
   try {
@@ -419,6 +510,7 @@ const deleteOne = (c: Comment) => {
 
 onMounted(() => {
   loadAll(false)
+  loadSystem()
 })
 
 </script>
@@ -543,10 +635,33 @@ onMounted(() => {
   padding: 14px 16px;
   border-bottom: 1px solid var(--edge-soft);
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .panel-card .card-body {
   padding: 4px 16px;
 }
+
+/* 系统状态 + 数据管理 */
+.system-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 768px) {
+  .system-grid { grid-template-columns: 1fr; }
+}
+.system-body { padding: 14px 16px !important; }
+.sys-row, .data-mgmt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.sys-label { font-size: 13px; color: var(--ink-2); }
+.sys-value { font-size: 13px; color: var(--ink); font-weight: 500; }
 
 .card-title {
   font-size: 14px;
