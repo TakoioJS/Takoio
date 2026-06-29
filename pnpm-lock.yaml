@@ -17,9 +17,6 @@ importers:
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
-      hono:
-        specifier: ^4.12.27
-        version: 4.12.27
       katex:
         specifier: ^0.17.0
         version: 0.17.0
@@ -2989,10 +2986,6 @@ packages:
   highlight.js@11.11.1:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
-
-  hono@4.12.27:
-    resolution: {integrity: sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q==}
-    engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
@@ -7428,8 +7421,6 @@ snapshots:
   he@1.2.0: {}
 
   highlight.js@11.11.1: {}
-
-  hono@4.12.27: {}
 
   hookable@5.5.3: {}
 
