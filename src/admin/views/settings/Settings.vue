@@ -96,6 +96,27 @@
                         <n-input v-else v-model:value="config[field.key]" :placeholder="field.placeholder" size="small" />
                       </div>
                     </div>
+
+                    <!-- Email test panel (after mail section fields) -->
+                    <div v-if="section.key === 'mail' && isLastVisible(section, section.fields.length - 1)" class="field-row full-row email-test-row">
+                      <div class="field-label-col">
+                        <div class="field-label">测试发送</div>
+                        <p class="field-desc">发送一封测试邮件验证 SMTP 配置</p>
+                      </div>
+                      <div class="field-control-col">
+                        <div class="email-test-controls">
+                          <n-input v-model:value="emailTestRecipient" placeholder="收件人邮箱（留空用默认）" size="small" style="flex:1" />
+                          <n-select v-model:value="emailTestTemplate" :options="[{ label: '用户邮件', value: 'user' }, { label: '管理员邮件', value: 'admin' }]" size="small" style="width:120px" />
+                          <n-button type="primary" size="small" :loading="emailTesting" @click="onTestEmail">
+                            <template #icon><n-icon size="14"><MailOutline /></n-icon></template>
+                            发送
+                          </n-button>
+                        </div>
+                        <div v-if="emailTestLog" class="email-test-log">
+                          <pre>{{ emailTestLog }}</pre>
+                        </div>
+                      </div>
+                    </div>
                   </template>
                 </template>
 
@@ -189,9 +210,9 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   NInput, NInputNumber, NSelect, NSwitch, NCheckbox, NCheckboxGroup,
   NSlider, NColorPicker, NButton, NSpin, NSpace, NIcon, NTooltip,
-  useMessage, useDialog,
+  useMessage, useDialog, NLog,
 } from 'naive-ui'
-import { HelpCircleOutline, TrashOutline, AddOutline, ChevronDownOutline, ChevronForwardOutline } from '@vicons/ionicons5'
+import { HelpCircleOutline, TrashOutline, AddOutline, ChevronDownOutline, ChevronForwardOutline, MailOutline } from '@vicons/ionicons5'
 import { configApi } from '../../api/config'
 import SensitiveInput from '../../components/SensitiveInput.vue'
 import { sections, type ConfigField, type ConfigSection } from './schema'
@@ -199,6 +220,35 @@ import { sections, type ConfigField, type ConfigSection } from './schema'
 const message = useMessage()
 const dialog = useDialog()
 const contentRef = ref<HTMLElement | null>(null)
+
+// Email test state
+const emailTesting = ref(false)
+const emailTestLog = ref<string>('')
+const emailTestRecipient = ref('')
+const emailTestTemplate = ref<'user' | 'admin'>('user')
+
+const onTestEmail = async () => {
+  emailTesting.value = true
+  emailTestLog.value = ''
+  try {
+    const result: any = await configApi.testEmail(emailTestRecipient.value, emailTestTemplate.value)
+    if (result.log && Array.isArray(result.log)) {
+      emailTestLog.value = result.log.map((entry: any) =>
+        `[${new Date(entry.time).toLocaleTimeString()}] ${entry.level.toUpperCase()}: ${entry.message}`
+      ).join('\n')
+    }
+    if (result.success) {
+      message.success(result.message)
+    } else {
+      message.error(result.message)
+    }
+  } catch (e: any) {
+    emailTestLog.value = `错误: ${e.message || '请求失败'}`
+    message.error('邮件测试失败')
+  } finally {
+    emailTesting.value = false
+  }
+}
 
 const loading = ref(false)
 const saving = ref(false)
@@ -624,6 +674,36 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
 }
+
+/* ---- 邮件测试面板 ---- */
+.email-test-row {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--edge-soft);
+}
+.email-test-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.email-test-log {
+  margin-top: 10px;
+  background: var(--edge-soft);
+  border-radius: var(--r-card, 8px);
+  padding: 10px 14px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.email-test-log pre {
+  margin: 0;
+  font-size: 12px;
+  font-family: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--ink-2);
+}
+.email-test-log pre :deep(.error) { color: var(--danger, #d03050); }
 
 /* ---- 浮动保存按钮 ---- */
 .save-bar {

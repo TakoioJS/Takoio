@@ -187,7 +187,7 @@
           <span class="quote-name">{{ replyTarget.nick }}</span>
           <span class="quote-time">{{ formatTime(replyTarget.created) }}</span>
         </div>
-        <div class="quote-content" v-html="(replyTarget as any)._safeContent || replyTarget.comment" />
+        <div class="quote-content" v-html="(replyTarget as any)._safeContent || ''" />
       </div>
       <n-form label-placement="left" label-width="60">
         <n-form-item label="昵称">

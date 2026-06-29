@@ -1,5 +1,5 @@
 packages:
-  - 'src/server/self-hosted'
+  - 'src/server'
   - 'src/admin'
 
 allowBuilds:

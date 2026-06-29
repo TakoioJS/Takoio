@@ -105,9 +105,9 @@ function resolveCli(cwd, name) {
 // tsx watch 在 piped stdio 下的孙进程既不输出也不绑定端口（Windows 尤甚）。
 // 改用 node --watch + tsx/esm loader：Node 原生 watch 只监听 import 链上的模块，
 // SQLite 数据库写入不触发重启，且无孙进程问题。
-const SERVER_DIR = resolve(root, 'src/server/self-hosted')
+const SERVER_DIR = resolve(root, 'src/server')
 const services = [
-  { name: 'server', color: '\x1b[32m', cwd: SERVER_DIR, cli: 'node', args: ['--watch', '--import', 'tsx/esm', 'server.ts'] },
+  { name: 'server', color: '\x1b[32m', cwd: SERVER_DIR, cli: 'nitro', args: ['dev'] },
   { name: 'client', color: '\x1b[36m', cwd: root,       cli: 'vite', args: ['--config', 'vite.config.dev.ts', '--host', '127.0.0.1', '--port', '9820'] },
 ]
 
