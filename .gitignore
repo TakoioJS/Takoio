@@ -49,6 +49,7 @@ coverage/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .stats.html
+.output/
 
 # TypeScript
 *.d.ts.map

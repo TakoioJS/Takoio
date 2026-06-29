@@ -39,10 +39,10 @@ export const sections: ConfigSection[] = [
   {
     key: 'basic', label: '基本', icon: InformationCircleOutline,
     fields: [
-      { key: 'SITE_NAME', label: '站点名称', type: 'input', placeholder: '我的网站' },
-      { key: 'SITE_URL', label: '站点地址', type: 'input', placeholder: 'https://example.com' },
+      { key: 'SITE_NAME', label: '站点名称', type: 'input' },
+      { key: 'SITE_URL', label: '站点地址', type: 'input' },
       { key: 'MASTER_NAME', label: '博主昵称', type: 'input' },
-      { key: 'MASTER', label: '博主邮箱', type: 'input', placeholder: 'admin@example.com' },
+      { key: 'MASTER', label: '博主邮箱', type: 'input' },
       { key: 'GRAVATAR_URL', label: '头像服务', type: 'select', clearable: true,
         options: [
           { label: 'WeAvatar', value: 'https://weavatar.com/avatar/' },
@@ -53,7 +53,7 @@ export const sections: ConfigSection[] = [
           { label: 'loli', value: 'https://gravatar.loli.net/avatar/' },
           { label: '自定义', value: '__custom__' },
         ] },
-      { key: 'GRAVATAR_URL_CUSTOM', label: '自定义头像服务 URL', type: 'input', placeholder: 'https://example.com/avatar/',
+      { key: 'GRAVATAR_URL_CUSTOM', label: '自定义头像服务 URL', type: 'input',
         condition: (c) => c.GRAVATAR_URL === '__custom__' },
       { key: 'GRAVATAR_DEFAULT', label: '默认头像', type: 'select',
         options: [
@@ -71,10 +71,10 @@ export const sections: ConfigSection[] = [
   {
     key: 'appearance', label: '外观', icon: ColorPaletteOutline,
     fields: [
-      { key: 'GLOBAL_COLOR', label: '主题色', type: 'color', placeholder: '#5E8C6A' },
-      { key: 'MASTER_LABEL_COLOR', label: '博主标签色', type: 'color', placeholder: '#ff6b6b' },
-      { key: 'MASTER_LABEL', label: '博主标签文字', type: 'input', placeholder: '博主' },
-      { key: 'COMMENT_BG_IMAGE', label: '评论区背景图', type: 'input', full: true, placeholder: 'https://...' },
+      { key: 'GLOBAL_COLOR', label: '主题色', type: 'color' },
+      { key: 'MASTER_LABEL_COLOR', label: '博主标签色', type: 'color' },
+      { key: 'MASTER_LABEL', label: '博主标签文字', type: 'input' },
+      { key: 'COMMENT_BG_IMAGE', label: '评论区背景图', type: 'input', full: true },
     ]
   },
   {
@@ -114,7 +114,7 @@ export const sections: ConfigSection[] = [
         condition: (c) => c.IP_REGION_ENABLED,
         options: [{ label: '完整', value: 'all' }, { label: '仅省份', value: 'city' }] },
       { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input', full: true,
-        condition: (c) => c.IP_REGION_ENABLED, placeholder: '127.0.0.1,::1' },
+        condition: (c) => c.IP_REGION_ENABLED },
       { key: 'AUDIT_MODE', label: '先审后发', type: 'switch' },
       { key: 'AUTO_AUDIT_METHOD', label: '自动审核', type: 'select',
         options: [
@@ -133,11 +133,9 @@ export const sections: ConfigSection[] = [
         filterable: true,
         condition: (c) => c.AUTO_AUDIT_METHOD === 'ai' },
       { key: 'AUTO_AUDIT_AI_PROMPT', label: 'AI 审核提示词', type: 'textarea', rows: 4, full: true,
-        placeholder: '你是一个评论审核助手，请判断以下评论是否包含垃圾信息、广告或不当内容...',
         condition: (c) => c.AUTO_AUDIT_METHOD === 'ai' },
       { key: 'BLOCKED_KEYWORDS', label: '屏蔽关键词', type: 'textarea', rows: 3,
-        placeholder: '用逗号分隔，如：赌博,博彩,推广',
-        condition: (c) => c.AUTO_AUDIT_METHOD === 'traditional' || c.AUTO_AUDIT_METHOD === '' },
+        condition: (c) => c.AUTO_AUDIT_METHOD === 'traditional' },
       { key: 'ENABLE_CAPTCHA', label: '人机验证', type: 'switch' },
       { key: 'CAPTCHA_PROVIDER', label: '验证服务商', type: 'select',
         condition: (c) => c.ENABLE_CAPTCHA,
@@ -161,7 +159,7 @@ export const sections: ConfigSection[] = [
           { label: '本地检测', value: 'self' },
           { label: 'ModelArk', value: 'modelark' },
         ] },
-      { key: 'NSFW_ENDPOINT', label: '检测服务地址', type: 'input', placeholder: 'http://localhost:8080',
+      { key: 'NSFW_ENDPOINT', label: '检测服务地址', type: 'input',
         condition: (c) => c.ENABLE_NSFW_DETECTION && c.NSFW_SERVICE === 'self' },
       { key: 'NSFW_API_KEY', label: 'API Key', type: 'sensitive',
         condition: (c) => c.ENABLE_NSFW_DETECTION && c.NSFW_SERVICE === 'modelark' },
@@ -172,18 +170,18 @@ export const sections: ConfigSection[] = [
   {
     key: 'mail', label: '邮件', icon: MailOutline,
     fields: [
-      { key: 'SMTP_HOST', label: 'SMTP 服务器', type: 'input', placeholder: 'smtp.gmail.com' },
+      { key: 'SMTP_HOST', label: 'SMTP 服务器', type: 'input' },
       { key: 'SMTP_PORT', label: 'SMTP 端口', type: 'number', min: 1, max: 65535 },
       { key: 'SMTP_USER', label: 'SMTP 用户名', type: 'input' },
       { key: 'SMTP_PASS', label: 'SMTP 密码', type: 'sensitive' },
-      { key: 'SENDER_EMAIL', label: '发件人邮箱', type: 'input', placeholder: 'noreply@example.com' },
+      { key: 'SENDER_EMAIL', label: '发件人邮箱', type: 'input' },
       { key: 'SENDER_NAME', label: '发件人名称', type: 'input' },
       { key: 'SMTP_TLS', label: '启用 TLS', type: 'switch' },
       { key: 'ENABLE_MAIL_NOTIFICATION', label: '邮件通知', type: 'switch' },
-      { key: 'MAIL_SUBJECT', label: '用户邮件主题', type: 'input', full: true, placeholder: '您有新回复' },
-      { key: 'MAIL_TEMPLATE', label: '用户邮件模板', type: 'textarea', rows: 4, full: true, placeholder: '{nick} {content} {link}' },
-      { key: 'MAIL_SUBJECT_ADMIN', label: '管理员邮件主题', type: 'input', full: true, placeholder: '站点有新评论' },
-      { key: 'MAIL_TEMPLATE_ADMIN', label: '管理员邮件模板', type: 'textarea', rows: 4, full: true, placeholder: '{nick} {content} {link}' },
+      { key: 'MAIL_SUBJECT', label: '用户邮件主题', type: 'input', full: true },
+      { key: 'MAIL_TEMPLATE', label: '用户邮件模板', type: 'textarea', rows: 4, full: true },
+      { key: 'MAIL_SUBJECT_ADMIN', label: '管理员邮件主题', type: 'input', full: true },
+      { key: 'MAIL_TEMPLATE_ADMIN', label: '管理员邮件模板', type: 'textarea', rows: 4, full: true },
     ]
   },
   {
@@ -210,7 +208,7 @@ export const sections: ConfigSection[] = [
       { key: 'SHOW_IP_REGION', label: '归属地精度', type: 'select',
         condition: (c) => c.IP_REGION_ENABLED,
         options: [{ label: '完整', value: 'all' }, { label: '仅省份', value: 'city' }] },
-      { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input', full: true, placeholder: '127.0.0.1,::1',
+      { key: 'TRUSTED_PROXIES', label: '可信代理', type: 'input', full: true,
         condition: (c) => c.IP_REGION_ENABLED },
     ]
   },
@@ -259,27 +257,24 @@ export const sections: ConfigSection[] = [
       { key: 'IMAGE_HOSTING_TOKEN', label: 'API Token', type: 'sensitive',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && isTokenProvider(c.IMAGE_HOSTING_PROVIDER) },
       { key: 'IMAGE_HOSTING_ENDPOINT', label: 'Endpoint', type: 'input',
-        placeholder: 'https://s3.example.com',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER) },
       { key: 'IMAGE_HOSTING_BUCKET', label: 'Bucket', type: 'input',
-        placeholder: 'my-bucket',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER) },
       { key: 'IMAGE_HOSTING_REGION', label: 'Region', type: 'input',
-        placeholder: 'us-east-1',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER) },
       { key: 'IMAGE_HOSTING_ACCESS_KEY', label: 'Access Key', type: 'sensitive',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER) },
       { key: 'IMAGE_HOSTING_SECRET_KEY', label: 'Secret Key', type: 'sensitive',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER) },
-      { key: 'IMAGE_HOSTING_CDN_DOMAIN', label: 'CDN域名', type: 'input', placeholder: 'cdn.example.com',
+      { key: 'IMAGE_HOSTING_CDN_DOMAIN', label: 'CDN域名', type: 'input',
         condition: (c) => c.ENABLE_IMAGE_UPLOAD && !!c.IMAGE_HOSTING_PROVIDER },
     ]
   },
   {
     key: 'advanced', label: '高级', icon: BuildOutline,
     fields: [
-      { key: 'CORS_ORIGINS', label: 'CORS 域名', type: 'input', placeholder: 'https://example.com,https://blog.com' },
-      { key: 'CUSTOM_CSS', label: '自定义 CSS', type: 'textarea', rows: 4, full: true, placeholder: '.tk-comment { ... }' },
+      { key: 'CORS_ORIGINS', label: 'CORS 域名', type: 'input' },
+      { key: 'CUSTOM_CSS', label: '自定义 CSS', type: 'textarea', rows: 4, full: true },
       { key: 'ENABLE_VISITOR_COUNTER', label: '访客计数器', type: 'switch' },
     ]
   },

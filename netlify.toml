@@ -1,13 +1,12 @@
 [build]
-  command = "npm install -g pnpm@9 && pnpm install && cd src/admin && pnpm install && npx vite build && cd ../server/self-hosted && npx tsc"
-  publish = "."
+  command = "npm install -g pnpm@9 && pnpm install && cd src/admin && pnpm install && npx vite build && cd ../server && pnpm install && NITRO_PRESET=netlify npx nitro build"
+  publish = ".output/public"
 
 [functions]
-  directory = "netlify/functions"
+  directory = ".output/server"
   node_bundler = "esbuild"
-  included_files = ["src/admin/dist/**"]
 
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/takoio"
+  to = "/.netlify/functions/server/:splat"
   status = 200
