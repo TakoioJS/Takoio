@@ -1,5 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build:admin && pnpm --filter takoio-server build:vercel",
+  "buildCommand": "pnpm build:admin && pnpm --filter takoio-server build:vercel && rm -rf .vercel/output && cp -r src/server/.vercel/output .vercel/output",
   "framework": null
 }
