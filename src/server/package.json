@@ -30,6 +30,7 @@
     "mongodb": "^7.3.0",
     "nitro": "3.0.260610-beta",
     "nodemailer": "^9.0.1",
+    "postgres": "^3.4.9",
     "pushoo": "^0.1.12",
     "shiki": "^4.3.0",
     "zod": "^4.4.3"

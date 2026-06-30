@@ -52,6 +52,8 @@ async function getImpl () {
   if (_impl) return _impl
   if (DB_TYPE === 'mongodb') {
     _impl = await import('./mongodb.js')
+  } else if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg') {
+    _impl = await import('./postgres.js')
   } else {
     _impl = await import('./sqlite.js')
   }

@@ -271,11 +271,13 @@ export const maskSensitiveValue = (value: string): string => {
 // C2/H3: Keys that must NEVER appear in the public config response.
 // AI_PROVIDERS is a JSON string containing cleartext LLM API keys — masking the whole blob is insufficient.
 // REDIS_URL may contain a password (redis://:secret@host). AKISMET_KEY is a secret token.
+// MASTER is the site owner's email — only needed server-side for markMasterComments hash; never expose to visitors.
 // These are dropped entirely from the public response; admin panel reads them via the admin-gated endpoints.
 export const PUBLIC_EXCLUDED_KEYS = new Set([
   'AI_PROVIDERS',
   'AKISMET_KEY',
   'AUTO_AUDIT_AI_PROMPT',
+  'MASTER',
 ])
 
 export const maskSensitiveConfig = (cfg: TakoioConfig): TakoioConfig => {

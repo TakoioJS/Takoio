@@ -78,7 +78,7 @@ const uaDisplay = computed(() => {
   let os = ''
   let isDesktop = true
 
-  // OS 识别（顺序敏感：Windows → macOS/iPadOS → Android → iPhone/iPad → Linux 发行版）
+  // OS 识别（顺序敏感：iPhone/iPad 须在 Mac OS X 之前，因 iPhone UA 含 "like Mac OS X"）
   if (ua.includes('Windows NT 10.0')) {
     os = 'Windows 10'
   } else if (ua.includes('Windows NT 6.3')) {
@@ -90,6 +90,11 @@ const uaDisplay = computed(() => {
   } else if (ua.includes('Windows NT')) {
     const n = ua.match(/Windows NT ([\d.]+)/)
     os = n ? `Windows ${n[1].split('.')[0]}` : 'Windows'
+  } else if (ua.includes('iPhone') || (ua.includes('iPad') && !ua.includes('Mac OS X'))) {
+    // iPhone 或旧版 iPad(UA 不含 Mac OS X)
+    isDesktop = false
+    const match = ua.match(/OS (\d+[._]\d+)/)
+    os = match ? `iOS ${match[1].split(/[._]/)[0]}` : 'iOS'
   } else if (ua.includes('Mac OS X')) {
     // iPadOS 13+ 桌面模式 UA 报告为 Mac OS X 且含 iPad
     if (ua.includes('iPad')) {
@@ -104,10 +109,6 @@ const uaDisplay = computed(() => {
     isDesktop = false
     const match = ua.match(/Android (\d+(\.\d+)?)/)
     os = match ? `Android ${match[1].split('.')[0]}` : 'Android'
-  } else if (ua.includes('iPhone') || ua.includes('iPad')) {
-    isDesktop = false
-    const match = ua.match(/OS (\d+[._]\d+)/)
-    os = match ? `iOS ${match[1].split(/[._]/)[0]}` : 'iOS'
   } else if (ua.includes('Linux')) {
     if (ua.includes('Mobile')) isDesktop = false
     // 尝试从 Firefox 类 UA 的 "X11; <Distro>; Linux" 模式解析发行版
