@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
   // dts 插件只在生产构建且不是 UMD 模式时使用（避免重复生成）
   if (isProduction && mode !== 'umd') {
     plugins.push(dts({
-      include: ['src/client/**/*.ts', 'src/client/**/*.vue'],
+      include: ['shims.d.ts', 'src/client/**/*.ts', 'src/client/**/*.vue'],
       exclude: ['src/client/**/*.test.ts'],
       rollupTypes: false,
       insertTypesEntry: true

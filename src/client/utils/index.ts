@@ -76,7 +76,7 @@ export const renderLinks = (el: Element | Element[] | null): void => {
       aEls = [...aEls, ...item.getElementsByTagName('a')]
     })
   } else {
-    aEls = el.getElementsByTagName('a')
+    aEls = Array.from(el.getElementsByTagName('a'))
   }
   for (const aEl of aEls) {
     aEl.setAttribute('target', '_blank')

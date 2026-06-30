@@ -78,10 +78,7 @@ if (typeof globalThis.__dirname === 'undefined') {
     },
   },
 
-  // Externalize native-heavy packages — they use __dirname, native bindings,
-  // or dynamic requires that break when bundled into ESM.
-  // Let Node.js resolve them natively at runtime.
-  rolldownConfig: {
-    external: ['jsdom', 'ioredis'],
-  },
+  // All dependencies are bundled into the serverless function so it works
+  // on platforms (Vercel/Netlify) where node_modules is not available at runtime.
+  // jsdom and ioredis were previously externalized but this broke serverless deploys.
 })

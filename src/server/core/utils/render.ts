@@ -1,37 +1,18 @@
 import { Marked } from 'marked'
 import { createHighlighter } from 'shiki'
-import DOMPurify from 'dompurify'
-
-// ponytail: dynamic import for jsdom — the package is externalized in nitro.config.ts
-// (rolldownConfig.external). On serverless platforms (Vercel/Netlify) where node_modules
-// is not available at runtime, a static top-level import would crash module loading.
-// Dynamic import inside initPurify() defers the load until DOMPurify is actually needed.
 // @ts-expect-error jsdom has no type declarations
-type JSDOMType = typeof import('jsdom')['JSDOM']
+import { JSDOM } from 'jsdom'
+import DOMPurify from 'dompurify'
 
 // Lazily initialize DOMPurify — JSDOM uses __dirname internally which
 // is undefined in ESM bundled builds (Nitro production). Lazy init
 // defers the crash until actually needed, and we polyfill __dirname.
 let purify: ReturnType<typeof DOMPurify> | null = null
-// True once jsdom import has failed — avoids retrying the import on every call
-let _jsdomUnavailable = false
 async function initPurify () {
   if (purify) return purify
-  if (_jsdomUnavailable) {
-    throw new Error('DOMPurify unavailable: jsdom package not found')
-  }
-  try {
-    // Dynamic import — jsdom is externalized in nitro.config.ts.
-    const { JSDOM } = await import('jsdom') as { JSDOM: JSDOMType }
-    const { window } = new JSDOM('')
-    purify = DOMPurify(window)
-    return purify
-  } catch (e: any) {
-    if (e?.code === 'ERR_MODULE_NOT_FOUND' || /Cannot find package/.test(e?.message || '')) {
-      _jsdomUnavailable = true
-    }
-    throw e
-  }
+  const { window } = new JSDOM('')
+  purify = DOMPurify(window)
+  return purify
 }
 
 let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null

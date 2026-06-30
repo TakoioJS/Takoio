@@ -19,7 +19,7 @@
   "main": "./dist/takoio.min.js",
   "module": "./dist/takoio.esm.js",
   "types": "./dist/takoio.esm.d.ts",
-  "unpkg": "./dist/takoio.umd.js",
+  "unpkg": "./dist/takoio.min.js",
   "exports": {
     ".": {
       "import": "./dist/takoio.esm.js",
