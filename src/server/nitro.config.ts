@@ -78,7 +78,11 @@ if (typeof globalThis.__dirname === 'undefined') {
     },
   },
 
-  // All dependencies are bundled into the serverless function so it works
-  // on platforms (Vercel/Netlify) where node_modules is not available at runtime.
-  // jsdom and ioredis were previously externalized but this broke serverless deploys.
+  // Externalize jsdom — it reads default-stylesheet.css via __dirname at module
+  // load time (computed-style.js:17), which breaks when bundled into ESM.
+  // render.ts uses dynamic import + try/catch so admin APIs don't load jsdom.
+  // ioredis is bundled (not external) so Redis works on serverless platforms.
+  rolldownConfig: {
+    external: ['jsdom'],
+  },
 })
