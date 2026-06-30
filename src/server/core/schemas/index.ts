@@ -186,46 +186,82 @@ export const ExportSchema = z.object({
   format: z.enum(['json', 'csv', 'takoio']).default('json'),
 })
 
+// ponytail: import endpoints accept messy data from external systems.
+// - .nullish() over .optional(): JSON uses null for absent values, not undefined
+// - preprocess coerce: booleans arrive as 0/1, numbers as strings
+// - .passthrough(): unknown fields from any source are kept, not stripped
+
+/** Coerce 0/1/"true"/"false" → boolean, preserve null/undefined */
+const importBool = () => z.preprocess(
+  (v) => {
+    if (v === null || v === undefined) return v
+    if (typeof v === 'boolean') return v
+    return v === 1 || v === 'true' || v === '1'
+  },
+  z.boolean(),
+).nullish()
+
+/** Coerce string numbers → number, preserve null/undefined */
+const importNum = () => z.preprocess(
+  (v) => {
+    if (v === null || v === undefined) return v
+    if (typeof v === 'number') return v
+    if (typeof v === 'string' && v !== '') return Number(v)
+    return v
+  },
+  z.number(),
+).nullish()
+
 const ImportCommentSchema = z.object({
-  id: z.string().optional(),
-  objectId: z.string().optional(),
-  _id: z.string().optional(),
-  url: z.string().optional(),
-  page_key: z.string().optional(),
-  thread: z.string().optional(),
-  nick: z.string().optional(),
-  name: z.string().optional(),
-  mail: z.string().optional(),
-  email: z.string().optional(),
-  link: z.string().optional(),
-  comment: z.string().optional(),
-  content: z.string().optional(),
-  message: z.string().optional(),
-  ua: z.string().optional(),
-  userAgent: z.string().optional(),
-  ip: z.string().optional(),
-  created: z.union([z.number(), z.string()]).optional(),
-  createdAt: z.union([z.number(), z.string()]).optional(),
-  insertedAt: z.union([z.number(), z.string()]).optional(),
-  time: z.union([z.number(), z.string()]).optional(),
-  pid: z.string().optional(),
-  rid: z.string().optional(),
-  parent: z.string().optional(),
-  mailMd5: z.string().optional(),
-  sticker: z.string().optional(),
-  state: z.string().optional(),
-  status: z.string().optional(),
-  isSpam: z.boolean().optional(),
-  is_pinned: z.boolean().optional(),
-  isPinned: z.boolean().optional(),
-  isTop: z.boolean().optional(),
-  like: z.number().optional(),
-  likes: z.number().optional(),
-  dislike: z.number().optional(),
-  href: z.string().optional(),
-  image: z.string().optional(),
-  ipRegion: z.string().optional(),
-})
+  // Identifiers
+  id: z.string().nullish(),
+  objectId: z.string().nullish(),
+  _id: z.string().nullish(),
+  // Page / URL fields
+  url: z.string().nullish(),
+  page_key: z.string().nullish(),
+  thread: z.string().nullish(),
+  href: z.string().nullish(),
+  // Author fields
+  nick: z.string().nullish(),
+  name: z.string().nullish(),
+  mail: z.string().nullish(),
+  email: z.string().nullish(),
+  link: z.string().nullish(),
+  mailMd5: z.string().nullish(),
+  // Content fields
+  comment: z.string().nullish(),
+  content: z.string().nullish(),
+  message: z.string().nullish(),
+  ua: z.string().nullish(),
+  userAgent: z.string().nullish(),
+  ip: z.string().nullish(),
+  ipRegion: z.string().nullish(),
+  image: z.string().nullish(),
+  sticker: z.string().nullish(),
+  // Timestamp fields — accept number or string (ISO date)
+  created: z.union([z.number(), z.string()]).nullish(),
+  createdAt: z.union([z.number(), z.string()]).nullish(),
+  created_at: z.union([z.number(), z.string()]).nullish(),
+  insertedAt: z.union([z.number(), z.string()]).nullish(),
+  time: z.union([z.number(), z.string()]).nullish(),
+  // Parent references
+  pid: z.string().nullish(),
+  rid: z.string().nullish(),
+  parent: z.string().nullish(),
+  // State fields
+  state: z.string().nullish(),
+  status: z.string().nullish(),
+  // Booleans — coerce from 0/1/"true"/"false"
+  isSpam: importBool(),
+  is_pinned: importBool(),
+  isPinned: importBool(),
+  isTop: importBool(),
+  // Numbers — coerce from strings, preserve null/undefined
+  like: importNum(),
+  likes: importNum(),
+  dislike: importNum(),
+}).passthrough() // allow unknown fields from any import source
 
 export const ImportSchema = z.object({
   json: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),

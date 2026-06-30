@@ -3,11 +3,10 @@
     v-if="uaDisplay"
     class="tk-ua"
   >
-    <svg
-      v-if="uaDisplay.osIcon"
-      class="tk-ua-icon"
-      viewBox="0 0 24 24"
-      v-html="uaDisplay.osIcon"
+    <!-- OS 图标：有 slug 用 Simple Icons，否则兜底 lucide -->
+    <i
+      v-if="uaDisplay.osIconClass"
+      :class="['tk-ua-icon', uaDisplay.osIconClass]"
     />
     <i
       v-else-if="uaDisplay.isDesktop"
@@ -19,11 +18,10 @@
     />
     <span v-if="uaDisplay.os">{{ uaDisplay.os }}</span>
 
-    <svg
-      v-if="uaDisplay.browserIcon"
-      class="tk-ua-icon tk-ua-ml"
-      viewBox="0 0 24 24"
-      v-html="uaDisplay.browserIcon"
+    <!-- Browser 图标 -->
+    <i
+      v-if="uaDisplay.browserIconClass"
+      :class="['tk-ua-icon', 'tk-ua-ml', uaDisplay.browserIconClass]"
     />
     <i
       v-else-if="uaDisplay.browser"
@@ -38,33 +36,39 @@ import { computed } from 'vue'
 
 const props = defineProps<{ ua?: string }>()
 
-const OS_SVGS: Record<string, string> = {
-  windows: '<path fill="currentColor" d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>',
-  macos: '<path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>',
-  apple: '<path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>',
-  android: '<path fill="currentColor" d="M17.523 15.341q-.69 0-1.176-.489-.485-.489-.485-1.177 0-.688.485-1.177.487-.488 1.176-.488.69 0 1.178.488.486.49.486 1.177 0 .688-.486 1.177-.487.489-1.177.489zm-11.046 0q-.69 0-1.177-.489-.486-.489-.486-1.177 0-.688.486-1.177.487-.488 1.177-.488.69 0 1.177.488.485.49.485 1.177 0 .688-.485 1.177-.487.489-1.177.489zM17.2 4.94l2.003-3.47a.416.416 0 00-.152-.567.416.416 0 00-.568.152L16.49 4.53C14.96 3.805 13.277 3.408 11.5 3.408c-4.537 0-8.22 3.498-8.22 7.81 0 1.29.307 2.514.85 3.625H2.716a.416.416 0 00-.415.416.416.416 0 00.415.417h2.303q.257.88.685 1.703a.416.416 0 00.354.205h.002a.416.416 0 00.414-.42l-.012-.084h9.174l-.012.084a.416.416 0 00.414.42h.002a.416.416 0 00.354-.205q.427-.823.684-1.703h2.303a.416.416 0 00.415-.417.416.416 0 00-.415-.416h-1.628a8.6 8.6 0 00.85-3.625c0-4.312-3.683-7.81-8.22-7.81-1.777 0-3.46.397-4.99 1.122L2.553 1.055a.416.416 0 00-.568-.152.414.414 0 00-.152.567l2.003 3.47C5.148 3.675 8.188 2.992 11.5 2.992c3.313 0 6.353.683 8.333 2.058h-2.63z"/>',
-  linux: '<path fill="currentColor" d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.368.39 0 .741-.136.99-.386a1.27 1.27 0 00.264-.367 2.3 2.3 0 00.074-.389c.136-.073.273-.134.39-.276.391-.467.199-1.09-.185-1.758-.143-.261-.314-.525-.485-.753a10.08 10.08 0 00.799-1.243c.18-.365.695-.5.85-.839.09-.189.136-.4.132-.602-.003-.199-.029-.4-.055-.536-.058-.399-.117-.728-.04-.97.249-.68.28-1.145.106-1.484-.174-.334-.535-.47-.94-.6-.175-.043-.355-.075-.536-.1a6.7 6.7 0 00-.765-2.49c-.487-.888-1.203-1.882-2.44-2.338-.722-.292-1.448-.386-2.116-.475l-.022-.002a.13.13 0 01-.12-.06.128.128 0 01-.01-.142l.028-.047c.057-.106.12-.214.168-.329.345-.766.408-1.552.302-2.436-.112-.722-.4-1.475-.72-2.217-.56-1.235-1.165-2.394-1.286-3.483a.13.13 0 01.054-.116c.45-.333.983-.598 1.549-.815C11.394.077 12.005.037 12.504 0z"/>',
-}
+// OS：按数组顺序匹配，命中即取 slug。通用 Linux 兜底放最后。
+const OS_ICON_PREFIXES: Array<{ match: (os: string) => boolean, slug: string }> = [
+  { match: os => os.startsWith('Windows'), slug: 'windows' },
+  { match: os => os === 'macOS' || os.startsWith('macOS '), slug: 'macos' },
+  { match: os => os.startsWith('iOS'), slug: 'apple' },
+  { match: os => os.startsWith('iPadOS'), slug: 'apple' },
+  { match: os => os.startsWith('Android'), slug: 'android' },
+  { match: os => os === 'Ubuntu', slug: 'ubuntu' },
+  { match: os => os === 'Debian', slug: 'debian' },
+  { match: os => os === 'Fedora', slug: 'fedora' },
+  { match: os => os === 'Arch Linux', slug: 'archlinux' },
+  { match: os => os === 'Linux Mint', slug: 'linuxmint' },
+  { match: os => os === 'Manjaro', slug: 'manjaro' },
+  { match: os => os === 'openSUSE', slug: 'opensuse' },
+  { match: os => os === 'Gentoo', slug: 'gentoo' },
+  { match: os => os === 'Kali', slug: 'kalilinux' },
+  { match: os => os === 'CentOS', slug: 'centos' },
+  { match: os => os === 'Red Hat', slug: 'redhat' },
+  { match: os => os === 'Linux', slug: 'linux' }, // 通用 Linux 兜底（最后匹配）
+]
 
-const BROWSER_SVGS: Record<string, string> = {
-  chrome: '<path fill="currentColor" d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0112 6.545h10.799A12 12 0 0012 0zM1.931 5.47A11.943 11.943 0 000 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 01-6.865-2.29zm13.838 2.108l4.738 8.207A11.951 11.951 0 0024 12c0-3.294-1.374-6.268-3.567-8.395zM8.726 3.964A11.94 11.94 0 00.802 10.637l3.953 6.848a5.426 5.426 0 012.325-3.526zm5.067 10.314l3.374 5.844c2.993-1.748 5.025-4.96 5.339-8.727H14.2a5.44 5.44 0 01-.407 2.883z"/>',
-  firefox: '<path fill="currentColor" d="M8.076 19.219a8.047 8.047 0 01-2.646-5.576l-.004.003-.003.003a3.506 3.506 0 01-1.28-2.289 3.527 3.527 0 012.01-3.893 3.524 3.524 0 01-1.194-2.885c0-.172.012-.342.035-.51a3.521 3.521 0 011.884-2.843C9.146.448 12.723.21 15.49 1.763c2.041 1.133 3.259 3.155 3.453 5.385a5.45 5.45 0 00-2.857-1.15 5.48 5.48 0 00-4.486 2.342l-.572.855a2.97 2.97 0 01-2.52 1.462c-.912-.025-1.764.33-2.417 1.002a3.52 3.52 0 00-.523 3.884l.007.012.002.004a5.48 5.48 0 001.732 4.57 8.07 8.07 0 01-1.917 1.772l-.003.003.003-.005a5.472 5.472 0 002.256 2.454c-.065.003-.13.007-.196.012a8.09 8.09 0 01-4.605-1.47zm10.374-9.13c-.013.073-.03.145-.05.216l-.003.004a3.52 3.52 0 01-1.893 2.38 3.52 3.52 0 01-.356 4.027c.196.328.443.622.735.87a5.454 5.454 0 002.395 1.208 8.06 8.06 0 01-1.86 1.438l-.164.095-.024.013-.02.011-.02.01-.023.012-.021.009-.03.014-.022.008-.035.013-.023.007-.04.012-.02.004-.05.011-.016.003a8.03 8.03 0 01-4.087-.03l-.024-.006-.025-.007-.021-.006-.027-.008-.02-.006-.027-.009-.018-.007-.028-.011-.015-.006-.03-.013-.012-.005-.032-.015-.008-.004-.035-.018-.004-.003-.019-.01a8.05 8.05 0 01-2.482-2.61 8.06 8.06 0 01-1.01-3.077l-.002-.023-.001-.026v-.025l.001-.029.003-.024.002-.023.004-.026.004-.024.006-.026.005-.022.008-.026.007-.021.009-.025.009-.02.011-.024.012-.02.013-.022.015-.02.016-.02.018-.018.02-.018.022-.018.024-.017.026-.016.028-.015.03-.013.033-.013.035-.012.037-.01.04-.01.042-.008.044-.007.047-.006.05-.004.052-.003.055-.002.058-.001h.064c2.022 0 3.855-1.104 4.828-2.751.308-.523.555-1.089.737-1.684z"/>',
-  edge: '<path fill="currentColor" d="M21.756 13.27A8.002 8.002 0 0012.16 4.468c1.36 0 2.63.47 3.623 1.254a7.96 7.96 0 012.065 5.223h.002c0 .278-.014.553-.04.825H16.16a3.738 3.738 0 00-1.022-1.567 3.787 3.787 0 00-2.192-.71c-2.1 0-3.803 1.716-3.803 3.83 0 2.114 1.703 3.83 3.803 3.83.554 0 1.087-.12 1.574-.336a3.74 3.74 0 001.128-1.258l.036.003c.082.06.161.124.238.191A7.96 7.96 0 0112.16 20a8 8 0 009.596-6.73zM12.16 20a8 8 0 01-3.796-1.29c.048-.07.098-.138.148-.206a5.78 5.78 0 001.537-3.276H4.002a7.97 7.97 0 001.36 4.487A8.002 8.002 0 014 12a8 8 0 011.36-4.487l.012.021h5.878a5.78 5.78 0 00-.014.714c0 1.24.258 2.394.71 3.401a5.74 5.74 0 003.59 2.559c-.062.17-.13.337-.205.5A7.96 7.96 0 0112.16 20z"/>',
-  safari: '<path fill="currentColor" d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zm0 2.25a8.75 8.75 0 110 17.5 8.75 8.75 0 010-17.5zm-.875 3.11l4.768 8.255H8.357l4.768-8.255zm-.002 10.03l-4.768-8.256h9.536l-4.768 8.256z"/>',
-  ie: '<path fill="currentColor" d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zm4.615 7h-4.23c.12.51.186 1.084.186 1.72 0 2.086-.75 3.493-1.584 4.39l1.728 1.07c1.245-1.31 2.064-3.22 2.064-5.65 0-.54-.047-1.05-.136-1.53h-.028zm-8.72 0H6.556c-.066.31-.096.64-.096.99 0 2.15.63 4.23 1.77 6.01l1.632-1.17c-.732-1.16-1.162-2.52-1.162-3.97 0-.31.02-.61.057-.86zm.19 7.7l1.56-1.22c.74.89 1.074 2.01 1.074 3.28 0 .28-.022.55-.066.81H17.4c-.078-.48-.21-.94-.39-1.37l-1.56 1.08c-.62.83-1.044 2.06-1.044 3.53 0 .33.03.65.087.96H8.61a8.77 8.77 0 01-.334-1.32c-.036-.2-.06-.41-.082-.61l.003-.006c.022-.19.035-.38.043-.57.01-.2.015-.39.015-.59 0-1.74-.59-3.23-1.368-4.31z"/>',
-}
-
-const uaIconMap: Record<string, { os?: string; browser?: string }> = {
-  Windows: { os: 'windows' },
-  Mac: { os: 'macos' },
-  iOS: { os: 'apple' },
-  Android: { os: 'android' },
-  Linux: { os: 'linux' },
-  Chrome: { browser: 'chrome' },
-  Edge: { browser: 'edge' },
-  Firefox: { browser: 'firefox' },
-  Safari: { browser: 'safari' },
-  IE: { browser: 'ie' },
+const BROWSER_ICON_SLUGS: Record<string, string> = {
+  Edge: 'microsoftedge',
+  Chrome: 'googlechrome',
+  Firefox: 'firefoxbrowser',
+  Safari: 'safari',
+  IE: 'internetexplorer',
+  Opera: 'opera',
+  'Samsung Internet': 'samsung', // 无专用图标，用 Samsung 品牌图标
+  Brave: 'brave',
+  Vivaldi: 'vivaldi',
+  // Yandex Browser 与 Chromium 无 Simple Icons 图标，回退到 lucide globe
+  DuckDuckGo: 'duckduckgo',
 }
 
 const uaDisplay = computed(() => {
@@ -72,16 +76,30 @@ const uaDisplay = computed(() => {
   if (!ua) return null
   let browser = ''
   let os = ''
-  let osIcon = ''
-  let browserIcon = ''
   let isDesktop = true
 
-  if (ua.includes('Windows NT 10.0')) { os = 'Windows 10' } else if (ua.includes('Windows NT 6.3')) { os = 'Windows 8.1' } else if (ua.includes('Windows NT 6.2')) { os = 'Windows 8' } else if (ua.includes('Windows NT 6.1')) { os = 'Windows 7' } else if (ua.includes('Windows NT')) {
+  // OS 识别（顺序敏感：Windows → macOS/iPadOS → Android → iPhone/iPad → Linux 发行版）
+  if (ua.includes('Windows NT 10.0')) {
+    os = 'Windows 10'
+  } else if (ua.includes('Windows NT 6.3')) {
+    os = 'Windows 8.1'
+  } else if (ua.includes('Windows NT 6.2')) {
+    os = 'Windows 8'
+  } else if (ua.includes('Windows NT 6.1')) {
+    os = 'Windows 7'
+  } else if (ua.includes('Windows NT')) {
     const n = ua.match(/Windows NT ([\d.]+)/)
     os = n ? `Windows ${n[1].split('.')[0]}` : 'Windows'
   } else if (ua.includes('Mac OS X')) {
-    const match = ua.match(/Mac OS X (\d+[._]\d+)/)
-    os = match ? `macOS ${match[1].split(/[._]/)[0]}` : 'macOS'
+    // iPadOS 13+ 桌面模式 UA 报告为 Mac OS X 且含 iPad
+    if (ua.includes('iPad')) {
+      isDesktop = false
+      const match = ua.match(/OS (\d+[._]\d+)/)
+      os = match ? `iPadOS ${match[1].split(/[._]/)[0]}` : 'iPadOS'
+    } else {
+      const match = ua.match(/Mac OS X (\d+[._]\d+)/)
+      os = match ? `macOS ${match[1].split(/[._]/)[0]}` : 'macOS'
+    }
   } else if (ua.includes('Android')) {
     isDesktop = false
     const match = ua.match(/Android (\d+(\.\d+)?)/)
@@ -92,44 +110,104 @@ const uaDisplay = computed(() => {
     os = match ? `iOS ${match[1].split(/[._]/)[0]}` : 'iOS'
   } else if (ua.includes('Linux')) {
     if (ua.includes('Mobile')) isDesktop = false
-    os = 'Linux'
+    // 尝试从 Firefox 类 UA 的 "X11; <Distro>; Linux" 模式解析发行版
+    const distroMatch = ua.match(/X11; ([^;]+); Linux/i)
+    if (distroMatch) {
+      const distroRaw = distroMatch[1].trim()
+      const distroMap: Record<string, string> = {
+        'Ubuntu': 'Ubuntu',
+        'Debian': 'Debian',
+        'Fedora': 'Fedora',
+        'Arch Linux': 'Arch Linux',
+        'Arch': 'Arch Linux',
+        'Linux Mint': 'Linux Mint',
+        'Manjaro Linux': 'Manjaro',
+        'Manjaro': 'Manjaro',
+        'openSUSE': 'openSUSE',
+        'Gentoo': 'Gentoo',
+        'Kali': 'Kali',
+        'CentOS': 'CentOS',
+        'Red Hat': 'Red Hat',
+      }
+      os = distroMap[distroRaw] || 'Linux'
+    } else {
+      os = 'Linux'
+    }
   }
 
+  // 浏览器识别（顺序敏感：Chromium 系须在 Chrome 之前判断）
   let version = ''
   if (ua.includes('Edg/')) {
     browser = 'Edge'
-    const match = ua.match(/Edg\/(\d+\.\d+)/)
-    if (match) version = match[1].split('.')[0]
+    const m = ua.match(/Edg\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('OPR/') || ua.includes('Opera/')) {
+    browser = 'Opera'
+    const m = ua.match(/(?:OPR|Opera)\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('SamsungBrowser/')) {
+    browser = 'Samsung Internet'
+    const m = ua.match(/SamsungBrowser\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('Brave/')) {
+    browser = 'Brave'
+    const m = ua.match(/Brave\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('Vivaldi/')) {
+    browser = 'Vivaldi'
+    const m = ua.match(/Vivaldi\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('YaBrowser/')) {
+    browser = 'Yandex Browser'
+    const m = ua.match(/YaBrowser\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('DuckDuckGo/')) {
+    browser = 'DuckDuckGo'
+    const m = ua.match(/DuckDuckGo\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
   } else if (ua.includes('Chrome/') && !ua.includes('Edg')) {
     browser = 'Chrome'
-    const match = ua.match(/Chrome\/(\d+\.\d+)/)
-    if (match) version = match[1].split('.')[0]
+    const m = ua.match(/Chrome\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
+  } else if (ua.includes('Chromium/')) {
+    browser = 'Chromium'
+    const m = ua.match(/Chromium\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
   } else if (ua.includes('Firefox/')) {
     browser = 'Firefox'
-    const match = ua.match(/Firefox\/(\d+(\.\d+)?)/)
-    if (match) version = match[1].split('.')[0]
+    const m = ua.match(/Firefox\/(\d+(\.\d+)?)/)
+    if (m) version = m[1].split('.')[0]
   } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
     browser = 'Safari'
-    const match = ua.match(/Version\/(\d+\.\d+)/)
-    if (match) version = match[1].split('.')[0]
+    const m = ua.match(/Version\/(\d+\.\d+)/)
+    if (m) version = m[1].split('.')[0]
   } else if (ua.includes('MSIE') || ua.includes('Trident/')) {
     browser = 'IE'
   }
 
   if (!browser && !os) return null
 
-  const osKey = Object.keys(uaIconMap).find(k => os.includes(k))
-  if (osKey && uaIconMap[osKey].os) osIcon = OS_SVGS[uaIconMap[osKey].os!]
+  // OS 图标：按 OS_ICON_PREFIXES 顺序匹配
+  let osSlug = ''
+  for (const item of OS_ICON_PREFIXES) {
+    if (os && item.match(os)) {
+      osSlug = item.slug
+      break
+    }
+  }
+  const osIconClass = osSlug ? `i-simple-icons-${osSlug}` : ''
 
-  const browserKey = Object.keys(uaIconMap).find(k => browser.includes(k))
-  if (browserKey && uaIconMap[browserKey].browser) browserIcon = BROWSER_SVGS[uaIconMap[browserKey].browser!]
+  // Browser 图标：精确名查表
+  const browserIconClass = browser && BROWSER_ICON_SLUGS[browser]
+    ? `i-simple-icons-${BROWSER_ICON_SLUGS[browser]}`
+    : ''
 
   return {
     os,
-    osIcon,
+    osIconClass,
     browser: [browser, version].filter(Boolean).join(' '),
-    browserIcon,
-    isDesktop
+    browserIconClass,
+    isDesktop,
   }
 })
 </script>
