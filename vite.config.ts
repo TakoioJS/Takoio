@@ -57,7 +57,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      emptyOutDir: !process.env.TK_UMD_BUILD,
+      emptyOutDir: mode !== 'umd',
       sourcemap: mode !== 'umd',
       minify: 'esbuild',
       target: 'es2018',
