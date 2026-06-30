@@ -229,4 +229,9 @@ const uaDisplay = computed(() => {
 .tk-ua-ml {
   margin-left: 6px;
 }
+@media (max-width: 640px) {
+  .tk-ua { gap: 3px; }
+  .tk-ua-icon { width: 11px; height: 11px; }
+  .tk-ua-ml { margin-left: 4px; }
+}
 </style>

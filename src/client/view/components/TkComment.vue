@@ -321,10 +321,29 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-meta-item { display: inline-flex; align-items: center; gap: 3px; }
 .tk-replies { margin-top: 8px; }
 @media (max-width: 640px) {
-  .tk-comment { padding: 12px 10px; gap: 8px; }
-  .tk-comment-body { overflow: hidden; }
-  .tk-comment-reply { margin-left: 12px; padding-left: 8px; }
-  .tk-replies .tk-comment-reply { margin-left: 8px; }
-  .tk-replies .tk-replies .tk-comment-reply { margin-left: 6px; padding-left: 4px; }
+  .tk-comment { padding: 10px 8px; gap: 6px; }
+  /* 移动端缩小头像，为正文/信息区腾出横向空间 */
+  .tk-comment :deep(.tk-avatar) { width: 32px; height: 32px; font-size: 12px; }
+  /* 注意：不可加 overflow: hidden，否则会裁剪 Reaction 弹窗等绝对定位浮层 */
+  .tk-comment-body { min-width: 0; }
+  /* 头部紧凑化 */
+  .tk-comment-header { gap: 6px; margin-bottom: 4px; }
+  .tk-comment-left { gap: 6px; }
+  .tk-nick { font-size: 13px; }
+  .tk-tag { font-size: 10px; padding: 0 6px; margin-left: 2px; line-height: 1.5; }
+  .tk-time { font-size: 11px; }
+  .tk-time-sep { margin: 0 2px; }
+  .tk-btn-icon { padding: 2px 4px; }
+  /* 嵌套回复缩进进一步压缩，避免深层评论宽度被吃 */
+  .tk-comment-reply { margin-left: 8px; padding-left: 6px; }
+  .tk-replies .tk-comment-reply { margin-left: 6px; padding-left: 4px; }
+  .tk-replies .tk-replies .tk-comment-reply { margin-left: 4px; padding-left: 3px; }
+  /* 元信息区（IP + UA）允许换行，纵向堆叠避免挤压 */
+  .tk-comment-meta { flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; padding-top: 6px; font-size: 10px; }
+  .tk-meta-item { gap: 2px; }
+  /* 图片自适应 */
+  .tk-comment-image img { max-width: 100%; max-height: 280px; }
+  /* 反应栏更紧凑 */
+  .tk-comment-reactions { margin-top: 4px; }
 }
 </style>

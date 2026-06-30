@@ -20,6 +20,7 @@
       class="tk-cr-add-wrap"
     >
       <button
+        ref="triggerRef"
         type="button"
         class="tk-cr-add"
         :aria-label="t('addReaction')"
@@ -53,7 +54,9 @@
       </button>
       <div
         v-show="showPopover"
+        ref="popoverRef"
         class="tk-cr-popover"
+        :style="popoverStyle"
         @click.stop
       >
         <button
@@ -72,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, toast } from '../../../../utils'
 import { useCommentReactions } from '../composables/useCommentReactions'
 
@@ -93,9 +96,47 @@ const visibleEmojis = computed(() => props.emojis.filter(e => reactions.value[e]
 
 const showPopover = ref(false)
 const wrapRef = ref<HTMLElement>()
+const triggerRef = ref<HTMLElement>()
+const popoverRef = ref<HTMLElement>()
+// 弹窗动态定位：left/right/position=fixed，保证不超出视口
+const popoverStyle = ref<Record<string, string>>({})
 
-const togglePopover = (): void => {
+const togglePopover = async (): Promise<void> => {
   showPopover.value = !showPopover.value
+  if (showPopover.value) {
+    await nextTick()
+    updatePopoverPosition()
+  }
+}
+
+// 根据触发按钮在视口的位置，动态计算弹窗锚点，防止超出视口
+const updatePopoverPosition = (): void => {
+  const trigger = triggerRef.value
+  const popover = popoverRef.value
+  if (!trigger || !popover) {
+    popoverStyle.value = {}
+    return
+  }
+  const rect = trigger.getBoundingClientRect()
+  const popRect = popover.getBoundingClientRect()
+  const vw = window.innerWidth
+  const margin = 8
+
+  // 默认左对齐按钮
+  let left = rect.left
+  // 若右溢出，向左偏移使弹窗贴近视口右边
+  if (left + popRect.width > vw - margin) {
+    left = Math.max(margin, vw - margin - popRect.width)
+  }
+  // 若左溢出（极窄屏），贴左
+  if (left < margin) left = margin
+
+  popoverStyle.value = {
+    position: 'fixed',
+    left: `${left}px`,
+    top: `${rect.bottom + 6}px`,
+    right: 'auto',
+  }
 }
 
 const onPillClick = (emoji: string): void => {
@@ -113,15 +154,24 @@ const onDocClick = (e: MouseEvent): void => {
   }
 }
 
+// 滚动/resize 时若弹窗打开则更新位置
+const onLayoutChange = (): void => {
+  if (showPopover.value) updatePopoverPosition()
+}
+
 watch(() => props.commentId, (id) => { if (id) fetchReactions(id) })
 
 onMounted(() => {
   if (props.commentId) fetchReactions(props.commentId)
   document.addEventListener('click', onDocClick)
+  window.addEventListener('scroll', onLayoutChange, true)
+  window.addEventListener('resize', onLayoutChange)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick)
+  window.removeEventListener('scroll', onLayoutChange, true)
+  window.removeEventListener('resize', onLayoutChange)
 })
 </script>
 
@@ -137,8 +187,8 @@ onBeforeUnmount(() => {
 .tk-cr-add { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-pill); background: transparent; color: inherit; opacity: .55; cursor: pointer; font-family: inherit; font-size: 13px; transition: all .15s; }
 .tk-cr-add:hover { opacity: 1; border-color: var(--tk-border); background: var(--tk-bg-muted); }
 
-.tk-cr-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 100; display: flex; flex-wrap: nowrap; gap: 2px; padding: 6px 8px; background: var(--tk-bg-popup); border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-pill); box-shadow: var(--tk-shadow-lift); }
-.tk-cr-popover-item { display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 30px; height: 30px; padding: 0 6px; border: none; border-radius: var(--tk-r-input); background: transparent; font-size: 18px; cursor: pointer; transition: all .15s; color: inherit; font-family: inherit; }
+.tk-cr-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; display: grid; grid-template-columns: repeat(4, 32px); gap: 2px; padding: 6px; background: var(--tk-bg-popup); border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-card); box-shadow: var(--tk-shadow-lift); }
+.tk-cr-popover-item { display: inline-flex; align-items: center; justify-content: center; width: 32px; min-width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--tk-r-input); background: transparent; font-size: 18px; cursor: pointer; transition: all .15s; color: inherit; font-family: inherit; }
 .tk-cr-popover-item:hover { background: var(--tk-brand-light); transform: scale(1.15); }
 .tk-cr-popover-item.tk-cr-active { background: var(--tk-brand-light); }
 </style>
