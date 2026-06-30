@@ -9,6 +9,7 @@
  */
 
 import { getConfig } from '#core/config'
+import { logger } from '#core/utils/logger'
 
 let cachedWarn = false
 
@@ -32,7 +33,7 @@ export default defineMiddleware(async (event) => {
     allowed = true
     if (!cachedWarn) {
       cachedWarn = true
-      console.warn('CORS_ORIGINS 未配置，生产环境请在管理面板中设置允许的域名。当前为开发模式，不发送跨域凭据。')
+      logger.warn('CORS_ORIGINS 未配置，生产环境请在管理面板中设置允许的域名。当前为开发模式，不发送跨域凭据。')
     }
   }
 

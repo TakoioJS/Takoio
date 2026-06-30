@@ -5,6 +5,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { newWithBuffer, loadContentFromFile, defaultDbFile } from 'ip2region-ts'
+import { logger } from './utils/logger'
 
 // Candidate xdb file paths, in priority order:
 //   1. ip2region-ts default (local dev: node_modules/ip2region-ts/data/ip2region.xdb
@@ -21,15 +22,15 @@ let ipSearcher: Awaited<ReturnType<typeof newWithBuffer>> | null = null
 export const initIpSearcher = (): void => {
   const xdbFile = xdbCandidates.find(p => existsSync(p))
   if (!xdbFile) {
-    console.warn('ip2region.xdb not found in candidate paths, IP lookup disabled')
+    logger.warn('ip2region.xdb not found in candidate paths, IP lookup disabled')
     return
   }
   try {
     const buffer = loadContentFromFile(xdbFile)
     ipSearcher = newWithBuffer(buffer)
-    console.info('IP region searcher initialized (ip2region)')
+    logger.info('IP region searcher initialized (ip2region)')
   } catch (e: any) {
-    console.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
+    logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
   }
 }
 

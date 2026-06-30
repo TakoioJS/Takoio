@@ -206,6 +206,8 @@
         pageSize: 10,
         sort: 'newest',
         enableSummary: true,
+        enableCommentReaction: true,
+        enableArticleReaction: true,
         articleContent: '这是一篇测试文章的内容。Takoio 是一个嵌入式评论系统，支持 Vue 3 + Vite 构建，提供评论、点赞、表情、代码高亮等功能。本文介绍了如何集成 AI 摘要功能。通过传入文章内容，系统会自动调用 AI 生成摘要并展示在评论上方。',
         onCommentPosted: (comment) => {
           console.log('📝 新评论（本地）:', comment)

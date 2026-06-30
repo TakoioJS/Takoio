@@ -76,6 +76,11 @@
             <label class="form-label">启用文章摘要生成</label>
             <n-switch v-model:value="config.AI_SUMMARY_ENABLED" />
           </div>
+          <div class="form-field switch-field">
+            <label class="form-label">在评论区显示摘要</label>
+            <n-switch v-model:value="config.ENABLE_SUMMARY" />
+          </div>
+          <div class="form-hint">关闭后前端评论区不展示摘要卡片（宿主仍可通过 API 自行渲染）</div>
           <template v-if="config.AI_SUMMARY_ENABLED">
             <div class="form-field">
               <label class="form-label">摘要提供商</label>
@@ -171,13 +176,6 @@ const aiFormatOptions = [
   { label: 'Gemini', value: 'gemini' },
 ]
 
-const auditMethodOptions = [
-  { label: '不启用', value: '' },
-  { label: 'Akismet', value: 'akismet' },
-  { label: 'AI 审核', value: 'ai' },
-  { label: '传统关键词', value: 'traditional' },
-]
-
 const nsfwServiceOptions = [
   { label: 'Nsfw-Py', value: 'self' },
   { label: 'ModelArk', value: 'modelark' },
@@ -204,27 +202,31 @@ const onFetchModels = async (idx: number) => {
   if (!p.endpoint || !p.key) return
   p.fetching = true
   try {
+    // Normalize: strip trailing slashes
+    const base = p.endpoint.replace(/\/+$/, '')
     let url = ''
     const headers: Record<string, string> = {}
     if (p.format === 'openai') {
-      url = `${p.endpoint.replace(/\/+$/, '')}/models`
+      // endpoint 含 /v1 时直接 /models，否则补 /v1/models
+      url = /\/v\d/.test(base) ? `${base}/models` : `${base}/v1/models`
       headers['Authorization'] = `Bearer ${p.key}`
     } else if (p.format === 'anthropic') {
-      url = `${p.endpoint.replace(/\/+$/, '')}/v1/models`
+      // 避免重复 /v1：endpoint 已含 /v1 时直接 /models，否则补 /v1/models
+      url = /\/v1/.test(base) ? `${base}/models` : `${base}/v1/models`
       headers['x-api-key'] = p.key
       headers['anthropic-version'] = '2023-06-01'
     } else if (p.format === 'gemini') {
-      url = `${p.endpoint.replace(/\/+$/, '')}/v1beta/models?key=${encodeURIComponent(p.key)}`
+      // 避免重复 /v1beta：endpoint 已含 /v1beta 时直接 /models，否则补 /v1beta/models
+      url = /\/v1beta/.test(base) ? `${base}/models` : `${base}/v1beta/models`
+      headers['x-goog-api-key'] = p.key
     }
     const resp = await fetch(url, { headers })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`)
     const json = await resp.json()
-    let models: string[] = []
-    if (p.format === 'gemini') {
-      models = (json.models ?? []).map((m: any) => m.name.replace(/^models\//, '')).sort()
-    } else {
-      models = (json.data ?? []).map((m: any) => m.id).sort()
-    }
+    // 响应解析：统一尝试 OpenAI/Anthropic 兼容格式 json.data[].id 与 Gemini 格式 json.models[].name（去 models/ 前缀）
+    const fromData = (json.data ?? []).map((m: any) => m.id).filter(Boolean)
+    const fromModels = (json.models ?? []).map((m: any) => String(m.name).replace(/^models\//, '')).filter(Boolean)
+    const models = (fromData.length ? fromData : fromModels).sort()
     p.modelOptions = models.map(m => ({ label: m, value: m }))
     message.success(`拉取成功：${models.length} 个模型`)
   } catch (e: any) {
@@ -236,14 +238,14 @@ const onFetchModels = async (idx: number) => {
 
 const aiFieldKeys = [
   'ENABLE_NSFW_DETECTION', 'NSFW_SERVICE', 'NSFW_ENDPOINT', 'NSFW_API_KEY', 'NSFW_THRESHOLD',
-  'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL',
+  'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL', 'ENABLE_SUMMARY',
 ]
 
 const getDefaultValue = (key: string): any => {
   if (key === 'ENABLE_NSFW_DETECTION') return false
   if (key === 'AI_SUMMARY_ENABLED') return true
+  if (key === 'ENABLE_SUMMARY') return true
   if (key === 'NSFW_THRESHOLD') return 0.5
-  if (key === 'AI_EMBEDDING_MODEL') return 'text-embedding-3-small'
   return ''
 }
 
@@ -395,6 +397,8 @@ onMounted(() => {
   justify-content: space-between;
 }
 .switch-field .form-label { margin-bottom: 0; }
+
+.form-hint { font-size: 12px; color: var(--ink-3); margin: -8px 0 12px; line-height: 1.5; }
 
 .slider-row {
   display: flex;

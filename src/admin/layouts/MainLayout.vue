@@ -179,7 +179,7 @@ const menuItems = [
     path: '/ai', title: 'AI 功能', icon: CubeOutline,
     children: [
       { path: '/ai', title: 'AI 配置' },
-      { path: '/ai/summary', title: '摘要管理' },
+      { path: '/ai/summary', title: '文章摘要管理' },
     ],
   },
   { path: '/data', title: '数据', icon: ServerOutline },
@@ -225,7 +225,7 @@ const onChangePassword = async () => {
 
 onMounted(async () => {
   try {
-    const r = await api.get('/api/admin/system')
+    const r = await api.get<{ dev: boolean }>('/api/admin/system')
     isDev.value = r.dev
   } catch { /* ignore — default to false */ }
 })

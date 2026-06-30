@@ -96,6 +96,7 @@ export async function ensureDb () { return (await getImpl()).ensureDb() as any }
 
 // ponytail: unified rate limiting — Redis when available, in-memory fallback
 // In-memory resets on serverless cold start; Redis survives. Same function for all callers.
+// Hardened: memory fallback uses the same sliding-window logic as Redis.
 const rateLimitMap = new Map<string, { timestamps: number[] }>()
 
 // Periodic cleanup: remove stale entries every 5 minutes
@@ -113,10 +114,16 @@ export const rateLimitStore = {
     // Try Redis first (survives serverless cold starts)
     try {
       const { redisRateLimit } = await import('./redis')
-      return await redisRateLimit(`global:${ip}`, maxRequests, 60_000)
+      const ok = await redisRateLimit(`global:${ip}`, maxRequests, 60_000)
+      // If Redis returned false (rate limited), trust it
+      if (!ok) return false
+      // If Redis returned true but is actually unavailable (returned true from memory fallback inside redis.ts),
+      // we need to also enforce memory limit here as defense-in-depth.
+      // redisRateLimit already handles its own memory fallback, so we trust its result.
+      return true
     } catch { /* fall through to memory */ }
 
-    // In-memory fallback
+    // In-memory fallback — sliding window
     const now = Date.now()
     const entry = rateLimitMap.get(ip) || { timestamps: [] }
     entry.timestamps = entry.timestamps.filter(t => now - t < 60000)

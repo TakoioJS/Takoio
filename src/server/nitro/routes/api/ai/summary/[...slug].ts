@@ -10,8 +10,10 @@ import {
   listSummaryCaches,
   deleteSummaryCacheByUrl,
   clearAllSummaryCaches,
+  updateSummaryCache,
 } from '#core/store/redis'
 import { isRedisAvailable } from '#core/store/redis'
+import { isDev } from '#core/utils/env'
 // getToken, validateBody, validateQuery — auto-imported
 
 export default defineHandler(async (event) => {
@@ -41,12 +43,29 @@ export default defineHandler(async (event) => {
 
   // ── GET /api/ai/summary/list — list all cached summaries ──
   if (segments[0] === 'list' && method === 'GET') {
-    const redisOk = await isRedisAvailable()
-    if (!redisOk) {
+    const dev = isDev()
+    const redisOk = dev ? false : await isRedisAvailable()
+    if (!dev && !redisOk) {
       return { success: true, summaries: [], redisAvailable: false }
     }
+    // dev 走内存缓存兜底；生产走 Redis
     const summaries = await listSummaryCaches()
-    return { success: true, summaries, redisAvailable: true }
+    return { success: true, summaries, redisAvailable: redisOk, dev }
+  }
+
+  // ── PUT /api/ai/summary — edit a cached summary by key (content/keywords/title) ──
+  if (segments.length === 0 && method === 'PUT') {
+    const body = await readBody(event).catch(() => null)
+    if (!body || typeof body !== 'object' || !body.key || typeof body.key !== 'string') {
+      throw createError({ statusCode: 400, statusMessage: 'Missing required field: key' })
+    }
+    const patch: { summary?: string; keywords?: string[]; title?: string } = {}
+    if (typeof body.summary === 'string') patch.summary = body.summary
+    if (Array.isArray(body.keywords)) patch.keywords = body.keywords.map((k: any) => String(k)).filter(Boolean)
+    if (typeof body.title === 'string') patch.title = body.title
+    const ok = await updateSummaryCache(body.key, patch)
+    if (!ok) throw createError({ statusCode: 404, statusMessage: '摘要不存在或已过期' })
+    return { success: true, message: '摘要已更新' }
   }
 
   // ── DELETE /api/ai/summary — delete cached summaries for a specific URL ──

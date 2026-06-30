@@ -5,6 +5,7 @@
 import * as crypto from 'node:crypto'
 import { safeValidate } from '../schemas'
 import { notifyComment } from '../events'
+import { logger } from '../utils/logger'
 import {
   GetCommentSchema,
   SubmitCommentSchema,
@@ -85,8 +86,10 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
 
   const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken } = validation.data
 
-  // Impersonation protection
-  if ((cfg.MASTER_NAME && nick === cfg.MASTER_NAME) || (cfg.MASTER && mail === cfg.MASTER)) {
+  // Impersonation protection — case-insensitive match for nick; exact match for email
+  const masterNameLower = cfg.MASTER_NAME?.toLowerCase() || ''
+  const nickLower = nick.toLowerCase()
+  if ((masterNameLower && nickLower === masterNameLower) || (cfg.MASTER && mail === cfg.MASTER)) {
     await requireAdmin(data)
   }
 
@@ -105,10 +108,18 @@ async function moderateSubmit (newComment: any, cfg: TakoioConfig, _ip?: string,
 
   const rawRecent = await commentStore.getRawRecentComments(50)
 
-  // 1. Rate limit
+  // 1. Rate limit — sliding window: max 3 comments per IP per 60s window
+  const COMMENT_WINDOW_MAX = 3
+  const COMMENT_WINDOW_MS = 60_000
   const limit = typeof cfg.COMMENT_RATE_LIMIT === 'number' ? cfg.COMMENT_RATE_LIMIT : 30000
   if (limit > 0 && _ip && _ip !== 'unknown') {
     const myRecent = rawRecent.filter(c => c.ip === _ip || (mail && c.mail === mail))
+    // Count comments within the sliding window
+    const windowComments = myRecent.filter(c => Date.now() - c.created < COMMENT_WINDOW_MS)
+    if (windowComments.length >= COMMENT_WINDOW_MAX) {
+      throw new AppError('RATE_LIMIT_EXCEEDED', `评论太频繁，每 ${COMMENT_WINDOW_MS / 1000} 秒最多 ${COMMENT_WINDOW_MAX} 条`, 429)
+    }
+    // Also check the per-comment minimum interval
     if (myRecent.length > 0 && Date.now() - myRecent[0].created < limit) {
       throw new AppError('RATE_LIMIT_EXCEEDED', '评论太频繁，请稍后再试', 429)
     }
@@ -138,7 +149,7 @@ async function moderateSubmit (newComment: any, cfg: TakoioConfig, _ip?: string,
 
   const auditAction = getAuditAction(modResult, cfg.AUDIT_MODE ? 'audit' : 'pass')
   if (auditAction === 'rejected') {
-    console.info({ source: modResult.source, score: modResult.score, reasons: modResult.reasons }, 'Comment rejected')
+    logger.info({ source: modResult.source, score: modResult.score, reasons: modResult.reasons }, 'Comment rejected')
     throw new AppError('MODERATION_FAILED', '评论审核未通过，请修改后再试', 400)
   }
   if (auditAction === 'pending') newComment.state = 'pending'
@@ -183,6 +194,9 @@ async function persistSubmit (newComment: any, _ip?: string) {
   return commentStore.addComment(newComment)
 }
 
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
 /** Stage 4: Notifications (SSE, push, email) — fire-and-forget */
 function notifySubmit (saved: any, newComment: any, cfg: TakoioConfig, data: SubmitCommentData & { href?: string }) {
   const { url, nick, mail, link, comment, pid, rid, ua, title } = data
@@ -197,12 +211,15 @@ function notifySubmit (saved: any, newComment: any, cfg: TakoioConfig, data: Sub
     title: `${nick} 评论了「${title || siteName}」`,
     content: `${nick} 在 ${title || siteName} 发表了评论：\n\n> ${comment.slice(0, 200)}${comment.length > 200 ? '...' : ''}`,
     siteName,
-  }).catch(e => console.error({ error: e.message }, 'Notification failed'))
+  }).catch(e => logger.error({ error: e.message }, 'Notification failed'))
 
   // Email notifications
   if (cfg.ENABLE_MAIL_NOTIFICATION && cfg.SMTP_HOST) {
     const renderTpl = (tpl: string, vars: Record<string, string>) =>
-      tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => vars[k] || `{{ ${k} }}`)
+      tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => {
+        const v = vars[k] || `{{ ${k} }}`
+        return escapeHtml(v)
+      })
 
     // Reply notification
     if (rid || pid) {
@@ -212,7 +229,7 @@ function notifySubmit (saved: any, newComment: any, cfg: TakoioConfig, data: Sub
           if (parentComment?.mail && parentComment.mail !== mail) {
             const vars = { siteName, nick: parentComment.nick, title: title || siteName, comment: comment.slice(0, 500), url: data.href || `https://your-site.com${url}` }
             sendEmail(cfg, renderTpl(cfg.MAIL_SUBJECT || '有人在 {title} 中回复了你', vars), renderTpl(cfg.MAIL_TEMPLATE || '', vars))
-              .catch(e => console.error({ error: e.message }, 'Reply email failed'))
+              .catch(e => logger.error({ error: e.message }, 'Reply email failed'))
           }
         }).catch(() => {})
       }
@@ -222,7 +239,7 @@ function notifySubmit (saved: any, newComment: any, cfg: TakoioConfig, data: Sub
     if (cfg.SMTP_TO) {
       const adminVars = { siteName, nick, title: title || siteName, comment: comment.slice(0, 500), url: data.href || `https://your-site.com${url}`, ip: _ip || 'unknown', ua: ua || 'unknown' }
       sendEmail(cfg, renderTpl(cfg.MAIL_SUBJECT_ADMIN || '新的评论：{nick} 在 {title}', adminVars), renderTpl(cfg.MAIL_TEMPLATE_ADMIN || '', adminVars))
-        .catch(e => console.error({ error: e.message }, 'Admin email failed'))
+        .catch(e => logger.error({ error: e.message }, 'Admin email failed'))
     }
   }
 }

@@ -62,6 +62,18 @@ const PURIFY_CONFIG = {
   FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur'],
 }
 
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const isSafeImageUrl = (href: string): boolean => {
+  try {
+    const u = new URL(href)
+    return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'data:'
+  } catch {
+    return false
+  }
+}
+
 export async function renderComment (text: string): Promise<string> {
   const p = await initPurify()
   const hl = await getHl()
@@ -86,11 +98,17 @@ export async function renderComment (text: string): Promise<string> {
   md.use({
     renderer: {
       image ({ href, title, text }: { href: string; title: string | null; text: string }) {
+        if (!isSafeImageUrl(href)) {
+          return `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(text || 'image')}</a>`
+        }
+        const safeHref = escapeHtml(href)
+        const safeText = escapeHtml(text)
+        const safeTitle = escapeHtml(title || text || '')
         const isEmoji = href.includes('twemoji') || href.includes('iconify') || href.includes('emoji') || text.endsWith('图片') || text.endsWith('表情')
         if (isEmoji) {
-          return `<img src="${href}" alt="${text}" title="${title || text}" class="tk-owo-emotion" />`
+          return `<img src="${safeHref}" alt="${safeText}" title="${safeTitle}" class="tk-owo-emotion" />`
         }
-        return `<img src="${href}" alt="${text}" title="${title || ''}" class="tk-comment-inline-image" />`
+        return `<img src="${safeHref}" alt="${safeText}" title="${safeTitle}" class="tk-comment-inline-image" />`
       }
     }
   })

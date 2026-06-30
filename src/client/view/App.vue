@@ -4,8 +4,13 @@
     :data-theme="isDark ? 'dark' : 'light'"
   >
     <TkSummary
-      v-if="options.enableSummary && options.articleContent"
+      v-if="showSummary"
       :options="options"
+    />
+    <TkSummary
+      v-else-if="showSummaryHostOnly"
+      :options="options"
+      render-only
     />
     <TkComments
       :options="options"
@@ -15,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, provide, onMounted, onBeforeUnmount } from 'vue'
 import { version } from '../utils'
 import { logger } from '../utils'
 import type { TakoioConfig, Comment } from '../types'
@@ -27,6 +32,26 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// 后台公开配置（由 TkComments 在拉取评论后回填）；摘要双控依赖此 ref
+const siteConfig = ref<Record<string, any>>({})
+provide('takoio-site-config', siteConfig)
+
+// 摘要显隐双控：后台 ENABLE_SUMMARY（默认 true，仅显式 false 禁用）× 宿主 enableSummary × 有 articleContent
+// 内置卡片渲染：未传 renderSummary
+const showSummary = computed(() =>
+  !props.options.renderSummary &&
+  siteConfig.value?.ENABLE_SUMMARY !== false &&
+  !!props.options.enableSummary &&
+  !!props.options.articleContent
+)
+// 宿主自定义渲染：传了 renderSummary 且开关均开
+const showSummaryHostOnly = computed(() =>
+  !!props.options.renderSummary &&
+  siteConfig.value?.ENABLE_SUMMARY !== false &&
+  !!props.options.enableSummary &&
+  !!props.options.articleContent
+)
 
 const onCommentPosted = (comment: Comment): void => {
   props.options.onCommentPosted?.(comment)

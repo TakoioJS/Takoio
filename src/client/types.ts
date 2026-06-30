@@ -160,8 +160,17 @@ export interface TakoioConfig {
   collapseThreshold?: number
   /** 文章正文内容（启用 AI 摘要时必传） */
   articleContent?: string
-  /** 是否启用 AI 摘要展示 */
+  /** 是否启用 AI 摘要展示（与后台 ENABLE_SUMMARY 双控，任一为 false 则不显示） */
   enableSummary?: boolean
+  /** 自定义摘要渲染回调。传入后内置摘要卡片不渲染，由宿主自行渲染。
+   *  回调参数：{ summary, keywords, loading, error, retry } */
+  renderSummary?: (ctx: {
+    summary: string
+    keywords: string[]
+    loading: boolean
+    error: string | null
+    retry: () => void
+  }) => void
 }
 
 /** 评论计数响应 */

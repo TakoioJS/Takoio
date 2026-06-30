@@ -22,3 +22,6 @@ minimumReleaseAgeExclude:
 onlyBuiltDependencies:
   - esbuild
   - ip2region-ts
+
+overrides:
+  '@stylistic/eslint-plugin': '^4.4.1'

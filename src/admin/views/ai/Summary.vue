@@ -8,10 +8,11 @@
       </div>
       <div class="section-body">
         <div class="redis-status-row">
-          <n-tag :type="redisAvailable ? 'success' : 'error'" size="small" round>
-            {{ redisAvailable ? '✅ 已连接' : '❌ 未连接' }}
+          <n-tag v-if="isDev" type="warning" size="small" round>热开发</n-tag>
+          <n-tag v-else :type="redisAvailable ? 'success' : 'error'" size="small" round>
+            {{ redisAvailable ? '已连接' : '未连接' }}
           </n-tag>
-          <span v-if="!redisAvailable" class="redis-hint">
+          <span v-if="!isDev && !redisAvailable" class="redis-hint">
             请设置环境变量 REDIS_URL（摘要功能需要 Redis）
           </span>
         </div>
@@ -77,25 +78,52 @@
               </div>
               <div class="summary-item-time">{{ formatTime(item.created) }}</div>
             </div>
-            <n-button size="tiny" type="error" quaternary @click="onDeleteSummary(item.url)">
-              <template #icon><n-icon><TrashOutline /></n-icon></template>
-            </n-button>
+            <div class="summary-item-actions">
+              <n-button size="tiny" quaternary @click="onEditSummary(item)">
+                <template #icon><n-icon><CreateOutline /></n-icon></template>
+              </n-button>
+              <n-button size="tiny" type="error" quaternary @click="onDeleteSummary(item.url)">
+                <template #icon><n-icon><TrashOutline /></n-icon></template>
+              </n-button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 编辑摘要对话框 -->
+    <n-modal v-model:show="showEditModal" preset="card" title="编辑摘要" style="max-width: 600px">
+      <div class="form-field">
+        <label class="form-label">标题（可选）</label>
+        <n-input v-model:value="editForm.title" placeholder="文章标题" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">摘要内容</label>
+        <n-input v-model:value="editForm.summary" type="textarea" :rows="6" placeholder="摘要正文" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">关键词</label>
+        <n-dynamic-tags v-model:value="editForm.keywords" />
+      </div>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 8px">
+          <n-button @click="showEditModal = false">取消</n-button>
+          <n-button type="primary" :loading="savingEdit" :disabled="!editForm.summary.trim()" @click="onSaveEdit">保存</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import {
-  NInput, NButton, NIcon, NTag,
+  NInput, NButton, NIcon, NTag, NModal, NDynamicTags,
   useMessage, useDialog,
 } from 'naive-ui'
 import {
   ServerOutline, DocumentTextOutline, ListOutline,
-  FlashOutline, TrashOutline,
+  FlashOutline, TrashOutline, CreateOutline,
 } from '@vicons/ionicons5'
 import { api } from '../../api/client'
 
@@ -103,6 +131,7 @@ const message = useMessage()
 const dialog = useDialog()
 
 const redisAvailable = ref(false)
+const isDev = ref(false)
 const testing = ref(false)
 const loadingList = ref(false)
 const testResult = ref<any>(null)
@@ -128,10 +157,49 @@ const formatTime = (ts: number): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+// ── 编辑摘要 ──
+const showEditModal = ref(false)
+const savingEdit = ref(false)
+const editForm = reactive({
+  key: '',
+  title: '',
+  summary: '',
+  keywords: [] as string[],
+})
+
+const onEditSummary = (item: SummaryItem) => {
+  editForm.key = item.key
+  editForm.title = item.title || ''
+  editForm.summary = item.summary
+  editForm.keywords = [...(item.keywords || [])]
+  showEditModal.value = true
+}
+
+const onSaveEdit = async () => {
+  if (!editForm.summary.trim()) return
+  savingEdit.value = true
+  try {
+    await api.put('/api/ai/summary', {
+      key: editForm.key,
+      summary: editForm.summary,
+      keywords: editForm.keywords,
+      title: editForm.title || undefined,
+    })
+    message.success('摘要已更新')
+    showEditModal.value = false
+    await loadSummaries()
+  } catch (e: any) {
+    message.error('保存失败: ' + (e.message || ''))
+  } finally {
+    savingEdit.value = false
+  }
+}
+
 const loadSummaries = async () => {
   loadingList.value = true
   try {
-    const r = await api.get('/api/ai/summary/list')
+    const r = await api.get<{ success: boolean; summaries: SummaryItem[]; redisAvailable: boolean; dev: boolean }>('/api/ai/summary/list')
+    isDev.value = !!r.dev
     redisAvailable.value = r.redisAvailable
     summaries.value = r.summaries || []
   } catch (e: any) {
@@ -258,6 +326,7 @@ onMounted(() => {
 
 /* Summary list */
 .summary-list { display: flex; flex-direction: column; gap: 10px; }
+.summary-item-actions { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
 .summary-item {
   display: flex;
   align-items: flex-start;

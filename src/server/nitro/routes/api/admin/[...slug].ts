@@ -17,7 +17,8 @@ import { sessionStore } from '#core/store/index'
 import { AppError } from '#core/config'
 import { requireAdmin } from '#core/auth'
 import { getClientIp } from '#core/utils/ip'
-import { isRedisAvailable, listSummaryCaches, clearAllSummaryCaches } from '#core/store/redis'
+import { isRedisAvailable, listSummaryCaches } from '#core/store/redis'
+import { isDev } from '#core/utils/env'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
 import { LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema } from '#core/schemas'
 
@@ -61,9 +62,8 @@ export default defineHandler(async (event) => {
   // PUT /api/admin/config
   if (segments[0] === 'config' && method === 'PUT') {
     await requireAdmin({ token: getToken(event) })
-    const body = await readBody(event).catch(() => null)
-    if (!body) throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
-    return handleSetConfig({ ...body, _ip: await getClientIp(event) })
+    const data = await validateBody(event, SetConfigSchema)
+    return handleSetConfig({ ...data, _ip: await getClientIp(event) })
   }
 
   // DELETE /api/admin/config
@@ -72,7 +72,7 @@ export default defineHandler(async (event) => {
     return handleConfigReset({})
   }
 
-  // GET /api/admin/version (public — inline)
+  // GET /api/admin/version (public — minimal)
   if (segments[0] === 'version' && method === 'GET') {
     return { version: '1.0.0' }
   }
@@ -90,7 +90,7 @@ export default defineHandler(async (event) => {
     return handleDashboardTrend(days)
   }
 
-  // GET /api/admin/type (public — inline)
+  // GET /api/admin/type (public — minimal)
   if (segments[0] === 'type' && method === 'GET') {
     return { data: 'self-hosted' }
   }
@@ -131,11 +131,10 @@ export default defineHandler(async (event) => {
     return handleEmailTest(data)
   }
 
-  // POST /api/admin/refresh — special: inline token check, not requireAdmin
+  // POST /api/admin/refresh — token rotation
   if (segments[0] === 'refresh' && method === 'POST') {
-    const token = getToken(event)
-    if (!token) throw new AppError('NEED_LOGIN', '未提供认证令牌', 401)
-    const newToken = await sessionStore.rotateToken(token)
+    await requireAdmin({ token: getToken(event) })
+    const newToken = await sessionStore.rotateToken(getToken(event)!)
     if (!newToken) throw new AppError('NEED_LOGIN', '会话已过期，请重新登录', 401)
     return { success: true, token: newToken }
   }
@@ -159,9 +158,8 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'system' && method === 'GET') {
     await requireAdmin({ token: getToken(event) })
     const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
-    const dev = !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
-    if (dev) {
-      return { dev: true, dbType, redisSkipped: true, summaryCount: 0 }
+    if (isDev()) {
+      return { dev: true, dbType, redisSkipped: true, redisAvailable: false, summaryCount: 0 }
     }
     const redisOk = await isRedisAvailable()
     let summaryCount = 0
@@ -174,13 +172,6 @@ export default defineHandler(async (event) => {
       redisAvailable: redisOk,
       summaryCount,
     }
-  }
-
-  // DELETE /api/admin/data/redis/summaries — clear all summary caches
-  if (segments[0] === 'data' && segments[1] === 'redis' && segments[2] === 'summaries' && method === 'DELETE') {
-    await requireAdmin({ token: getToken(event) })
-    const deleted = await clearAllSummaryCaches()
-    return { success: true, deleted, message: `已清空 ${deleted} 条摘要缓存` }
   }
 
   throw createError({ statusCode: 404, statusMessage: 'Not Found' })

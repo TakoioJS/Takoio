@@ -374,11 +374,12 @@ const messages: Record<string, Record<string, string>> = {
     refreshTip: '刷新',
     passwordMinLength: '至少 8 位',
     actionFailed: '操作失败',
-    // AI 摘要 + 问答
-    aiSummaryTitle: 'AI 摘要',
+    // AI 摘要
+    aiSummaryTitle: '文章摘要',
     aiSummaryLoading: '正在生成摘要…',
     aiSummaryFailed: '摘要生成失败',
     aiKeywords: '关键词',
+    aiSummaryRetry: '重试',
   },
   'zh-TW': {
     placeholder: '說點什麼…',
@@ -701,11 +702,12 @@ const messages: Record<string, Record<string, string>> = {
     refreshTip: '重新整理',
     passwordMinLength: '至少 8 位',
     actionFailed: '操作失敗',
-    // AI 摘要 + 問答
-    aiSummaryTitle: 'AI 摘要',
+    // AI 摘要
+    aiSummaryTitle: '文章摘要',
     aiSummaryLoading: '正在生成摘要…',
     aiSummaryFailed: '摘要生成失敗',
     aiKeywords: '關鍵詞',
+    aiSummaryRetry: '重試',
   },
   en: {
     placeholder: 'Say something…',
@@ -1072,11 +1074,12 @@ const messages: Record<string, Record<string, string>> = {
     pushooTokenDesc: 'Format: platform:token, comma-separated. Configure all channels in one line.',
     searchAll: 'All fields',
     view: 'View',
-    // AI summary + chat
-    aiSummaryTitle: 'AI Summary',
+    // AI summary
+    aiSummaryTitle: 'Article Summary',
     aiSummaryLoading: 'Generating summary…',
     aiSummaryFailed: 'Failed to generate summary',
     aiKeywords: 'Keywords',
+    aiSummaryRetry: 'Retry',
   }
 }
 

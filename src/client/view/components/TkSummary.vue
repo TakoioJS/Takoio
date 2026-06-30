@@ -1,5 +1,6 @@
 <template>
-  <div class="tk-summary" v-if="state !== 'hidden'">
+  <!-- renderOnly 模式：不渲染内置 UI，仅取数并通过 renderSummary 回调通知宿主 -->
+  <div v-if="!renderOnly" class="tk-summary" v-show="state !== 'hidden'">
     <!-- Loading skeleton -->
     <div v-if="state === 'loading'" class="tk-summary-card">
       <div class="tk-summary-header">
@@ -34,12 +35,13 @@
     <div v-else class="tk-summary-card tk-summary-error">
       <span class="tk-summary-icon">✦</span>
       <span>{{ t('aiSummaryFailed') }}</span>
+      <button class="tk-summary-retry" @click="generateSummary">{{ t('aiSummaryRetry') }}</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, inject, type Ref } from 'vue'
 import { getArticleSummary } from '../../utils/api'
 import { marked } from '../../utils/marked'
 import { t } from '../../utils/i18n'
@@ -48,8 +50,13 @@ import type { TakoioConfig } from '../../types'
 
 interface Props {
   options: TakoioConfig
+  /** 仅取数模式：不渲染内置卡片，通过 options.renderSummary 回调通知宿主 */
+  renderOnly?: boolean
 }
 const props = defineProps<Props>()
+
+// 从 App.vue 注入后台公开配置（ENABLE_SUMMARY 等）；TkComments 在拿到 config 后更新此 ref
+const siteConfig = inject<Ref<Record<string, any>>>('takoio-site-config', ref({}))
 
 type State = 'loading' | 'success' | 'error' | 'hidden'
 const state = ref<State>('loading')
@@ -61,13 +68,31 @@ const toggleCollapse = () => {
   collapsed.value = !collapsed.value
 }
 
+// 后台开关：ENABLE_SUMMARY 默认 true，仅显式 false 才禁用
+const serverEnabled = () => siteConfig.value?.ENABLE_SUMMARY !== false
+
+/** 通知宿主自定义渲染回调（renderOnly 模式下使用） */
+const notifyHost = () => {
+  if (!props.options.renderSummary) return
+  props.options.renderSummary({
+    summary: renderedSummary.value,
+    keywords: keywords.value,
+    loading: state.value === 'loading',
+    error: state.value === 'error' ? t('aiSummaryFailed') : null,
+    retry: generateSummary,
+  })
+}
+
 const generateSummary = async () => {
-  if (!props.options.articleContent || !props.options.enableSummary) {
+  // 双控：宿主 enableSummary 与后台 ENABLE_SUMMARY 任一为 false 则不生成
+  if (!props.options.articleContent || !props.options.enableSummary || !serverEnabled()) {
     state.value = 'hidden'
+    notifyHost()
     return
   }
 
   state.value = 'loading'
+  notifyHost()
   try {
     const url = getUrl(props.options.path)
     const result = await getArticleSummary(props.options.envId, {
@@ -86,20 +111,19 @@ const generateSummary = async () => {
   } catch {
     state.value = 'error'
   }
+  notifyHost()
 }
 
 onMounted(generateSummary)
 
 watch(() => props.options.articleContent, generateSummary)
+// 后台开关变化时重新评估显隐
+watch(siteConfig, () => generateSummary(), { deep: true })
 </script>
 
 <style scoped>
 .tk-summary {
   margin-bottom: 20px;
-  /* Sticky: when scrolling through many comments, the summary stays at the top of the viewport */
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .tk-summary-card {
@@ -107,8 +131,6 @@ watch(() => props.options.articleContent, generateSummary)
   border: 1px solid var(--tk-border-soft);
   border-radius: var(--tk-r-card);
   padding: 16px 18px;
-  /* Ensure sticky element has a solid backdrop so comments don't show through */
-  backdrop-filter: blur(8px);
 }
 
 .tk-summary-header {
@@ -219,6 +241,20 @@ watch(() => props.options.articleContent, generateSummary)
   font-size: 13px;
   color: var(--tk-text-3);
   padding: 10px 14px;
+}
+
+.tk-summary-retry {
+  margin-left: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 13px;
+  color: var(--tk-text-3);
+  text-decoration: underline;
+}
+.tk-summary-retry:hover {
+  color: var(--tk-text-2);
 }
 
 /* Collapsed state: compact bar */

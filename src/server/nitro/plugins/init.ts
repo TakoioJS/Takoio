@@ -7,6 +7,7 @@
 import { ensureDb, sessionStore, initStore } from '#core/store/index'
 import { initPassword } from '#core/auth'
 import { initIpSearcher } from '#core/ip-region'
+import { logger } from '#core/utils/logger'
 
 let initialized = false
 
@@ -25,7 +26,7 @@ export default definePlugin(async () => {
   // C1(deploy): Fail fast on serverless if DB_TYPE is sqlite — ephemeral filesystem causes data loss
   const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
   if (isServerless() && dbType !== 'mongodb') {
-    console.error(`[init] Serverless preset "${getServerlessPreset()}" requires DB_TYPE=mongodb, got "${dbType}". Set MONGODB_URI and DB_TYPE=mongodb in your deployment environment.`)
+    logger.error(`[init] Serverless preset "${getServerlessPreset()}" requires DB_TYPE=mongodb, got "${dbType}". Set MONGODB_URI and DB_TYPE=mongodb in your deployment environment.`)
   }
 
   // initIpSearcher (file I/O) is independent of DB — start in parallel
@@ -46,5 +47,5 @@ export default definePlugin(async () => {
     }, 3600000)
   }
 
-  console.info('Takoio server ready')
+  logger.info('Takoio server ready')
 })

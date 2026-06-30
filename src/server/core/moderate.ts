@@ -18,6 +18,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod/v3'
+import { logger } from './utils/logger'
 
 // ========== Schema ==========
 
@@ -95,16 +96,25 @@ type AiFormat = 'openai' | 'anthropic' | 'gemini'
 
 function createModelInstance (format: AiFormat, endpoint: string, key: string, model: string) {
   switch (format) {
-    case 'anthropic':
-      return createAnthropic({ apiKey: key })(model)
-    case 'gemini':
-      return createGoogleGenerativeAI({ apiKey: key })(model)
+    case 'anthropic': {
+      // Anthropic SDK baseURL 默认含 /v1，请求会追加 /messages，故 baseURL 需保留 /v1
+      let baseUrl = endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')
+      if (!/\/v\d/.test(baseUrl)) baseUrl += '/v1'
+      return createAnthropic({ baseURL: baseUrl, apiKey: key })(model)
+    }
+    case 'gemini': {
+      // Gemini SDK baseURL 默认含 /v1beta，请求会追加 /models/...，故 baseURL 需保留 /v1beta
+      let baseUrl = endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')
+      if (!/\/v1beta/.test(baseUrl)) baseUrl += '/v1beta'
+      return createGoogleGenerativeAI({ baseURL: baseUrl, apiKey: key })(model)
+    }
     case 'openai':
     default: {
-      // Normalize: strip /chat/completions, trailing /, /v1 suffix
-      let baseUrl = endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')
-      if (baseUrl.endsWith('/v1')) baseUrl = baseUrl.replace(/\/v1$/, '')
-      return createOpenAI({ baseURL: baseUrl, apiKey: key })(model)
+      // OpenAI SDK baseURL 默认含 /v1，url = `${baseURL}${path}`，SDK 不会自动补 /v1，故 baseURL 须保留版本段。
+      // 注意：@ai-sdk/openai v4 直接调用 provider（如 createOpenAI({...})(model)）默认走 Responses API（/responses），
+      // 多数第三方 OpenAI 兼容端点（阶跃、DeepSeek 等）未实现 /responses，需显式用 .chat(model) 走 Chat Completions。
+      const baseUrl = endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')
+      return createOpenAI({ baseURL: baseUrl, apiKey: key }).chat(model)
     }
   }
 }
@@ -186,7 +196,7 @@ export async function moderateComment (
       )
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      console.warn({ error: message }, 'LLM moderation call failed, falling back to pass')
+      logger.warn({ error: message }, 'LLM moderation call failed, falling back to pass')
     }
   }
 

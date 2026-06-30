@@ -6,6 +6,8 @@
  * Serverless environments skip finish logging.
  */
 
+import { logger } from '#core/utils/logger'
+
 export default defineMiddleware((event) => {
   const start = Date.now()
   const method = event.method
@@ -17,6 +19,6 @@ export default defineMiddleware((event) => {
   event.node.res.on('finish', () => {
     const status = event.node.res.statusCode
     const ms = Date.now() - start
-    console.log(`${method} ${url} ${status} ${ms}ms`)
+    logger.info(`${method} ${url} ${status} ${ms}ms`)
   })
 })

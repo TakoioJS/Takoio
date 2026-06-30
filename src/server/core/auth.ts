@@ -3,6 +3,7 @@
  */
 
 import { hashPassword } from './utils/crypto'
+import { logger } from './utils/logger'
 import { configStore, sessionStore } from './store/index'
 import { getConfig, type TakoioConfig } from './config'
 import { AppError } from './config'
@@ -50,12 +51,12 @@ export const initPassword = async () => {
     if (dbConfig.AUTH_HASH) {
       authHashCache = dbConfig.AUTH_HASH
       authHashCacheTime = Date.now()
-      console.info('Admin password loaded from database')
+      logger.info('Admin password loaded from database')
     } else {
-      console.info('No admin password set. Awaiting first-time setup via admin panel.')
+      logger.info('No admin password set. Awaiting first-time setup via admin panel.')
     }
   } catch {
-    console.warn('Could not load admin password from database. Awaiting first-time setup.')
+    logger.warn('Could not load admin password from database. Awaiting first-time setup.')
   }
 }
 
@@ -118,7 +119,7 @@ export const recordLoginFailure = async (ip: string) => {
   attempt.failures += 1
   if (attempt.failures >= LOGIN_MAX_FAILURES) {
     attempt.lockedUntil = now + LOGIN_LOCKOUT_MS
-    console.warn({ ip }, `Login locked out after ${LOGIN_MAX_FAILURES} failed attempts`)
+    logger.warn({ ip }, `Login locked out after ${LOGIN_MAX_FAILURES} failed attempts`)
     // Persist lockout to Redis so it survives serverless cold starts
     await setRedisLockout(ip)
   }
@@ -175,7 +176,7 @@ export const verifyCaptcha = async (token: string, cfg: TakoioConfig): Promise<v
       if (json.status !== 'success') throw new Error('极验验证失败: ' + (json.msg || ''))
     }
   } catch (e: any) {
-    console.warn({ error: e.message }, 'CAPTCHA verification failed')
+    logger.warn({ error: e.message }, 'CAPTCHA verification failed')
     throw new Error('人机验证失败，请重试')
   }
 }
@@ -193,7 +194,7 @@ export const adminEvents = new Set([
 ])
 
 export const requireAdmin = async (data: any): Promise<void> => {
-  const token = data.token || data._token
+  const token = data.token
   if (!token || !await sessionStore.validateToken(token)) {
     throw new AppError('NEED_LOGIN', '需要管理员权限，请先登录', 401)
   }

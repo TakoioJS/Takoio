@@ -95,14 +95,14 @@ export const ALLOWED_CONFIG_KEYS = [
   'AKISMET_KEY', 'ENABLE_ANTI_SPAM',
   'CUSTOM_CSS', 'CDN_PREFIX',
   'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL', 'AI_PROVIDERS', 'AUTO_AUDIT_AI_PROMPT',
-  'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL',
+  'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL', 'ENABLE_SUMMARY',
   'CORS_ORIGINS',
   'PUSHOO_CHANNELS',
 
 ] as const
 
 export const SetConfigSchema = z.object({
-  config: z.record(z.enum(ALLOWED_CONFIG_KEYS), z.unknown()),
+  config: z.record(z.enum(ALLOWED_CONFIG_KEYS), z.unknown()).optional(),
 })
 
 // ========== Counter ==========
@@ -142,7 +142,7 @@ export const CommentReactionGetSchema = z.object({
 })
 
 export const CommentReactionSubmitSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).optional(), // id 可由 URL 路径提供，body 不必传
   emoji: z.string().min(1),
 })
 
@@ -158,12 +158,12 @@ export const PrivateKeyGetSchema = z.object({
 
 export const PrivateKeySetSchema = z.object({
   key: z.string().min(1),
-  value: z.unknown(),
+  value: z.union([z.string(), z.number(), z.boolean()]),
 })
 
 export const SendNotificationSchema = z.object({
-  title: z.string().optional(),
-  content: z.string().optional(),
+  title: z.string().max(200).optional(),
+  content: z.string().max(5000).optional(),
 })
 
 export const EmailTestSchema = z.object({
@@ -177,20 +177,63 @@ export const ExportSchema = z.object({
   format: z.enum(['json', 'csv', 'takoio']).default('json'),
 })
 
+const ImportCommentSchema = z.object({
+  id: z.string().optional(),
+  objectId: z.string().optional(),
+  _id: z.string().optional(),
+  url: z.string().optional(),
+  page_key: z.string().optional(),
+  thread: z.string().optional(),
+  nick: z.string().optional(),
+  name: z.string().optional(),
+  mail: z.string().optional(),
+  email: z.string().optional(),
+  link: z.string().optional(),
+  comment: z.string().optional(),
+  content: z.string().optional(),
+  message: z.string().optional(),
+  ua: z.string().optional(),
+  userAgent: z.string().optional(),
+  ip: z.string().optional(),
+  created: z.union([z.number(), z.string()]).optional(),
+  createdAt: z.union([z.number(), z.string()]).optional(),
+  insertedAt: z.union([z.number(), z.string()]).optional(),
+  time: z.union([z.number(), z.string()]).optional(),
+  pid: z.string().optional(),
+  rid: z.string().optional(),
+  parent: z.string().optional(),
+  mailMd5: z.string().optional(),
+  sticker: z.string().optional(),
+  state: z.string().optional(),
+  status: z.string().optional(),
+  isSpam: z.boolean().optional(),
+  is_pinned: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
+  isTop: z.boolean().optional(),
+  like: z.number().optional(),
+  likes: z.number().optional(),
+  dislike: z.number().optional(),
+  href: z.string().optional(),
+  image: z.string().optional(),
+  ipRegion: z.string().optional(),
+})
+
 export const ImportSchema = z.object({
-  json: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
-  valine: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
-  artalk: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
-  waline: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
-  twikoo: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
-  disqus: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]).optional(),
-  takoio: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+  json: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),
+  valine: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),
+  artalk: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),
+  waline: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),
+  twikoo: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),
+  disqus: z.union([z.string(), z.array(ImportCommentSchema)]).optional(),
+  takoio: z.union([z.string(), z.record(z.string(), z.any())]).optional(),
 })
 
 // ========== Image ==========
 
 export const UploadImageSchema = z.object({
-  image: z.string().min(1),
+  image: z.string().min(1).refine(v => /^data:image\/(png|jpeg|jpg|gif|webp);base64,/.test(v) || /^[A-Za-z0-9+/=]+$/.test(v), {
+    message: 'Invalid base64 image format',
+  }),
 })
 
 // ========== Helper ==========

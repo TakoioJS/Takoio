@@ -42,7 +42,7 @@
     "build:esm": "vite build --mode esm",
     "build:umd": "pnpm vite build --mode umd",
     "build:admin": "cd src/admin && pnpm install && npx vite build",
-    "build:server": "cd src/server && pnpm install && npx vite build",
+    "build:server": "cd src/server && pnpm install && pnpm build",
     "build:serverless": "pnpm build:server && pnpm build:admin",
     "build:all": "pnpm build && pnpm build:admin",
     "build:analyze": "ANALYZE=true vite build --mode umd",

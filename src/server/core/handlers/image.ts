@@ -9,17 +9,21 @@ import { safeValidate } from '../schemas'
 import { UploadImageSchema } from '../schemas'
 import { MAX_UPLOAD_SIZE, getConfig } from '../config'
 import { AppError } from '../config'
+import { logger } from '../utils/logger'
 
 // ========== Detect Image Type (magic bytes) ==========
 
 /** 检查 base64 解码后的 magic bytes，返回 MIME type 或 null */
 export const detectImageType = (base64: string): string | null => {
   const raw = base64.includes(',') ? base64.split(',')[1] : base64
-  const buf = Buffer.from(raw.slice(0, 16), 'base64')
+  // Decode enough bytes for all supported signatures (WebP needs 12 bytes)
+  const buf = Buffer.from(raw.slice(0, 24), 'base64')
+  if (buf.length < 12) return null
 
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return 'image/png'
   if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return 'image/jpeg'
   if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return 'image/gif'
+  // WebP: RIFF....WEBP
   if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
       buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return 'image/webp'
 
@@ -127,7 +131,7 @@ export const checkImageNsfw = async (base64Data: string): Promise<NsfwResult | n
     return detectNsfwModelArk(base64Data, cfg.NSFW_API_KEY, threshold)
   }
 
-  console.warn({ service }, '未知的 NSFW 检测服务')
+  logger.warn({ service }, '未知的 NSFW 检测服务')
   return null
 }
 
@@ -138,8 +142,15 @@ const base64ToBuffer = (base64: string): Buffer => {
   return Buffer.from(raw, 'base64')
 }
 
+const ALLOWED_IMAGE_EXTS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+}
+
 const generateFilename = (mimeType: string): string => {
-  const ext = mimeType.split('/')[1] || 'png'
+  const ext = ALLOWED_IMAGE_EXTS[mimeType] || 'png'
   return `${Date.now().toString(36)}${randomUUID().slice(0, 8)}.${ext}`
 }
 
@@ -342,14 +353,16 @@ const PROVIDER_UPLOADERS: Record<string, (buffer: Buffer, filename: string, mime
 export const handleUploadImage = async (data: any) => {
   const validation = safeValidate(UploadImageSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', '无图片数据', 400)
-  if (Math.ceil((validation.data.image.length * 3) / 4) > MAX_UPLOAD_SIZE) { throw new AppError('INVALID_INPUT', '图片超过 5MB', 400) }
+  // Decode base64 and check actual buffer size
+  const buffer = base64ToBuffer(validation.data.image)
+  if (buffer.length > MAX_UPLOAD_SIZE) { throw new AppError('INVALID_INPUT', '图片超过 5MB', 400) }
 
   const mimeType = detectImageType(validation.data.image)
   if (!mimeType) throw new AppError('INVALID_INPUT', '图片格式无效，仅支持 PNG/JPEG/GIF/WebP', 400)
 
   const nsfwResult = await checkImageNsfw(validation.data.image)
   if (nsfwResult?.isNsfw) {
-    console.warn({ score: nsfwResult.score }, '图片 NSFW 检测未通过')
+    logger.warn({ score: nsfwResult.score }, '图片 NSFW 检测未通过')
     throw new AppError('NSFW_DETECTED', `图片包含不合规内容 (score: ${nsfwResult.score.toFixed(3)})`, 400)
   }
 
@@ -367,6 +380,6 @@ export const handleUploadImage = async (data: any) => {
   const buffer = base64ToBuffer(validation.data.image)
   const filename = generateFilename(mimeType)
   const url = await uploader(buffer, filename, mimeType, cfg)
-  console.info({ provider, url }, '图片上传成功')
+  logger.info({ provider, url }, '图片上传成功')
   return { url }
 }

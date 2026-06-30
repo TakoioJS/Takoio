@@ -7,6 +7,7 @@ import { safeValidate } from '../schemas'
 import { ImportSchema, ExportSchema } from '../schemas'
 import { commentStore, getStore, importStore } from '../store/index'
 import { AppError } from '../config'
+import { logger } from '../utils/logger'
 
 // ========== Import ==========
 
@@ -172,7 +173,7 @@ export const handleImport = async (source: string, data: any) => {
   const validation = safeValidate(ImportSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const raw = validation.data.json || (validation.data as any)[source]
-  console.info({ source, type: typeof raw, length: raw?.length }, 'Importing comments')
+  logger.info({ source, type: typeof raw, length: raw?.length }, 'Importing comments')
   if (!raw) return { count: 0 }
 
   let parsed: any = []
@@ -180,7 +181,7 @@ export const handleImport = async (source: string, data: any) => {
     parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
     if (source !== 'takoio' && !Array.isArray(parsed)) parsed = [parsed]
   } catch (e: any) {
-    console.error({ error: e.message }, 'Import parse error')
+    logger.error({ error: e.message }, 'Import parse error')
     return { count: 0, error: 'JSON 格式错误: ' + e.message }
   }
 
@@ -189,7 +190,7 @@ export const handleImport = async (source: string, data: any) => {
     return { count: parsed.comments?.length || 0 }
   }
 
-  console.info({ count: parsed.length }, 'Import records')
+  logger.info({ count: parsed.length }, 'Import records')
   let count = 0
   for (const item of parsed) {
     await commentStore.addComment(toComment(item, source))

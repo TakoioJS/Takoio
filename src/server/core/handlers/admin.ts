@@ -2,14 +2,15 @@
  * Admin / Config / Auth handlers — login, logout, config CRUD, password, notifications, etc.
  */
 
-import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema } from '../schemas'
-import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData } from '../schemas'
+import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, SetConfigSchema } from '../schemas'
+import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData, SetConfigData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
 import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
 import { verifyPassword } from '../utils/crypto'
 import { lookupIpRegion } from '../ip-region'
 import { commentStore } from '../store/index'
+import { logger } from '../utils/logger'
 import { sendNotification } from '../notify'
 import { sendEmail } from '../email'
 import { AppError } from '../config'
@@ -76,7 +77,7 @@ export const handleLogout = async (data: any) => {
 
 // ========== Get Config ==========
 
-export const handleGetConfig = async (_: any) => ({ data: await getConfig() })
+export const handleGetConfig = async (_: any) => ({ data: maskSensitiveConfig(await getConfig()) })
 
 // ========== Set Config ==========
 
@@ -87,7 +88,13 @@ export const handleSetConfig = async (data: any) => {
   const filtered: Record<string, any> = {}
   for (const [key, value] of Object.entries(payload)) {
     if (!ALLOWED.has(key)) continue
+    // C2: reject masked values — prevents accidental overwrite of secrets with placeholder
     if (SENSITIVE_CONFIG_KEYS.has(key) && typeof value === 'string' && value.includes('****')) continue
+    // Type validation: boolean, number, string
+    const defaultValue = DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG]
+    if (typeof defaultValue === 'boolean' && typeof value !== 'boolean') continue
+    if (typeof defaultValue === 'number' && typeof value !== 'number') continue
+    if (typeof defaultValue === 'string' && typeof value !== 'string') continue
     filtered[key] = value
   }
   await configStore.setManyConfig(filtered)
@@ -105,7 +112,7 @@ export const handleConfigReset = async (_: any) => {
 
 // ========== Password Set ==========
 
-export const handlePasswordSet = async (data: PasswordSetData & { token?: string; _token?: string; setupToken?: string }) => {
+export const handlePasswordSet = async (data: PasswordSetData & { token?: string; setupToken?: string }) => {
   const validation = safeValidate(PasswordSetSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
 
@@ -113,7 +120,7 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
 
   if (existingHash) {
     // Password already exists — require admin auth to change
-    const token = data.token || data._token
+    const token = data.token
     if (!token || !await sessionStore.validateToken(token)) {
       throw new AppError('NEED_LOGIN', '需要管理员权限才能修改密码', 401)
     }
@@ -129,7 +136,7 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
   updateAuthHashCache(newHash)
   // Invalidate all existing sessions on password change
   await sessionStore.removeAllTokens()
-  console.info(existingHash ? 'Admin password updated (all sessions invalidated)' : 'Admin password created (first-time setup)')
+  logger.info(existingHash ? 'Admin password updated (all sessions invalidated)' : 'Admin password created (first-time setup)')
 
   // Return a session token so the user is auto-logged in after setup
   return { success: true, token: await sessionStore.createToken() }
@@ -228,11 +235,10 @@ export const handleEmailTest = async (data: EmailTestData) => {
   const html = renderTemplate(rawTpl, vars)
   const result = await sendEmail(cfg, renderTemplate(subject, vars), html)
 
-  // Return full result with log entries for admin UI display
+  // Return sanitized result — do not expose full SMTP log to client
   return {
     success: result.success,
     message: result.message,
-    log: result.log,
     messageId: result.messageId,
   }
 }

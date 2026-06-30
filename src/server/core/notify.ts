@@ -3,6 +3,8 @@
  * 格式: '{"serverchan":"sct_xxx","telegram":"bot_xxx"}'
  */
 
+import { logger } from './utils/logger'
+
 export interface NotifyPayload {
   title: string
   content: string
@@ -28,9 +30,9 @@ export async function sendNotification (config: Record<string, any>, payload: No
     try {
       const pushoo = (await import('pushoo')).default
       await pushoo(platform, { token, title: payload.title, content: payload.content })
-      console.info({ platform }, 'Notification sent')
+      logger.info({ platform }, 'Notification sent')
     } catch (e: any) {
-      console.error({ platform, error: e.message }, 'Notification send failed')
+      logger.error({ platform, error: e.message }, 'Notification send failed')
     }
   }
 }

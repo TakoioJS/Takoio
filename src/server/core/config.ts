@@ -115,6 +115,8 @@ export interface TakoioConfig {
   AI_SUMMARY_ENABLED: boolean
   AI_SUMMARY_PROVIDER: string
   AI_SUMMARY_MODEL: string
+  /** 是否在评论区展示文章摘要（后台开关，与宿主 enableSummary option 双控；任一为 false 则不显示） */
+  ENABLE_SUMMARY?: boolean
   AKISMET_KEY?: string
   ENABLE_ANTI_SPAM?: boolean
   CORS_ORIGINS: string
@@ -195,6 +197,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   AI_SUMMARY_ENABLED: true,
   AI_SUMMARY_PROVIDER: '',
   AI_SUMMARY_MODEL: '',
+  ENABLE_SUMMARY: true,
   MAIL_SUBJECT: '有人在 {title} 中回复了你',
   MAIL_TEMPLATE: `<div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#333">
   <div style="text-align:center;padding:16px 0;font-size:22px;font-weight:700;color:#10b981">{{ siteName }}</div>

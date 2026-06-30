@@ -35,11 +35,11 @@ lerna-debug.log*
 coverage/
 .nyc_output/
 
-# Twikoo 数据
+# Takoio 数据
 /data/
 *.db
 *.sqlite
-
+src/server/data/
 # 临时
 *.tmp
 *.temp
@@ -64,3 +64,4 @@ coverage/
 .workbuddy
 .trae
 .omc
+

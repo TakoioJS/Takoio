@@ -15,6 +15,7 @@ import {
   getVisitorsCountApi,
   updateVisitorsCount
 } from './utils'
+import { getArticleSummary as getArticleSummaryApi } from './utils/api'
 import type { TakoioConfig } from './types'
 
 /** 初始化 Takoio */
@@ -67,6 +68,28 @@ export async function getVisitorsCount (
   return await getVisitorsCountApi(opts)
 }
 
-
+/** 获取文章 AI 摘要（供自定义组件调用，公开 API）
+ *
+ * 用法：宿主自行渲染摘要 UI 时，通过此 API 取数：
+ *   const { summary, keywords, cached } = await getArticleSummary({
+ *     envId: 'https://your-server.com',
+ *     content: '文章正文',
+ *     url: window.location.pathname,
+ *     title: '文章标题',
+ *   })
+ */
+export async function getArticleSummary (
+  options: { envId: string; content: string; url: string; title?: string }
+): Promise<{ success: boolean; summary: string; keywords: string[]; cached: boolean; message: string }> {
+  if (!isUrl(options.envId)) {
+    console.error('Takoio: getArticleSummary requires HTTP URL as envId')
+    return { success: false, summary: '', keywords: [], cached: false, message: 'invalid envId' }
+  }
+  return await getArticleSummaryApi(options.envId, {
+    content: options.content,
+    url: options.url,
+    title: options.title,
+  })
+}
 
 export { version }

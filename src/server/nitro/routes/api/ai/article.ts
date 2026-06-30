@@ -3,7 +3,6 @@
  *
  * Public (no auth) endpoint for blog visitors.
  * Accepts article content + URL, returns AI-generated summary with caching.
- * On first generation, also indexes the article into the knowledge base (fire-and-forget).
  *
  * Requires AI_SUMMARY_ENABLED to be true.
  */
@@ -12,6 +11,7 @@ import { handleArticleSummary } from '#core/handlers/summary'
 import { getConfig } from '#core/config'
 import { getSummaryCache, setSummaryCache, redisRateLimit } from '#core/store/redis'
 import { getClientIp } from '#core/utils/ip'
+import { isDev } from '#core/utils/env'
 import { createError } from 'h3'
 
 const MAX_CONTENT_LEN = 20_000
@@ -61,8 +61,7 @@ export default defineHandler(async (event) => {
 
   const ip = await getClientIp(event)
   // Dev mode: skip rate limiting for testing
-  const isDev = !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
-  if (!isDev) {
+  if (!isDev()) {
     const allowed = await redisRateLimit(`article:${ip}`, ARTICLE_RATE_MAX, ARTICLE_RATE_WINDOW)
     if (!allowed) {
       throw createError({ statusCode: 429, statusMessage: '请求过于频繁，请稍后再试' })
@@ -73,20 +72,16 @@ export default defineHandler(async (event) => {
   const title = body.title as string | undefined
   const content = body.content as string
 
-  // Dev mode: skip cache entirely (Redis may not be running)
-  const skipCache = isDev
-
   // 1. Check cache (C3: cache key is bound to content hash, so poisoned content can't overwrite legit entry)
-  if (!skipCache) {
-    const cached = await getSummaryCache(url, content)
-    if (cached) {
-      return {
-        success: true,
-        message: '摘要来自缓存',
-        summary: cached.summary,
-        keywords: cached.keywords,
-        cached: true,
-      }
+  // Dev 下 Redis 不可用，getSummaryCache 自动走内存缓存兜底；生产走 Redis
+  const cached = await getSummaryCache(url, content)
+  if (cached) {
+    return {
+      success: true,
+      message: '摘要来自缓存',
+      summary: cached.summary,
+      keywords: cached.keywords,
+      cached: true,
     }
   }
 
@@ -96,16 +91,15 @@ export default defineHandler(async (event) => {
     return { ...result, cached: false }
   }
 
-  // 3. Write cache (bound to url + content hash) — skip in dev
-  if (!skipCache) {
-    await setSummaryCache(url, content, {
-      url,
-      summary: result.summary,
-      keywords: result.keywords,
-      title,
-      created: Date.now(),
-    })
-  }
+  // 3. Write cache (bound to url + content hash)
+  // Dev 下写入内存缓存，后续访问命中缓存，不再重复调用 LLM
+  await setSummaryCache(url, content, {
+    url,
+    summary: result.summary,
+    keywords: result.keywords,
+    title,
+    created: Date.now(),
+  })
 
   return {
     success: true,

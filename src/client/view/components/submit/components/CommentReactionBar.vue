@@ -121,8 +121,8 @@ onBeforeUnmount(() => {
 .tk-cr-add { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-pill); background: transparent; color: inherit; opacity: .55; cursor: pointer; font-family: inherit; font-size: 13px; transition: all .15s; }
 .tk-cr-add:hover { opacity: 1; border-color: var(--tk-border); background: var(--tk-bg-muted); }
 
-.tk-cr-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 100; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 6px; background: var(--tk-bg-popup); border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-card); box-shadow: var(--tk-shadow-lift); }
-.tk-cr-popover-item { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--tk-r-input); background: transparent; font-size: 18px; cursor: pointer; transition: all .15s; color: inherit; font-family: inherit; }
+.tk-cr-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 100; display: flex; flex-wrap: nowrap; gap: 2px; padding: 6px 8px; background: var(--tk-bg-popup); border: 1px solid var(--tk-border-soft); border-radius: var(--tk-r-pill); box-shadow: var(--tk-shadow-lift); }
+.tk-cr-popover-item { display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 30px; height: 30px; padding: 0 6px; border: none; border-radius: var(--tk-r-input); background: transparent; font-size: 18px; cursor: pointer; transition: all .15s; color: inherit; font-family: inherit; }
 .tk-cr-popover-item:hover { background: var(--tk-brand-light); transform: scale(1.15); }
 .tk-cr-popover-item.tk-cr-active { background: var(--tk-brand-light); }
 </style>

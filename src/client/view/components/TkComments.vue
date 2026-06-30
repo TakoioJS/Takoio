@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, computed, onBeforeUnmount, inject, type Ref } from 'vue'
 import { t, getComments } from '../../utils'
 import type { Comment, TakoioConfig } from '../../types'
 import TkSubmit from './TkSubmit.vue'
@@ -145,7 +145,8 @@ interface Props { options: TakoioConfig }
 const props = defineProps<Props>()
 const emit = defineEmits<{ (e: 'admin'): void; (e: 'comment-posted', comment: Comment): void }>()
 
-const siteConfig = ref<Record<string, any>>({})
+// 注入 App.vue 提供的共享 siteConfig ref，拉取评论后回填，供 TkSummary 双控读取
+const siteConfig = inject<Ref<Record<string, any>>>('takoio-site-config', ref<Record<string, any>>({}))
 
 const mergedOptions = computed(() => {
   const cfg = siteConfig.value

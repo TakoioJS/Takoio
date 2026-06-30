@@ -1,5 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "build:serverless && NITRO_PRESET=vercel npx nitro build",
+  "buildCommand": "pnpm build:admin && pnpm --filter takoio-server build:vercel",
   "framework": null
 }

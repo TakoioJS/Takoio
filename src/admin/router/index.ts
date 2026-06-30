@@ -40,7 +40,7 @@ const routes: RouteRecordRaw[] = [
         path: 'ai/summary',
         name: 'ai-summary',
         component: () => import('../views/ai/Summary.vue'),
-        meta: { title: '摘要管理', icon: 'document-text-outline' },
+        meta: { title: '文章摘要管理', icon: 'document-text-outline' },
       },
       {
         path: 'data',

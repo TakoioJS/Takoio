@@ -1,11 +1,13 @@
 /**
- * Redis client singleton — connection management for knowledge base
+ * Redis client singleton — AI summary caching and rate limiting
  *
  * Uses ioredis with config from REDIS_URL environment variable.
  * Falls back gracefully when Redis is unavailable.
  */
 
 import Redis from 'ioredis'
+import { logger } from '../utils/logger'
+import { isDev } from '../utils/env'
 
 let _client: Redis | null = null
 let _connectPromise: Promise<Redis | null> | null = null
@@ -13,8 +15,12 @@ let _connectPromise: Promise<Redis | null> | null = null
 /**
  * Get or create a Redis client singleton.
  * Returns null if Redis is not configured or connection fails.
+ * Dev（热开发）模式下完全不创建/连接 Redis 客户端，直接返回 null（走内存缓存兜底）。
  */
 export async function getRedisClient (): Promise<Redis | null> {
+  // Dev：不连 Redis，避免本地无 Redis 时的连接噪声与超时
+  if (isDev()) return null
+
   if (_client?.status === 'ready') return _client
 
   if (_connectPromise) return _connectPromise
@@ -27,7 +33,7 @@ export async function getRedisClient (): Promise<Redis | null> {
         maxRetriesPerRequest: 3,
         retryStrategy (times) {
           if (times > 3) {
-            console.warn('[redis] Max retry attempts reached, giving up')
+            logger.warn('[redis] Max retry attempts reached, giving up')
             return null // stop retrying
           }
           return Math.min(times * 500, 3000)
@@ -37,17 +43,17 @@ export async function getRedisClient (): Promise<Redis | null> {
       })
 
       _client.on('error', (err) => {
-        console.warn('[redis] Connection error:', err.message)
+        logger.warn('[redis] Connection error:', err.message)
       })
 
       _client.on('ready', () => {
-        console.info('[redis] Connected successfully')
+        logger.info('[redis] Connected successfully')
       })
 
       await _client.connect()
       return _client
     } catch (e: any) {
-      console.warn('[redis] Failed to connect:', e.message)
+      logger.warn('[redis] Failed to connect:', e.message)
       _client = null
       _connectPromise = null
       return null
@@ -97,7 +103,7 @@ interface SummaryCacheData {
 const SUMMARY_TTL = 2_592_000 // 30 days
 // C3: cache key binds to both url and content hash, so attacker can't poison a legit URL's cache with different content
 const summaryCacheKey = (url: string, content: string): string =>
-  `takoio:summary:${createHash('md5').update(url).digest('hex')}:${createHash('sha256').update(content).digest('hex').slice(0, 16)}`
+  `takoio:summary:${createHash('sha256').update(url).digest('hex').slice(0, 16)}:${createHash('sha256').update(content).digest('hex').slice(0, 16)}`
 
 // Memory fallback when Redis is unavailable
 const _memCache = new Map<string, { data: SummaryCacheData; expire: number }>()
@@ -216,13 +222,13 @@ export async function listSummaryCaches (): Promise<SummaryCacheEntry[]> {
     }
     return items.sort((a, b) => b.created - a.created)
   } catch (e: any) {
-    console.warn('[redis] listSummaryCaches failed:', e.message)
+    logger.warn('[redis] listSummaryCaches failed:', e.message)
     return []
   }
 }
 
 export async function deleteSummaryCacheByUrl (url: string): Promise<number> {
-  const urlHash = createHash('md5').update(url).digest('hex')
+  const urlHash = createHash('sha256').update(url).digest('hex').slice(0, 16)
   const pattern = `${SUMMARY_KEY_PREFIX}${urlHash}:*`
   const client = await getRedisClient()
   if (!client) {
@@ -246,7 +252,7 @@ export async function deleteSummaryCacheByUrl (url: string): Promise<number> {
     await client.del(...keys)
     return keys.length
   } catch (e: any) {
-    console.warn('[redis] deleteSummaryCacheByUrl failed:', e.message)
+    logger.warn('[redis] deleteSummaryCacheByUrl failed:', e.message)
     return 0
   }
 }
@@ -274,7 +280,52 @@ export async function clearAllSummaryCaches (): Promise<number> {
     await client.del(...keys)
     return keys.length
   } catch (e: any) {
-    console.warn('[redis] clearAllSummaryCaches failed:', e.message)
+    logger.warn('[redis] clearAllSummaryCaches failed:', e.message)
     return 0
+  }
+}
+
+/**
+ * 按 key 更新摘要缓存（用于后台编辑摘要内容/标签/标题）。
+ * 合并 patch：summary/keywords/title 覆盖，url/created 保留；TTL 重置为 30 天。
+ * 返回 true 表示更新成功；false 表示 key 不存在/已过期/非法。
+ */
+export async function updateSummaryCache (
+  key: string,
+  patch: { summary?: string; keywords?: string[]; title?: string }
+): Promise<boolean> {
+  // 防 key 越权：必须为摘要缓存 key，且符合严格格式
+  if (!key || !/^takoio:summary:[a-f0-9]{32}:[a-f0-9]{16}$/.test(key)) return false
+
+  const client = await getRedisClient()
+  if (!client) {
+    // 内存分支：保留原 expire
+    const existing = _memCache.get(key)
+    if (!existing || existing.expire <= Date.now()) return false
+    const merged: SummaryCacheData = {
+      ...existing.data,
+      ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
+      ...(patch.keywords !== undefined ? { keywords: patch.keywords } : {}),
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+    }
+    _memCache.set(key, { data: merged, expire: existing.expire })
+    return true
+  }
+
+  try {
+    const raw = await client.get(key)
+    if (!raw) return false
+    const existing = JSON.parse(raw) as SummaryCacheData
+    const merged: SummaryCacheData = {
+      ...existing,
+      ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
+      ...(patch.keywords !== undefined ? { keywords: patch.keywords } : {}),
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+    }
+    await client.set(key, JSON.stringify(merged), 'EX', SUMMARY_TTL)
+    return true
+  } catch (e: any) {
+    logger.warn('[redis] updateSummaryCache failed:', e.message)
+    return false
   }
 }

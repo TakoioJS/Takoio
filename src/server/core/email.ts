@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { logger } from './utils/logger'
 
 export interface EmailConfig {
   SMTP_HOST?: string
@@ -31,15 +32,15 @@ function createLogger () {
     log,
     info (message: string) {
       log.push({ time: now(), level: 'info', message })
-      console.info(`[email] ${message}`)
+      logger.info(`[email] ${message}`)
     },
     warn (message: string) {
       log.push({ time: now(), level: 'warn', message })
-      console.warn(`[email] ${message}`)
+      logger.warn(`[email] ${message}`)
     },
     error (message: string) {
       log.push({ time: now(), level: 'error', message })
-      console.error(`[email] ${message}`)
+      logger.error(`[email] ${message}`)
     },
   }
 }

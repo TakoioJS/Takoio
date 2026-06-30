@@ -13,9 +13,9 @@ vi.mock('ai', () => ({
   }),
 }))
 
-// Mock @ai-sdk/openai
+// Mock @ai-sdk/openai — v4 provider 默认走 Responses API，业务代码用 .chat(model) 走 Chat Completions
 vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: vi.fn().mockReturnValue(() => ({ provider: 'openai' })),
+  createOpenAI: vi.fn().mockReturnValue({ chat: () => ({ provider: 'openai' }) }),
 }))
 
 // Mock @ai-sdk/anthropic
