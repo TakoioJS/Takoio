@@ -36,7 +36,19 @@ export default definePlugin(async () => {
   initIpSearcher()
   await dbPromise
   await storePromise
-  await initPassword()
+  const { hasPassword } = await initPassword()
+
+  // Safety: On serverless (Vercel/Netlify) without a password and no SETUP_TOKEN, the admin
+  // setup endpoint rejects all attempts — the deployment is effectively broken.
+  // Fatal-error at startup so the deployer sees the error immediately in build/deploy logs.
+  if (isServerless() && !hasPassword) {
+    const SETUP_TOKEN = process.env.SETUP_TOKEN
+    if (!SETUP_TOKEN) {
+      logger.fatal('[init] Serverless deployment has no admin password and no SETUP_TOKEN. The admin panel setup will be blocked. Set SETUP_TOKEN in your deployment environment to enable first-time password setup.')
+      throw new Error('Serverless 环境首次部署必须设置 SETUP_TOKEN 环境变量以初始化管理员密码。请在部署平台配置 SETUP_TOKEN 后重新部署。')
+    }
+  }
+
   initialized = true
 
   // Self-hosted mode: start session cleanup timer

@@ -13,7 +13,6 @@ import {
   updateSummaryCache,
 } from '#core/store/redis'
 import { isRedisAvailable } from '#core/store/redis'
-import { isDev } from '#core/utils/env'
 // getToken, validateBody, validateQuery — auto-imported
 
 export default defineHandler(async (event) => {
@@ -43,14 +42,15 @@ export default defineHandler(async (event) => {
 
   // ── GET /api/ai/summary/list — list all cached summaries ──
   if (segments[0] === 'list' && method === 'GET') {
-    const dev = isDev()
-    const redisOk = dev ? false : await isRedisAvailable()
-    if (!dev && !redisOk) {
-      return { success: true, summaries: [], redisAvailable: false }
+    // 不再依赖 isDev() 判断 Redis 状态：
+    // 云函数平台 NODE_ENV=development 会让 import.meta.dev polyfill 为 true，误判为 dev
+    // 直接检查 Redis 是否可用（基于 REDIS_URL 是否设置 + 连接是否成功）
+    const redisOk = await isRedisAvailable()
+    if (!redisOk) {
+      return { success: true, summaries: [], redisAvailable: false, dev: false }
     }
-    // dev 走内存缓存兜底；生产走 Redis
     const summaries = await listSummaryCaches()
-    return { success: true, summaries, redisAvailable: redisOk, dev }
+    return { success: true, summaries, redisAvailable: true, dev: false }
   }
 
   // ── PUT /api/ai/summary — edit a cached summary by key (content/keywords/title) ──

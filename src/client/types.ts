@@ -95,7 +95,7 @@ export interface TakoioConfig {
   /** 是否显示浏览量 */
   visitorCounter?: boolean
   /** 评论分页模式 */
-  paginationMode?: 'pagination' | 'infinite'
+  paginationMode?: 'pagination' | 'readmore'
   /** 是否显示网址输入框 */
   enableLinkInput?: boolean
   /** 网址是否必填 */

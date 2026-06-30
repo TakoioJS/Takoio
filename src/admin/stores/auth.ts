@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: false,
     needSetup: false,
     setupDev: false,
+    setupTokenRequired: false,
     _refreshTimer: null as ReturnType<typeof setInterval> | null,
   }),
 
@@ -103,6 +104,7 @@ export const useAuthStore = defineStore('auth', {
         const data = await res.json()
         this.needSetup = !!data.needSetup
         this.setupDev = !!data.dev
+        this.setupTokenRequired = !!data.setupTokenRequired
         return this.needSetup
       } catch {
         return false
@@ -130,12 +132,12 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async setup (password: string): Promise<{ success: boolean; message?: string }> {
+    async setup (password: string, setupToken?: string): Promise<{ success: boolean; message?: string }> {
       try {
         const res = await fetch(`${this.getBaseUrl()}/api/admin/password`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
+          body: JSON.stringify({ password, ...(setupToken ? { setupToken } : {}) }),
         })
         const data = await res.json()
         if (data.success) {

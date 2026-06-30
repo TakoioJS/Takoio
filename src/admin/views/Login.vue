@@ -29,7 +29,37 @@
         </div>
 
         <template v-if="needSetup">
-          <n-form @submit.prevent="onSetup">
+          <!-- Step 1: Setup Token verification (when required) -->
+          <template v-if="auth.setupTokenRequired && !setupTokenVerified">
+            <p class="setup-token-hint">
+              此部署要求 Setup Token 验证。请填写部署时设置的 SETUP_TOKEN 环境变量值。
+            </p>
+            <n-form-item class="pwd-item">
+              <n-input
+                v-model:value="setupToken"
+                type="password"
+                show-password-on="click"
+                placeholder="SETUP_TOKEN"
+                size="large"
+                @keydown.enter="onVerifyToken"
+              />
+            </n-form-item>
+            <n-button
+              type="primary"
+              block
+              size="large"
+              :disabled="!setupToken"
+              @click="onVerifyToken"
+            >
+              验证
+            </n-button>
+          </template>
+
+          <!-- Step 2: Password + CORS setup -->
+          <n-form
+            v-else
+            @submit.prevent="onSetup"
+          >
             <n-form-item class="pwd-item">
               <n-input
                 v-model:value="setupPassword"
@@ -196,6 +226,8 @@ const message = useMessage()
 const password = ref('')
 const setupPassword = ref('')
 const setupPasswordConfirm = ref('')
+const setupToken = ref('')
+const setupTokenVerified = ref(false)
 const corsOrigins = ref('')
 
 const passwordStrength = computed(() => {
@@ -244,13 +276,19 @@ const redirectTo = () => {
   router.replace(redirect)
 }
 
+const onVerifyToken = () => {
+  if (!setupToken.value) { message.warning('请填写 Setup Token'); return }
+  setupTokenVerified.value = true
+}
+
 const onSetup = async () => {
   if (!setupPassword.value) { message.warning(t('enterPassword')); return }
   if (setupPassword.value.length < 8) { message.warning(t('passwordTooShort')); return }
   if (setupPassword.value !== setupPasswordConfirm.value) { message.error(t('passwordMismatch')); return }
+  if (auth.setupTokenRequired && !setupToken.value) { message.warning('请填写 Setup Token'); return }
   loading.value = true
   try {
-    const result = await auth.setup(setupPassword.value)
+    const result = await auth.setup(setupPassword.value, setupToken.value || undefined)
     if (result.success) {
       if (!auth.setupDev && corsOrigins.value.trim()) {
         try { await configApi.save({ CORS_ORIGINS: corsOrigins.value.trim() }) } catch { /* 非关键，忽略 */ }
@@ -357,6 +395,14 @@ const onLogin = async () => {
   font-size: 12px;
   color: var(--ink-3);
   text-align: center;
+}
+
+.setup-token-hint {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: center;
+  line-height: 1.5;
 }
 
 /* 密码强度指示器 */

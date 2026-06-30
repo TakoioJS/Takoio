@@ -166,7 +166,7 @@ const mergedOptions = computed(() => {
     // 否则回退到独立配置键，最后回退到用户初始配置
     enableCommentReaction: features !== null
       ? features.includes('commentReaction')
-      : (cfg.ENABLE_COMMENT_REACTION !== undefined ? cfg.ENABLE_COMMENT_REACTION : props.options.enableCommentReaction),
+      : props.options.enableCommentReaction,
     enableArticleReaction: features !== null
       ? features.includes('articleReaction')
       : (cfg.ENABLE_ARTICLE_REACTION !== undefined ? cfg.ENABLE_ARTICLE_REACTION : props.options.enableArticleReaction),
@@ -204,7 +204,7 @@ const allComments = ref<Comment[]>([])
 const sentinelRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-const infiniteMode = computed(() => mergedOptions.value.paginationMode === 'infinite')
+const infiniteMode = computed(() => mergedOptions.value.paginationMode === 'readmore')
 const hasMore = computed(() => allComments.value.length < total.value)
 
 const buildCommentMap = (comments: Comment[]): Map<string, Comment> => {

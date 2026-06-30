@@ -114,7 +114,7 @@ export const sections: ConfigSection[] = [
         key: 'COMMENT_PAGINATION_MODE',
         label: '分页方式',
         type: 'select',
-        options: [{ label: '分页', value: 'pagination' }, { label: '无限滚动', value: 'infinite' }]
+        options: [{ label: '分页', value: 'pagination' }, { label: '无限滚动', value: 'readmore' }]
       },
       { key: 'PAGE_SIZE', label: '每页条数', type: 'number', min: 1, max: 100 },
       { key: 'COMMENT_LENGTH_MAX', label: '最大字数', type: 'number', min: 1, max: 10000 },

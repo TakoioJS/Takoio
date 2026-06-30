@@ -325,11 +325,8 @@
           </div>
         </n-spin>
 
-        <!-- 浮动保存按钮栏 -->
-        <div
-          v-if="isDirty"
-          class="save-bar"
-        >
+        <!-- 浮动操作按钮栏 -->
+        <div class="save-bar">
           <n-button
             size="small"
             :disabled="loading"
@@ -338,6 +335,7 @@
             重置
           </n-button>
           <n-button
+            v-if="isDirty"
             size="small"
             type="primary"
             :loading="saving"

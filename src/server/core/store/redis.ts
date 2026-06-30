@@ -7,7 +7,6 @@
 
 import Redis from 'ioredis'
 import { logger } from '../utils/logger'
-import { isDev } from '../utils/env'
 
 let _client: Redis | null = null
 let _connectPromise: Promise<Redis | null> | null = null
@@ -15,19 +14,23 @@ let _connectPromise: Promise<Redis | null> | null = null
 /**
  * Get or create a Redis client singleton.
  * Returns null if Redis is not configured or connection fails.
- * Dev（热开发）模式下完全不创建/连接 Redis 客户端，直接返回 null（走内存缓存兜底）。
+ *
+ * 不依赖 isDev() 判断：云函数平台(腾讯SCF/CloudBase 等)可能注入 NODE_ENV=development，
+ * 导致 import.meta.dev 在运行时 polyfill 为 true，误判为 dev 模式而跳过 Redis 连接。
+ * 改为直接检查 REDIS_URL：设置了就连接，没设置就走内存兜底。
  */
 export async function getRedisClient (): Promise<Redis | null> {
-  // Dev：不连 Redis，避免本地无 Redis 时的连接噪声与超时
-  if (isDev()) return null
-
   if (_client?.status === 'ready') return _client
 
   if (_connectPromise) return _connectPromise
 
   _connectPromise = (async () => {
     try {
-      const url = process.env.REDIS_URL || 'redis://localhost:6379'
+      const url = process.env.REDIS_URL
+      if (!url) {
+        // 未配置 REDIS_URL，走内存兜底
+        return null
+      }
 
       _client = new Redis(url, {
         maxRetriesPerRequest: 3,

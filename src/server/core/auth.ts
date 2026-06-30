@@ -44,29 +44,65 @@ export const updateAuthHashCache = (hash: string) => {
 }
 
 /** Initialize password on startup: check database for existing hash, otherwise await first-time setup via admin panel. */
-export const initPassword = async () => {
+export const initPassword = async (): Promise<{ hasPassword: boolean }> => {
   try {
     const dbConfig = await configStore.getConfig()
     if (dbConfig.AUTH_HASH) {
       authHashCache = dbConfig.AUTH_HASH
       authHashCacheTime = Date.now()
       logger.info('Admin password loaded from database')
+      return { hasPassword: true }
     } else {
       logger.info('No admin password set. Awaiting first-time setup via admin panel.')
+      return { hasPassword: false }
     }
   } catch {
     logger.warn('Could not load admin password from database. Awaiting first-time setup.')
+    return { hasPassword: false }
   }
 }
 
 // ========== Login Brute-Force Protection ==========
 
-// ponytail: in-memory Map for failure counting + Redis for lockout persistence; memory resets on serverless cold start but Redis lockout survives
+// Failure counts and lockout state persisted to Redis when available; memory fallback for dev / no-Redis deployments.
+// Redis key pattern: takoio:login-attempts:<ip> stores { failures, lockedUntil } with TTL = LOGIN_LOCKOUT_MS.
+// On cold start / serverless restart, Redis-attempts survive while the in-memory Map resets.
 interface LoginAttempt { failures: number; lockedUntil: number }
 const loginAttempts = new Map<string, LoginAttempt>()
 const LOGIN_MAX_FAILURES = 5
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000 // 15 minutes
 const REDIS_LOCKOUT_PREFIX = 'takoio:login-lockout:'
+const REDIS_LOGIN_ATTEMPTS_PREFIX = 'takoio:login-attempts:'
+
+async function getRedisLoginAttempt (ip: string): Promise<LoginAttempt | null> {
+  const mem = loginAttempts.get(ip)
+  if (mem) return mem
+  try {
+    const { getRedisClient } = await import('./store/redis')
+    const client = await getRedisClient()
+    if (!client) return null
+    const raw = await client.get(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`)
+    if (raw) return JSON.parse(raw) as LoginAttempt
+  } catch { /* fall through */ }
+  return null
+}
+
+async function setRedisLoginAttempt (ip: string, attempt: LoginAttempt): Promise<void> {
+  loginAttempts.set(ip, attempt)
+  try {
+    const { getRedisClient } = await import('./store/redis')
+    const client = await getRedisClient()
+    if (client) await client.set(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`, JSON.stringify(attempt), 'PX', LOGIN_LOCKOUT_MS)
+  } catch { /* best effort */ }
+}
+
+async function delRedisLoginAttempt (ip: string): Promise<void> {
+  try {
+    const { getRedisClient } = await import('./store/redis')
+    const client = await getRedisClient()
+    if (client) await client.del(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`)
+  } catch { /* best effort */ }
+}
 
 async function isRedisLockedOut (ip: string): Promise<boolean> {
   try {
@@ -99,11 +135,13 @@ export const checkLoginRateLimit = async (ip: string): Promise<{ allowed: boolea
   if (await isRedisLockedOut(ip)) return { allowed: false, remainingAttempts: 0 }
 
   const now = Date.now()
-  const attempt = loginAttempts.get(ip)
+  const attempt = await getRedisLoginAttempt(ip)
   if (!attempt) return { allowed: true, remainingAttempts: LOGIN_MAX_FAILURES }
 
   if (attempt.lockedUntil > 0 && now > attempt.lockedUntil) {
     loginAttempts.delete(ip)
+    await delRedisLoginAttempt(ip)
+    await clearRedisLockout(ip)
     return { allowed: true, remainingAttempts: LOGIN_MAX_FAILURES }
   }
 
@@ -114,19 +152,19 @@ export const checkLoginRateLimit = async (ip: string): Promise<{ allowed: boolea
 
 export const recordLoginFailure = async (ip: string) => {
   const now = Date.now()
-  const attempt = loginAttempts.get(ip) || { failures: 0, lockedUntil: 0 }
+  const attempt = await getRedisLoginAttempt(ip) || { failures: 0, lockedUntil: 0 }
   attempt.failures += 1
   if (attempt.failures >= LOGIN_MAX_FAILURES) {
     attempt.lockedUntil = now + LOGIN_LOCKOUT_MS
     logger.warn({ ip }, `Login locked out after ${LOGIN_MAX_FAILURES} failed attempts`)
-    // Persist lockout to Redis so it survives serverless cold starts
     await setRedisLockout(ip)
   }
-  loginAttempts.set(ip, attempt)
+  await setRedisLoginAttempt(ip, attempt)
 }
 
 export const clearLoginFailures = async (ip: string) => {
   loginAttempts.delete(ip)
+  await delRedisLoginAttempt(ip)
   await clearRedisLockout(ip)
 }
 

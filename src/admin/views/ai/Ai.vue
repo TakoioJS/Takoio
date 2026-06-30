@@ -424,7 +424,7 @@ const onSave = async () => {
 const onReset = () => {
   dialog.warning({
     title: '确认重置',
-    content: '确定要重置 AI 配置为默认值吗？',
+    content: '将重置所有配置项为默认值（含网站设置、邮件、推送等），此操作不可逆。确定继续？',
     positiveText: '重置',
     negativeText: '取消',
     onPositiveClick: async () => {
