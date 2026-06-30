@@ -31,6 +31,9 @@ export const comments = sqliteTable('comments', {
   index('idx_comments_pid').on(table.pid),
   index('idx_comments_created').on(table.created),
   index('idx_comments_state').on(table.state),
+  // 复合索引：评论列表主查询 WHERE url=? AND state IN(...) AND pid IS NULL ORDER BY created
+  index('idx_comments_url_state_created').on(table.url, table.state, table.created),
+  index('idx_comments_is_spam').on(table.isSpam),
 ])
 
 export const configs = sqliteTable('configs', {

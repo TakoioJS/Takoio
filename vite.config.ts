@@ -84,6 +84,14 @@ export default defineConfig(({ mode }) => {
           },
           globals: {
             vue: 'Vue'
+          },
+          // ESM 模式：合并 highlight.js 语言模块为单个 chunk，减少首屏并行请求数
+          // UMD 模式为单文件输出，manualChunks 不生效（全部 inline）
+          manualChunks: mode === 'umd' ? undefined : (id) => {
+            // 路径分隔符跨平台兼容（Windows 用 \，POSIX 用 /）
+            const normId = id.replace(/\\/g, '/')
+            if (normId.includes('highlight.js/lib/')) return 'hljs-langs'
+            if (normId.includes('katex')) return 'katex'
           }
         }
       }

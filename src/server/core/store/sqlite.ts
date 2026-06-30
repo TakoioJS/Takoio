@@ -210,17 +210,24 @@ export const commentStore = {
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
     const todayTs = startOfToday.getTime()
+    const startTs = todayTs - (n - 1) * 86400000
+    // 单次 GROUP BY 查询：按日期分组聚合，避免 N 次 COUNT(*)
+    const rows = await db().select({
+      dayStart: sql<number>`(${comments.created} / 86400000 * 86400000)`,
+      count: drizzleCount(),
+    }).from(comments)
+      .where(sql`${comments.created} >= ${startTs}`)
+      .groupBy(sql`(${comments.created} / 86400000)`)
+      .all()
+    const map = new Map<number, number>()
+    for (const r of rows) map.set(r.dayStart, r.count)
     const result: { date: string; count: number }[] = []
     for (let i = n - 1; i >= 0; i--) {
       const dayStart = todayTs - i * 86400000
-      const dayEnd = dayStart + 86400000
-      const r = await db().select({ count: drizzleCount() }).from(comments)
-        .where(sql`${comments.created} >= ${dayStart} and ${comments.created} < ${dayEnd}`)
-        .get()
       const d = new Date(dayStart)
       result.push({
         date: `${d.getMonth() + 1}/${d.getDate()}`,
-        count: r?.count ?? 0,
+        count: map.get(dayStart) ?? 0,
       })
     }
     return result
@@ -419,71 +426,74 @@ export async function getStore () {
 }
 
 export async function importStore (data: any) {
-  if (data.comments) {
-    for (const c of data.comments) {
-      await db().insert(comments).values({
-        id: c.id,
-        url: c.url,
-        href: c.href,
-        nick: c.nick,
-        mail: c.mail,
-        mailMd5: c.mailMd5,
-        link: c.link,
-        comment: c.comment,
-        ua: c.ua,
-        ip: c.ip,
-        state: c.state || 'visible',
-        created: c.created,
-        updated: c.updated,
-        pid: c.pid,
-        rid: c.rid,
-        like: c.like ?? 0,
-        dislike: c.dislike ?? 0,
-        isSpam: c.isSpam ? 1 : 0,
-        isTop: c.isTop ? 1 : 0,
-        isPinned: c.isPinned ? 1 : 0,
-        image: c.image,
-        sticker: c.sticker,
-        ipRegion: c.ipRegion,
-        tags: c.tags,
-        renderedComment: c.renderedComment || null,
-      }).onConflictDoNothing().run()
+  // 单事务批量导入，避免逐条 insert 的事务开销
+  await db().transaction(async (tx) => {
+    if (data.comments) {
+      for (const c of data.comments) {
+        await tx.insert(comments).values({
+          id: c.id,
+          url: c.url,
+          href: c.href,
+          nick: c.nick,
+          mail: c.mail,
+          mailMd5: c.mailMd5,
+          link: c.link,
+          comment: c.comment,
+          ua: c.ua,
+          ip: c.ip,
+          state: c.state || 'visible',
+          created: c.created,
+          updated: c.updated,
+          pid: c.pid,
+          rid: c.rid,
+          like: c.like ?? 0,
+          dislike: c.dislike ?? 0,
+          isSpam: c.isSpam ? 1 : 0,
+          isTop: c.isTop ? 1 : 0,
+          isPinned: c.isPinned ? 1 : 0,
+          image: c.image,
+          sticker: c.sticker,
+          ipRegion: c.ipRegion,
+          tags: c.tags,
+          renderedComment: c.renderedComment || null,
+        }).onConflictDoNothing().run()
+      }
     }
-  }
-  if (data.configs) {
-    for (const [key, val] of Object.entries(data.configs) as [string, any][]) {
-      await db().insert(configs).values({ key, value: val.value, updatedAt: val.updatedAt || Date.now() })
-        .onConflictDoUpdate({ target: configs.key, set: { value: val.value, updatedAt: Date.now() } })
-        .run()
+    if (data.configs) {
+      for (const [key, val] of Object.entries(data.configs) as [string, any][]) {
+        await tx.insert(configs).values({ key, value: val.value, updatedAt: val.updatedAt || Date.now() })
+          .onConflictDoUpdate({ target: configs.key, set: { value: val.value, updatedAt: Date.now() } })
+          .run()
+      }
     }
-  }
-  if (data.visitors) {
-    for (const [url, v] of Object.entries(data.visitors) as [string, any][]) {
-      await db().insert(visitors).values({ url, title: v.title, count: v.count, updatedAt: v.updatedAt })
-        .onConflictDoUpdate({ target: visitors.url, set: { count: v.count, updatedAt: v.updatedAt } })
-        .run()
+    if (data.visitors) {
+      for (const [url, v] of Object.entries(data.visitors) as [string, any][]) {
+        await tx.insert(visitors).values({ url, title: v.title, count: v.count, updatedAt: v.updatedAt })
+          .onConflictDoUpdate({ target: visitors.url, set: { count: v.count, updatedAt: v.updatedAt } })
+          .run()
+      }
     }
-  }
-  if (data.reactions) {
-    for (const [url, emojis] of Object.entries(data.reactions) as [string, any][]) {
-      for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
-        for (const ip of ips) {
-          await db().insert(reactions).values({ url, emoji, ip })
-            .onConflictDoNothing().run()
+    if (data.reactions) {
+      for (const [url, emojis] of Object.entries(data.reactions) as [string, any][]) {
+        for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+          for (const ip of ips) {
+            await tx.insert(reactions).values({ url, emoji, ip })
+              .onConflictDoNothing().run()
+          }
         }
       }
     }
-  }
-  if (data.commentReactions) {
-    for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
-      for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
-        for (const ip of ips) {
-          await db().insert(commentReactions).values({ commentId, emoji, ip, createdAt: Date.now() })
-            .onConflictDoNothing().run()
+    if (data.commentReactions) {
+      for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
+        for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+          for (const ip of ips) {
+            await tx.insert(commentReactions).values({ commentId, emoji, ip, createdAt: Date.now() })
+              .onConflictDoNothing().run()
+          }
         }
       }
     }
-  }
+  })
 }
 
 export async function ensureDb () {

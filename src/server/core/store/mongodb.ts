@@ -241,15 +241,24 @@ export const commentStore = {
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
     const todayTs = startOfToday.getTime()
+    const startTs = todayTs - (n - 1) * 86400000
+    // 单次 aggregate：按日期分组聚合，避免 N 次 countDocuments
+    const rows = await coll.aggregate<{
+      _id: number
+      count: number
+    }>([
+      { $match: { created: { $gte: startTs } } },
+      { $group: { _id: { $floor: { $divide: ['$created', 86400000] } }, count: { $sum: 1 } } },
+    ]).toArray()
+    const map = new Map<number, number>()
+    for (const r of rows) map.set(r._id * 86400000, r.count)
     const result: { date: string; count: number }[] = []
     for (let i = n - 1; i >= 0; i--) {
       const dayStart = todayTs - i * 86400000
-      const dayEnd = dayStart + 86400000
-      const count = await coll.countDocuments({ created: { $gte: dayStart, $lt: dayEnd } })
       const d = new Date(dayStart)
       result.push({
         date: `${d.getMonth() + 1}/${d.getDate()}`,
-        count,
+        count: map.get(dayStart) ?? 0,
       })
     }
     return result
@@ -468,69 +477,84 @@ export async function getStore () {
 
 export async function importStore (data: any) {
   const db = await getDb()
+  // 批量 bulkWrite，ordered:false 允许并行执行，大幅提升导入速度
   if (data.comments) {
-    const coll = col(db, 'comments')
-    for (const c of data.comments) {
-      await coll.replaceOne({ _id: c.id }, {
-        _id: c.id,
-        url: c.url,
-        href: c.href,
-        nick: c.nick,
-        mail: c.mail,
-        mailMd5: c.mailMd5,
-        link: c.link,
-        comment: c.comment,
-        ua: c.ua,
-        ip: c.ip,
-        state: c.state || 'visible',
-        created: c.created,
-        updated: c.updated,
-        pid: c.pid,
-        rid: c.rid,
-        like: c.like ?? 0,
-        dislike: c.dislike ?? 0,
-        isSpam: !!c.isSpam,
-        isTop: !!c.isTop,
-        isPinned: !!c.isPinned,
-        image: c.image,
-        sticker: c.sticker,
-        ipRegion: c.ipRegion,
-        tags: c.tags,
-        renderedComment: c.renderedComment || null,
-      }, { upsert: true })
-    }
+    const ops = data.comments.map((c: any) => ({
+      replaceOne: {
+        filter: { _id: c.id },
+        replacement: {
+          _id: c.id,
+          url: c.url,
+          href: c.href,
+          nick: c.nick,
+          mail: c.mail,
+          mailMd5: c.mailMd5,
+          link: c.link,
+          comment: c.comment,
+          ua: c.ua,
+          ip: c.ip,
+          state: c.state || 'visible',
+          created: c.created,
+          updated: c.updated,
+          pid: c.pid,
+          rid: c.rid,
+          like: c.like ?? 0,
+          dislike: c.dislike ?? 0,
+          isSpam: !!c.isSpam,
+          isTop: !!c.isTop,
+          isPinned: !!c.isPinned,
+          image: c.image,
+          sticker: c.sticker,
+          ipRegion: c.ipRegion,
+          tags: c.tags,
+          renderedComment: c.renderedComment || null,
+        },
+        upsert: true,
+      },
+    }))
+    if (ops.length > 0) await col(db, 'comments').bulkWrite(ops, { ordered: false })
   }
   if (data.configs) {
-    const coll = col(db, 'configs')
-    for (const [key, val] of Object.entries(data.configs) as [string, any][]) {
-      await coll.replaceOne({ _id: key }, { _id: key, value: val.value, updatedAt: val.updatedAt || Date.now() }, { upsert: true })
-    }
+    const ops = (Object.entries(data.configs) as [string, any][]).map(([key, val]) => ({
+      replaceOne: {
+        filter: { _id: key },
+        replacement: { _id: key, value: val.value, updatedAt: val.updatedAt || Date.now() },
+        upsert: true,
+      },
+    }))
+    if (ops.length > 0) await col(db, 'configs').bulkWrite(ops, { ordered: false })
   }
   if (data.visitors) {
-    const coll = col(db, 'visitors')
-    for (const [url, v] of Object.entries(data.visitors) as [string, any][]) {
-      await coll.replaceOne({ _id: url }, { _id: url, title: v.title, count: v.count, updatedAt: v.updatedAt }, { upsert: true })
-    }
+    const ops = (Object.entries(data.visitors) as [string, any][]).map(([url, v]) => ({
+      replaceOne: {
+        filter: { _id: url },
+        replacement: { _id: url, title: v.title, count: v.count, updatedAt: v.updatedAt },
+        upsert: true,
+      },
+    }))
+    if (ops.length > 0) await col(db, 'visitors').bulkWrite(ops, { ordered: false })
   }
   if (data.reactions) {
-    const coll = col(db, 'reactions')
+    const ops: any[] = []
     for (const [url, emojis] of Object.entries(data.reactions) as [string, any][]) {
       for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
         for (const ip of ips) {
-          await coll.replaceOne({ url, emoji, ip }, { url, emoji, ip }, { upsert: true })
+          ops.push({ replaceOne: { filter: { url, emoji, ip }, replacement: { url, emoji, ip }, upsert: true } })
         }
       }
     }
+    if (ops.length > 0) await col(db, 'reactions').bulkWrite(ops, { ordered: false })
   }
   if (data.commentReactions) {
-    const coll = col(db, 'comment_reactions')
+    const ops: any[] = []
     for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
       for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
         for (const ip of ips) {
-          await coll.replaceOne({ commentId, ip }, { commentId, emoji, ip, createdAt: Date.now() }, { upsert: true })
+          ops.push({ replaceOne: { filter: { commentId, ip }, replacement: { commentId, emoji, ip, createdAt: Date.now() }, upsert: true } })
         }
       }
     }
+    if (ops.length > 0) await col(db, 'comment_reactions').bulkWrite(ops, { ordered: false })
   }
 }
 
@@ -541,6 +565,9 @@ export async function ensureDb () {
     { key: { pid: 1 } },
     { key: { created: -1 } },
     { key: { state: 1 } },
+    // 复合索引：加速评论列表主查询
+    { key: { url: 1, state: 1, created: -1 } },
+    { key: { isSpam: 1 } },
   ])
   // TTL index: MongoDB auto-deletes sessions 24h after createdAt.
   // Essential for serverless where no app-level cleanup timer runs.

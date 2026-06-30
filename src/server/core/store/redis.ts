@@ -64,15 +64,25 @@ export async function getRedisClient (): Promise<Redis | null> {
 }
 
 /**
- * Check if Redis is available
+ * Check if Redis is available (cached 30s to avoid ping on every call)
  */
+let _redisAvailCache: { ok: boolean; expire: number } | null = null
+const REDIS_AVAIL_CACHE_TTL = 30_000 // 30 秒
+
 export async function isRedisAvailable (): Promise<boolean> {
+  if (_redisAvailCache && _redisAvailCache.expire > Date.now()) return _redisAvailCache.ok
   try {
     const client = await getRedisClient()
-    if (!client) return false
+    if (!client) {
+      _redisAvailCache = { ok: false, expire: Date.now() + REDIS_AVAIL_CACHE_TTL }
+      return false
+    }
     await client.ping()
+    _redisAvailCache = { ok: true, expire: Date.now() + REDIS_AVAIL_CACHE_TTL }
     return true
   } catch {
+    // 失败时立即标记不可用，但短 TTL 以便恢复后快速重试
+    _redisAvailCache = { ok: false, expire: Date.now() + 5_000 }
     return false
   }
 }
@@ -175,6 +185,84 @@ export async function redisRateLimit (
 // ========== Summary cache management ==========
 
 const SUMMARY_KEY_PREFIX = 'takoio:summary:'
+
+// ========== Comment list cache ==========
+// 高频读操作（访客打开文章页）缓存，降低 DB 压力。Redis 不可用时走内存 LRU 兜底。
+
+const COMMENT_LIST_TTL = 30 // 30 秒，平衡新鲜度与命中率
+const COMMENT_LIST_KEY_PREFIX = 'takoio:comments:'
+
+const commentListCacheKey = (url: string, page: number, pageSize: number, sort: string): string => {
+  const urlHash = createHash('sha256').update(url).digest('hex').slice(0, 16)
+  return `${COMMENT_LIST_KEY_PREFIX}${urlHash}:${page}:${pageSize}:${sort}`
+}
+
+// 内存兜底：Map + url 反向索引（用于按 url 失效）
+const _memCommentCache = new Map<string, { data: any; expire: number }>()
+const _memCommentUrlIndex = new Map<string, Set<string>>()
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, v] of _memCommentCache) {
+    if (v.expire < now) {
+      _memCommentCache.delete(k)
+      // 反向索引项稍后由 invalidate 或下次 set 时自然清理
+    }
+  }
+}, 60_000).unref()
+
+export async function getCommentListCache (url: string, page: number, pageSize: number, sort: string): Promise<any | null> {
+  const key = commentListCacheKey(url, page, pageSize, sort)
+  try {
+    const client = await getRedisClient()
+    if (client) {
+      const raw = await client.get(key)
+      if (raw) return JSON.parse(raw)
+    }
+  } catch { /* fall through to memory */ }
+  const mem = _memCommentCache.get(key)
+  if (mem && mem.expire > Date.now()) return mem.data
+  return null
+}
+
+export async function setCommentListCache (url: string, page: number, pageSize: number, sort: string, data: any): Promise<void> {
+  const key = commentListCacheKey(url, page, pageSize, sort)
+  try {
+    const client = await getRedisClient()
+    if (client) {
+      await client.set(key, JSON.stringify(data), 'EX', COMMENT_LIST_TTL)
+      return
+    }
+  } catch { /* fall through to memory */ }
+  _memCommentCache.set(key, { data, expire: Date.now() + COMMENT_LIST_TTL * 1000 })
+  if (!_memCommentUrlIndex.has(url)) _memCommentUrlIndex.set(url, new Set())
+  _memCommentUrlIndex.get(url)!.add(key)
+}
+
+/** 按 url 失效该文章的所有评论列表缓存（提交/删除/状态变更时调用） */
+export async function invalidateCommentListCache (url: string): Promise<void> {
+  // Redis: SCAN + DEL
+  try {
+    const client = await getRedisClient()
+    if (client) {
+      const urlHash = createHash('sha256').update(url).digest('hex').slice(0, 16)
+      const pattern = `${COMMENT_LIST_KEY_PREFIX}${urlHash}:*`
+      const keys: string[] = []
+      let cursor = '0'
+      do {
+        const [next, batch] = await client.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
+        cursor = next
+        keys.push(...batch)
+      } while (cursor !== '0')
+      if (keys.length > 0) await client.del(...keys)
+    }
+  } catch { /* ignore */ }
+  // 内存兜底：通过反向索引精确删除
+  const keys = _memCommentUrlIndex.get(url)
+  if (keys) {
+    for (const k of keys) _memCommentCache.delete(k)
+    _memCommentUrlIndex.delete(url)
+  }
+}
 
 interface SummaryCacheEntry {
   key: string

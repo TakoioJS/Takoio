@@ -239,9 +239,13 @@ const displayIpRegion = computed(() => {
 })
 
 const renderContent = async (): Promise<void> => {
-  const source = props.comment.renderedComment || props.comment.comment || ''
-  const html = await renderMarkdown(source)
-  renderedContent.value = html
+  // 服务端已预渲染（Shiki + DOMPurify），直接使用，跳过客户端 renderMarkdown
+  // 这样首屏评论列表不会触发 highlight.js 加载，只有 TkSubmit 实时预览才需要
+  if (props.comment.renderedComment) {
+    renderedContent.value = props.comment.renderedComment
+  } else {
+    renderedContent.value = await renderMarkdown(props.comment.comment || '')
+  }
   await nextTick()
   if (contentRef.value) {
     renderLinks(contentRef.value)

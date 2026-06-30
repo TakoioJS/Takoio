@@ -53,12 +53,32 @@ const parseIpRegion = (region: string | null): string => {
   return cleanRegion(region)
 }
 
+// LRU 缓存：同一 IP 短时间内重复查询命中缓存，避免重复 ip2region 查询
+const _ipRegionCache = new Map<string, { region: string; expire: number }>()
+const IP_REGION_CACHE_TTL = 3600_000 // 1 小时
+const IP_REGION_CACHE_MAX = 5000
+
 export const lookupIpRegion = async (ip: string): Promise<string> => {
   if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|::ffff:127\.)/.test(ip)) return '内网IP'
   if (!ipSearcher) return ''
+
+  // 命中缓存
+  const cached = _ipRegionCache.get(ip)
+  if (cached) {
+    if (cached.expire > Date.now()) return cached.region
+    _ipRegionCache.delete(ip)
+  }
+
   try {
     const result = await ipSearcher.search(ip)
-    return parseIpRegion(result.region)
+    const region = parseIpRegion(result.region)
+    // 写入缓存，超容量时淘汰最旧
+    if (_ipRegionCache.size >= IP_REGION_CACHE_MAX) {
+      const firstKey = _ipRegionCache.keys().next().value
+      if (firstKey) _ipRegionCache.delete(firstKey)
+    }
+    _ipRegionCache.set(ip, { region, expire: Date.now() + IP_REGION_CACHE_TTL })
+    return region
   } catch {
     return ''
   }

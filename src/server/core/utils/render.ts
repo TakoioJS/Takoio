@@ -39,6 +39,18 @@ async function initPurify () {
 let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null
 let hlPromise: Promise<Awaited<ReturnType<typeof createHighlighter>>> | null = null
 
+// 常用语言在 createHighlighter 时预热；罕见语言按需 loadLanguage，减少冷启动时间
+const COMMON_LANGS = [
+  'javascript', 'typescript', 'html', 'css', 'json', 'yaml',
+  'markdown', 'bash', 'python', 'go', 'java', 'rust', 'sql', 'xml', 'text',
+]
+const ALL_KNOWN_LANGS = new Set([
+  ...COMMON_LANGS,
+  'tsx', 'jsx', 'scss', 'kotlin', 'dockerfile', 'nginx',
+  'shell', 'vue', 'graphql', 'diff', 'makefile', 'toml',
+])
+const loadedLangs = new Set<string>()
+
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -47,15 +59,20 @@ async function getHl () {
   if (hlPromise) return hlPromise
   hlPromise = createHighlighter({
     themes: ['github-light', 'github-dark'],
-    langs: [
-      'javascript', 'typescript', 'tsx', 'jsx', 'html', 'css', 'scss',
-      'json', 'yaml', 'markdown', 'bash', 'python', 'go',
-      'java', 'kotlin', 'rust', 'sql', 'dockerfile', 'nginx',
-      'shell', 'vue', 'graphql', 'xml', 'diff', 'makefile', 'toml', 'text',
-    ],
+    langs: COMMON_LANGS,
   })
   highlighter = await hlPromise
+  for (const lang of COMMON_LANGS) loadedLangs.add(lang)
   return highlighter
+}
+
+/** 按需加载未预热的语言 */
+async function ensureLang (hl: Awaited<ReturnType<typeof createHighlighter>>, lang: string): Promise<void> {
+  if (loadedLangs.has(lang) || !ALL_KNOWN_LANGS.has(lang)) return
+  try {
+    await hl.loadLanguage(lang as any)
+    loadedLangs.add(lang)
+  } catch { /* 语言不存在，忽略 */ }
 }
 
 const PURIFY_CONFIG = {
@@ -104,11 +121,13 @@ export async function renderComment (text: string): Promise<string> {
   md.use({
     async: true,
     renderer: {
-      code ({ text: code, lang }: { text: string; lang?: string }) {
+      async code ({ text: code, lang }: { text: string; lang?: string }) {
+        const language = (lang || 'text').toLowerCase()
         try {
-          return hl.codeToHtml(code, { lang: lang || 'text', theme: 'github-light' })
+          await ensureLang(hl, language)
+          return hl.codeToHtml(code, { lang: language, theme: 'github-light' })
         } catch {
-          return `<pre><code class="language-${lang || 'text'}">${escapeHtml(code)}</code></pre>`
+          return `<pre><code class="language-${language}">${escapeHtml(code)}</code></pre>`
         }
       },
     },

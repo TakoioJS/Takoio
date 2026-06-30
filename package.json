@@ -58,7 +58,6 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "blueimp-md5": "^2.19.0",
     "dompurify": "^3.4.11",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
@@ -67,11 +66,9 @@
   },
   "devDependencies": {
     "@iconify-json/jam": "^1.2.3",
-    "@iconify-json/logos": "^1.2.11",
     "@iconify-json/lucide": "^1.2.114",
     "@iconify-json/simple-icons": "^1.2.88",
     "@playwright/test": "^1.61.1",
-    "@types/blueimp-md5": "^2.18.2",
     "@types/katex": "^0.16.8",
     "@types/node": "^26.0.1",
     "@typescript-eslint/eslint-plugin": "^8.62.0",

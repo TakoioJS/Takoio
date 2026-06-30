@@ -85,6 +85,17 @@ export const renderLinks = (el: Element | Element[] | null): void => {
 }
 
 /** KaTeX 渲染（运行时检测） */
+let _katexCssLoaded = false
+const loadKatexCss = (): void => {
+  if (_katexCssLoaded || typeof document === 'undefined') return
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css'
+  link.crossOrigin = 'anonymous'
+  document.head.appendChild(link)
+  _katexCssLoaded = true
+}
+
 export const renderMath = async (el: HTMLElement, options?: any): Promise<void> => {
   if (typeof window === 'undefined') return
   const defaultOptions = {
@@ -97,6 +108,7 @@ export const renderMath = async (el: HTMLElement, options?: any): Promise<void> 
     throwOnError: false
   }
   try {
+    loadKatexCss()
     const { default: renderMathInElement } = await import('katex/contrib/auto-render')
     renderMathInElement(el, options || defaultOptions)
   } catch (e) {
@@ -179,12 +191,6 @@ export const isQQ = (str: string): boolean => {
 /** 获取 QQ 头像 */
 export const getQQAvatar = (qq: string): string => {
   return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`
-}
-
-/** MD5 哈希 */
-export const md5 = async (text: string): Promise<string> => {
-  const { default: md5Impl } = await import('blueimp-md5')
-  return md5Impl(text)
 }
 
 export {

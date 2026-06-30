@@ -40,6 +40,7 @@ import { lookupIpRegion } from '../ip-region'
 import { requireAdmin } from '../auth'
 import { AppError } from '../config'
 import { renderComment } from '../utils/render'
+import { getCommentListCache, setCommentListCache, invalidateCommentListCache } from '../store/redis'
 
 // ========== Helpers ==========
 
@@ -62,9 +63,16 @@ export const handleCommentGet = async (data: GetCommentData) => {
   const validation = safeValidate(GetCommentSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const { url, page, pageSize, sort } = validation.data
-  const result = await commentStore.getComments(url || '/', page, pageSize, sort)
-  const rawCfg = await getConfig()
+  const targetUrl = url || '/'
 
+  // 评论列表缓存（Redis 优先，内存兜底）— config 不缓存，每次查（config 自身有 60s 缓存）
+  let result = await getCommentListCache(targetUrl, page, pageSize, sort)
+  if (!result) {
+    result = await commentStore.getComments(targetUrl, page, pageSize, sort)
+    await setCommentListCache(targetUrl, page, pageSize, sort, result)
+  }
+
+  const rawCfg = await getConfig()
   markMasterComments(result.data, rawCfg)
 
   const cfg = maskSensitiveConfig(rawCfg)
@@ -286,13 +294,24 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   // 4. Persist
   const saved = await persistSubmit(newComment, _ip)
 
-  // 5. Notify (fire-and-forget)
+  // 5. Invalidate comment list cache for this url
+  await invalidateCommentListCache(newComment.url).catch(() => {})
+
+  // 6. Notify (fire-and-forget)
   notifySubmit(saved, newComment, cfg, { ...data, url, nick, mail, link, comment, pid, rid, ua, image, title })
 
   return { data: saved, moderated: modResult }
 }
 
 // ========== Comment Update ==========
+
+/** 获取评论 url 并失效其列表缓存（管理操作后调用） */
+async function invalidateCommentCacheById (id: string): Promise<void> {
+  try {
+    const comment = await commentStore.getComment(id)
+    if (comment?.url) await invalidateCommentListCache(comment.url)
+  } catch { /* ignore */ }
+}
 
 export const handleCommentUpdate = async (data: UpdateCommentData) => {
   const validation = safeValidate(UpdateCommentSchema, data)
@@ -301,6 +320,7 @@ export const handleCommentUpdate = async (data: UpdateCommentData) => {
   const mailMd5 = mail ? crypto.createHash('md5').update(mail.trim().toLowerCase()).digest('hex') : ''
   const renderedComment = comment ? await renderComment(comment).catch(() => null) : undefined
   await commentStore.updateComment(id, { nick, mail, mailMd5, link, comment, ...(renderedComment ? { renderedComment } : {}) })
+  await invalidateCommentCacheById(id)
   return { success: true }
 }
 
@@ -337,6 +357,7 @@ function formatCommentReactions (raw: Record<string, { count: number, ips: strin
 export const handleCommentDelete = async (data: CommentIdData) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.deleteComment(validation.data.id) }
 }
 
@@ -345,8 +366,10 @@ export const handleCommentDelete = async (data: CommentIdData) => {
 export const handleCommentHide = async (data: CommentActionData) => {
   const validation = safeValidate(CommentActionSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  if (validation.data.hide) return { success: await commentStore.hideComment(validation.data.id) }
-  return { success: await commentStore.showComment(validation.data.id) }
+  const id = validation.data.id
+  await invalidateCommentCacheById(id)
+  if (validation.data.hide) return { success: await commentStore.hideComment(id) }
+  return { success: await commentStore.showComment(id) }
 }
 
 // ========== Comment Get (Admin) ==========
@@ -374,6 +397,7 @@ export const handleCommentSetTop = async (data: CommentIdData & { isTop?: boolea
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const isTop = data.isTop ?? true
+  await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.setTop(validation.data.id, isTop) }
 }
 
@@ -383,6 +407,7 @@ export const handleCommentSetSpam = async (data: CommentIdData & { isSpam?: bool
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const isSpam = data.isSpam ?? true
+  await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.setSpam(validation.data.id, isSpam) }
 }
 
@@ -391,6 +416,7 @@ export const handleCommentSetSpam = async (data: CommentIdData & { isSpam?: bool
 export const handleCommentApprove = async (data: CommentIdData) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.showComment(validation.data.id) }
 }
 

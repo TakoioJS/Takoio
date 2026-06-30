@@ -94,45 +94,12 @@ export async function getStore () { return (await getImpl()).getStore() as any }
 export async function importStore (data: any) { return (await getImpl()).importStore(data) as any }
 export async function ensureDb () { return (await getImpl()).ensureDb() as any }
 
-// ponytail: unified rate limiting — Redis when available, in-memory fallback
-// In-memory resets on serverless cold start; Redis survives. Same function for all callers.
-// Hardened: memory fallback uses the same sliding-window logic as Redis.
-const rateLimitMap = new Map<string, { timestamps: number[] }>()
-
-// Periodic cleanup: remove stale entries every 5 minutes
-const CLEANUP_INTERVAL = 5 * 60 * 1000
-setInterval(() => {
-  const now = Date.now()
-  for (const [ip, entry] of rateLimitMap) {
-    entry.timestamps = entry.timestamps.filter(t => now - t < 60000)
-    if (entry.timestamps.length === 0) rateLimitMap.delete(ip)
-  }
-}, CLEANUP_INTERVAL).unref()
-
+// ponytail: unified rate limiting — Redis when available, in-memory fallback inside redis.ts
+// redisRateLimit 内部已完整处理 Redis 不可用时的内存兜底（_memRateBuckets），
+// 此处无需再维护重复的内存限流逻辑。
 export const rateLimitStore = {
   async checkRateLimit (ip: string, maxRequests = 60) {
-    // Try Redis first (survives serverless cold starts)
-    try {
-      const { redisRateLimit } = await import('./redis')
-      const ok = await redisRateLimit(`global:${ip}`, maxRequests, 60_000)
-      // If Redis returned false (rate limited), trust it
-      if (!ok) return false
-      // If Redis returned true but is actually unavailable (returned true from memory fallback inside redis.ts),
-      // we need to also enforce memory limit here as defense-in-depth.
-      // redisRateLimit already handles its own memory fallback, so we trust its result.
-      return true
-    } catch { /* fall through to memory */ }
-
-    // In-memory fallback — sliding window
-    const now = Date.now()
-    const entry = rateLimitMap.get(ip) || { timestamps: [] }
-    entry.timestamps = entry.timestamps.filter(t => now - t < 60000)
-    if (entry.timestamps.length >= maxRequests) {
-      rateLimitMap.set(ip, entry)
-      return false
-    }
-    entry.timestamps.push(now)
-    rateLimitMap.set(ip, entry)
-    return true
+    const { redisRateLimit } = await import('./redis')
+    return redisRateLimit(`global:${ip}`, maxRequests, 60_000)
   },
 }

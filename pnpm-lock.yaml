@@ -11,9 +11,6 @@ importers:
 
   .:
     dependencies:
-      blueimp-md5:
-        specifier: ^2.19.0
-        version: 2.19.0
       dompurify:
         specifier: ^3.4.11
         version: 3.4.11
@@ -33,9 +30,6 @@ importers:
       '@iconify-json/jam':
         specifier: ^1.2.3
         version: 1.2.3
-      '@iconify-json/logos':
-        specifier: ^1.2.11
-        version: 1.2.11
       '@iconify-json/lucide':
         specifier: ^1.2.114
         version: 1.2.114
@@ -45,9 +39,6 @@ importers:
       '@playwright/test':
         specifier: ^1.61.1
         version: 1.61.1
-      '@types/blueimp-md5':
-        specifier: ^2.18.2
-        version: 2.18.2
       '@types/katex':
         specifier: ^0.16.8
         version: 0.16.8
@@ -1024,9 +1015,6 @@ packages:
   '@iconify-json/jam@1.2.3':
     resolution: {integrity: sha512-Kp+OxTzB8xvbaMyIoqEqB96Ik4zv7uo5y1yavjAee0N1K/6u+PCOBwEi+Djn3WJ2trCrNZk+qYw1BJUsZC41Eg==}
 
-  '@iconify-json/logos@1.2.11':
-    resolution: {integrity: sha512-fOo4pGEatuyuCFNL+cwquYMa2Im0oJHRHV7lt/Qqs5Ode/lPImHCQcfTtPzZj7qYMPb/h8YHN3TG54uEowrjNQ==}
-
   '@iconify-json/lucide@1.2.114':
     resolution: {integrity: sha512-NbvH3B1BYo6wBtS7joLi7f2UVQOqK2dtZodMFf3kkBs+Tnh9TkRuy8oVHr1RM8UK6bUtvAXxfNlGAah0CuvPCw==}
 
@@ -1707,9 +1695,6 @@ packages:
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
 
-  '@types/blueimp-md5@2.18.2':
-    resolution: {integrity: sha512-dJ9yRry9Olt5GAWlgCtE5dK9d/Dfhn/V7hna86eEO2Pn76+E8Y0S0n61iEUEGhWXXgtKtHxtZLVNwL8X+vLHzg==}
-
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -2223,9 +2208,6 @@ packages:
 
   birpc@2.9.0:
     resolution: {integrity: sha512-KrayHS5pBi69Xi9JmvoqrIgYGDkD6mcSe/i6YKi3w5kekCLzrX4+nawcXqrj2tIp50Kw/mT/s3p+GVK0A0sKxw==}
-
-  blueimp-md5@2.19.0:
-    resolution: {integrity: sha512-DRQrD6gJyy8FbiE4s+bDoXS9hiW3Vbx5uCdwvcCf3zLHL+Iv7LtGHLpr+GZV8rHG8tK766FGYBwRbu8pELTt+w==}
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
@@ -5318,10 +5300,6 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/logos@1.2.11':
-    dependencies:
-      '@iconify/types': 2.0.0
-
   '@iconify-json/lucide@1.2.114':
     dependencies:
       '@iconify/types': 2.0.0
@@ -5868,8 +5846,6 @@ snapshots:
 
   '@types/argparse@1.0.38':
     optional: true
-
-  '@types/blueimp-md5@2.18.2': {}
 
   '@types/chai@5.2.3':
     dependencies:
@@ -6640,8 +6616,6 @@ snapshots:
       require-from-string: 2.0.2
 
   birpc@2.9.0: {}
-
-  blueimp-md5@2.19.0: {}
 
   boolbase@1.0.0: {}
 

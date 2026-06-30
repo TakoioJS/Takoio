@@ -57,6 +57,9 @@ export async function initDb () {
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_pid ON comments(pid)')
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created)')
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_state ON comments(state)')
+  // 复合索引：加速评论列表主查询 WHERE url=? AND state=? AND pid IS NULL ORDER BY created
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_url_state_created ON comments(url, state, created)')
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_is_spam ON comments(is_spam)')
 
   await _raw.execute(`CREATE TABLE IF NOT EXISTS configs (
     key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL
