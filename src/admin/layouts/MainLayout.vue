@@ -6,7 +6,7 @@
         <!-- 左侧 Brand -->
         <div class="brand-section">
           <div class="brand-logo">
-            <img src="/icon/icon_108x108.png" alt="Takoio" class="brand-img" />
+            <img :src="iconUrl" alt="Takoio" class="brand-img" />
           </div>
           <span class="brand-text">Takoio</span>
         </div>
@@ -61,7 +61,7 @@
             circle
             title="GitHub"
             tag="a"
-            href="https://github.com/ArsFuturum/Takoio"
+            href="https://github.com/TakoioJS/Takoio"
             target="_blank"
             rel="noopener"
           >
@@ -152,6 +152,8 @@ import {
   ChevronDownOutline, LogoGithub,
 } from '@vicons/ionicons5'
 import { setUnauthorizedHandler, api } from '../api/client'
+
+const iconUrl = import.meta.env.BASE_URL + 'icon/icon_108x108.png'
 
 const route = useRoute()
 const router = useRouter()

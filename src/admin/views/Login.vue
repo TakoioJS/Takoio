@@ -8,7 +8,7 @@
       <div class="login-card">
         <div class="login-header">
           <div class="login-logo">
-            <img src="/icon/icon_108x108.png" alt="Takoio" class="login-logo-img" />
+            <img :src="iconUrl" alt="Takoio" class="login-logo-img" />
           </div>
           <h1 class="login-title">Takoio</h1>
           <p class="login-subtitle">{{ needSetup ? t('setupDesc') : '评论系统管理后台' }}</p>
@@ -110,7 +110,7 @@
             circle
             title="GitHub"
             tag="a"
-            href="https://github.com/ArsFuturum/Takoio"
+            href="https://github.com/TakoioJS/Takoio"
             target="_blank"
             rel="noopener"
           >
@@ -146,6 +146,8 @@ import { SunnyOutline, MoonOutline, LogoGithub } from '@vicons/ionicons5'
 import CaptchaWidget from '@shared/view/components/submit/components/CaptchaWidget.vue'
 import { configApi } from '../api/config'
 import { t } from '@shared/utils/i18n'
+
+const iconUrl = import.meta.env.BASE_URL + 'icon/icon_108x108.png'
 
 const appStore = useAppStore()
 const auth = useAuthStore()
