@@ -24,7 +24,8 @@
     ".": {
       "import": "./dist/takoio.esm.js",
       "require": "./dist/takoio.cjs"
-    }
+    },
+    "./dist/takoio.min.css": "./dist/takoio.min.css"
   },
   "publishConfig": {
     "access": "public"
