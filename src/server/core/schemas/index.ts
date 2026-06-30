@@ -198,7 +198,7 @@ const importBool = () => z.preprocess(
     if (typeof v === 'boolean') return v
     return v === 1 || v === 'true' || v === '1'
   },
-  z.boolean(),
+  z.boolean()
 ).nullish()
 
 /** Coerce string numbers → number, preserve null/undefined */
@@ -209,7 +209,7 @@ const importNum = () => z.preprocess(
     if (typeof v === 'string' && v !== '') return Number(v)
     return v
   },
-  z.number(),
+  z.number()
 ).nullish()
 
 const ImportCommentSchema = z.object({

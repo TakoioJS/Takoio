@@ -5,6 +5,44 @@
  * Consumers already write `await store.method()`, so a plain object works.
  */
 
+import type {
+  Comment,
+  CommentInput,
+  CommentListItem,
+  CommentUpdate,
+  RawComment,
+  CommentCount,
+  DashboardStats,
+  DashboardTrendItem,
+  VisitorCount,
+  ReactionMap,
+  CommentReactionMap,
+  PaginatedResult,
+  StoreSnapshot,
+  StoreImportData,
+  CommentState,
+  CommentSort,
+} from './types'
+
+export type {
+  Comment,
+  CommentInput,
+  CommentListItem,
+  CommentUpdate,
+  RawComment,
+  CommentCount,
+  DashboardStats,
+  DashboardTrendItem,
+  VisitorCount,
+  ReactionMap,
+  CommentReactionMap,
+  PaginatedResult,
+  StoreSnapshot,
+  StoreImportData,
+  CommentState,
+  CommentSort,
+} from './types'
+
 const DB_TYPE = (process.env.DB_TYPE || 'sqlite').toLowerCase()
 
 // Lazy-loaded backend module — resolved once on first init, cached thereafter
@@ -32,40 +70,42 @@ export async function initStore () {
 }
 
 // Store interfaces for typing
+// 注意：所有后端实现（sqlite.ts / mongodb.ts / 未来的 postgres.ts）
+// 必须返回符合这些 interface 的数据，由 TS 编译器强制校验签名一致性。
 
 export interface CommentStore {
-  addComment (data: any): Promise<any>
-  getComment (id: string): Promise<any>
-  updateComment (id: string, data: any): Promise<boolean>
-  getComments (url: string, page?: number, pageSize?: number, sort?: string): Promise<{ data: any[]; total: number }>
-  getReplies (pid: string): Promise<any[]>
-  getCommentsCount (urls: string[]): Promise<{ url: string; count: number }[]>
-  getRecentComments (limit?: number): Promise<any[]>
-  getRawRecentComments (limit?: number): Promise<any[]>
-  getCommentReactions (commentId: string): Promise<Record<string, { count: number, ips: string[] }>>
-  toggleCommentReaction (commentId: string, emoji: string, ip: string): Promise<Record<string, { count: number, ips: string[] }>>
-  setCommentState (id: string, state: string): Promise<boolean>
+  addComment (data: CommentInput): Promise<Comment>
+  getComment (id: string): Promise<Comment | undefined>
+  updateComment (id: string, data: CommentUpdate): Promise<boolean>
+  getComments (url: string, page?: number, pageSize?: number, sort?: CommentSort): Promise<PaginatedResult<CommentListItem>>
+  getReplies (pid: string): Promise<CommentListItem[]>
+  getCommentsCount (urls: string[]): Promise<CommentCount[]>
+  getRecentComments (limit?: number): Promise<CommentListItem[]>
+  getRawRecentComments (limit?: number): Promise<RawComment[]>
+  getCommentReactions (commentId: string): Promise<CommentReactionMap>
+  toggleCommentReaction (commentId: string, emoji: string, ip: string): Promise<CommentReactionMap>
+  setCommentState (id: string, state: CommentState): Promise<boolean>
   hideComment (id: string): Promise<boolean>
   showComment (id: string): Promise<boolean>
   deleteComment (id: string): Promise<boolean>
   setTop (id: string, isTop: boolean): Promise<boolean>
   setSpam (id: string, isSpam?: boolean): Promise<boolean>
-  getDashboardStats (): Promise<any>
-  getDashboardTrend (days?: number): Promise<any>
+  getDashboardStats (): Promise<DashboardStats>
+  getDashboardTrend (days?: number): Promise<DashboardTrendItem[]>
   setCommentIpRegion (id: string, ipRegion: string): Promise<boolean>
-  getAllComments (page?: number, pageSize?: number): Promise<{ data: any[]; total: number }>
-  searchComments (page?: number, pageSize?: number, searchStr?: string, filter?: string): Promise<{ data: any[]; total: number }>
+  getAllComments (page?: number, pageSize?: number): Promise<PaginatedResult<Comment>>
+  searchComments (page?: number, pageSize?: number, searchStr?: string, filter?: string): Promise<PaginatedResult<Comment>>
 }
 
 export interface ConfigStore {
-  getConfig (): Promise<Record<string, any>>
-  setConfig (key: string, value: any): Promise<void>
-  setManyConfig (data: Record<string, any>): Promise<void>
+  getConfig (): Promise<Record<string, unknown>>
+  setConfig (key: string, value: unknown): Promise<void>
+  setManyConfig (data: Record<string, unknown>): Promise<void>
   resetConfig (): Promise<void>
 }
 
 export interface VisitorStore {
-  getVisitorCount (url: string, title?: string): Promise<any>
+  getVisitorCount (url: string, title?: string): Promise<VisitorCount>
 }
 
 export interface SessionStore {
@@ -78,8 +118,8 @@ export interface SessionStore {
 }
 
 export interface ReactionStore {
-  getReactions (url: string): Promise<Record<string, string[]>>
-  toggleReaction (url: string, emoji: string, ip: string): Promise<Record<string, string[]>>
+  getReactions (url: string): Promise<ReactionMap>
+  toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap>
 }
 
 // Module-level store objects — populated by initStore(), used by all consumers
@@ -90,9 +130,9 @@ export const sessionStore = {} as SessionStore
 export const reactionStore = {} as ReactionStore
 
 // Direct async functions for one-off use (import, export, ensureDb)
-export async function getStore () { return (await getImpl()).getStore() as any }
-export async function importStore (data: any) { return (await getImpl()).importStore(data) as any }
-export async function ensureDb () { return (await getImpl()).ensureDb() as any }
+export async function getStore (): Promise<StoreSnapshot> { return (await getImpl()).getStore() as StoreSnapshot }
+export async function importStore (data: StoreImportData): Promise<void> { return (await getImpl()).importStore(data) }
+export async function ensureDb (): Promise<void> { return (await getImpl()).ensureDb() }
 
 // ponytail: unified rate limiting — Redis when available, in-memory fallback inside redis.ts
 // redisRateLimit 内部已完整处理 Redis 不可用时的内存兜底（_memRateBuckets），

@@ -11,6 +11,7 @@
 
 import { randomUUID, createHash } from 'node:crypto'
 import { commentStore, ensureDb, initStore } from '../core/store/index'
+import type { CommentState } from '../core/store/index'
 import { getDb } from '../core/db/client'
 import { comments } from '../core/db/schema'
 import { eq, sql } from 'drizzle-orm'
@@ -123,7 +124,7 @@ interface SeedRow {
   comment: string
   ua: string
   ip: string
-  state: string
+  state: CommentState
   created: number
   updated: number | null
   pid: string | null

@@ -115,18 +115,18 @@ const uaDisplay = computed(() => {
     if (distroMatch) {
       const distroRaw = distroMatch[1].trim()
       const distroMap: Record<string, string> = {
-        'Ubuntu': 'Ubuntu',
-        'Debian': 'Debian',
-        'Fedora': 'Fedora',
+        Ubuntu: 'Ubuntu',
+        Debian: 'Debian',
+        Fedora: 'Fedora',
         'Arch Linux': 'Arch Linux',
-        'Arch': 'Arch Linux',
+        Arch: 'Arch Linux',
         'Linux Mint': 'Linux Mint',
         'Manjaro Linux': 'Manjaro',
-        'Manjaro': 'Manjaro',
-        'openSUSE': 'openSUSE',
-        'Gentoo': 'Gentoo',
-        'Kali': 'Kali',
-        'CentOS': 'CentOS',
+        Manjaro: 'Manjaro',
+        openSUSE: 'openSUSE',
+        Gentoo: 'Gentoo',
+        Kali: 'Kali',
+        CentOS: 'CentOS',
         'Red Hat': 'Red Hat',
       }
       os = distroMap[distroRaw] || 'Linux'

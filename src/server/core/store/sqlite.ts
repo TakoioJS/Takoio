@@ -1,6 +1,31 @@
 import { getDb, initDb } from '../db/client'
 import { comments, configs, visitors, sessions, reactions, commentReactions } from '../db/schema'
 import { eq, and, inArray, like, or, sql, asc, desc, count as drizzleCount } from 'drizzle-orm'
+import type {
+  Comment,
+  CommentInput,
+  CommentListItem,
+  CommentUpdate,
+  RawComment,
+  CommentCount,
+  DashboardStats,
+  DashboardTrendItem,
+  VisitorCount,
+  ReactionMap,
+  CommentReactionMap,
+  PaginatedResult,
+  StoreSnapshot,
+  StoreImportData,
+  CommentState,
+  CommentSort,
+} from './types'
+import type {
+  CommentStore,
+  ConfigStore,
+  VisitorStore,
+  SessionStore,
+  ReactionStore,
+} from './index'
 
 export const COMMENT_STATE = {
   VISIBLE: 'visible', HIDDEN: 'hidden', SPAM: 'spam', PENDING: 'pending',
@@ -16,29 +41,40 @@ const relTime = (ts: number, locale?: string): string => {
   return new Date(ts).toLocaleDateString(isZh ? 'zh-CN' : 'en-US')
 }
 
-const stripPrivate = (r: any) => {
+/** 移除隐私字段（ip/mail）并附加 relativeTime */
+const stripPrivate = (r: Comment | null): Omit<Comment, 'ip' | 'mail'> & { relativeTime: string } | null => {
   if (!r) return r
-  const { ip, mail, ...rest } = r
+  const { ip: _ip, mail: _mail, ...rest } = r
   return { ...rest, relativeTime: relTime(rest.created) }
 }
 
-const fromRow = (r: any) => r ? { ...r, like: r.like ?? 0, dislike: r.dislike ?? 0, isSpam: !!r.isSpam, isTop: !!r.isTop, isPinned: !!r.isPinned } : r
+/** 数据库行 → 归一化 Comment（布尔字段转换） */
+const fromRow = (r: any): Comment => r
+  ? {
+      ...r,
+      like: r.like ?? 0,
+      dislike: r.dislike ?? 0,
+      isSpam: !!r.isSpam,
+      isTop: !!r.isTop,
+      isPinned: !!r.isPinned,
+    }
+  : r
 
 const db = () => getDb()
 
-export const commentStore = {
-  async addComment (data: any) {
+export const commentStore: CommentStore = {
+  async addComment (data: CommentInput): Promise<Comment> {
     const row = { ...data, like: data.like ?? 0, dislike: data.dislike ?? 0, isSpam: data.isSpam ? 1 : 0, isTop: data.isTop ? 1 : 0, isPinned: data.isPinned ? 1 : 0 }
     await db().insert(comments).values(row).run()
-    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 }
+    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
   },
 
-  async getComment (id: string) {
+  async getComment (id: string): Promise<Comment | undefined> {
     const row = await db().select().from(comments).where(eq(comments.id, id)).get()
     return row ? fromRow(row) : undefined
   },
 
-  async updateComment (id: string, data: any) {
+  async updateComment (id: string, data: CommentUpdate): Promise<boolean> {
     const set: any = { ...data, updated: Date.now() }
     if ('isSpam' in set) set.isSpam = set.isSpam ? 1 : 0
     if ('isTop' in set) set.isTop = set.isTop ? 1 : 0
@@ -46,8 +82,8 @@ export const commentStore = {
     return result.rowsAffected > 0
   },
 
-  async getComments (url: string, page = 1, pageSize = 10, sort = 'newest') {
-    const visibleStates = ['visible', 'pending']
+  async getComments (url: string, page = 1, pageSize = 10, sort: CommentSort = 'newest'): Promise<PaginatedResult<CommentListItem>> {
+    const visibleStates: CommentState[] = ['visible', 'pending']
     const orderBy = sort === 'oldest'
       ? asc(comments.created)
       : sort === 'hottest'
@@ -65,7 +101,7 @@ export const commentStore = {
       .all()
 
     const parentIds = rows.map(r => r.id)
-    const replyMap = new Map<string, any[]>()
+    const replyMap = new Map<string, CommentListItem[]>()
     if (parentIds.length > 0) {
       const allReplies = await db().select().from(comments)
         .where(and(inArray(comments.pid, parentIds as string[]), inArray(comments.state, visibleStates)))
@@ -73,27 +109,27 @@ export const commentStore = {
         .all()
       for (const r of allReplies) {
         if (!replyMap.has(r.pid!)) replyMap.set(r.pid!, [])
-        replyMap.get(r.pid!)!.push(stripPrivate(fromRow(r)))
+        replyMap.get(r.pid!)!.push(stripPrivate(fromRow(r)) as CommentListItem)
       }
     }
 
     const data = rows.map(c => {
       const children = replyMap.get(c.id) || []
-      return { ...stripPrivate(fromRow(c)), children, replyCount: children.length }
+      return { ...stripPrivate(fromRow(c)), children, replyCount: children.length } as CommentListItem
     })
 
     return { data, total: total?.count ?? 0 }
   },
 
-  async getReplies (pid: string) {
+  async getReplies (pid: string): Promise<CommentListItem[]> {
     const rows = await db().select().from(comments)
       .where(and(eq(comments.pid, pid), inArray(comments.state, ['visible', 'pending'])))
       .orderBy(asc(comments.created))
       .all()
-    return rows.map(r => stripPrivate(fromRow(r)))
+    return rows.map(r => stripPrivate(fromRow(r)) as CommentListItem)
   },
 
-  async getCommentsCount (urls: string[]) {
+  async getCommentsCount (urls: string[]): Promise<CommentCount[]> {
     if (urls.length === 0) return []
     const rows = await db().select({ url: comments.url, count: drizzleCount() }).from(comments)
       .where(and(inArray(comments.url, urls as string[]), eq(comments.state, 'visible')))
@@ -102,26 +138,26 @@ export const commentStore = {
     return rows.map(r => ({ url: r.url, count: r.count }))
   },
 
-  async getRecentComments (limit = 10) {
+  async getRecentComments (limit = 10): Promise<CommentListItem[]> {
     const rows = await db().select().from(comments)
       .where(eq(comments.state, 'visible'))
       .orderBy(desc(comments.created))
       .limit(limit)
       .all()
-    return rows.map(r => stripPrivate(fromRow(r)))
+    return rows.map(r => stripPrivate(fromRow(r)) as CommentListItem)
   },
 
-  async getRawRecentComments (limit = 50) {
+  async getRawRecentComments (limit = 50): Promise<RawComment[]> {
     const rows = await db().select().from(comments)
       .orderBy(desc(comments.created))
       .limit(limit)
       .all()
-    return rows.map(r => fromRow(r))
+    return rows.map(r => fromRow(r) as RawComment)
   },
 
-  async getCommentReactions (commentId: string) {
+  async getCommentReactions (commentId: string): Promise<CommentReactionMap> {
     const rows = await db().select().from(commentReactions).where(eq(commentReactions.commentId, commentId)).all()
-    const result: Record<string, { count: number, ips: string[] }> = {}
+    const result: CommentReactionMap = {}
     for (const r of rows) {
       if (!result[r.emoji]) result[r.emoji] = { count: 0, ips: [] }
       result[r.emoji].count += 1
@@ -130,7 +166,7 @@ export const commentStore = {
     return result
   },
 
-  async toggleCommentReaction (commentId: string, emoji: string, ip: string) {
+  async toggleCommentReaction (commentId: string, emoji: string, ip: string): Promise<CommentReactionMap> {
     const existing = await db().select().from(commentReactions)
       .where(and(eq(commentReactions.commentId, commentId), eq(commentReactions.ip, ip)))
       .get()
@@ -150,15 +186,15 @@ export const commentStore = {
     return commentStore.getCommentReactions(commentId)
   },
 
-  async setCommentState (id: string, state: string) {
+  async setCommentState (id: string, state: CommentState): Promise<boolean> {
     const result = await db().update(comments).set({ state }).where(eq(comments.id, id)).run()
     return result.rowsAffected > 0
   },
 
-  hideComment (id: string) { return commentStore.setCommentState(id, COMMENT_STATE.HIDDEN) },
-  showComment (id: string) { return commentStore.setCommentState(id, COMMENT_STATE.VISIBLE) },
+  hideComment (id: string): Promise<boolean> { return commentStore.setCommentState(id, COMMENT_STATE.HIDDEN) },
+  showComment (id: string): Promise<boolean> { return commentStore.setCommentState(id, COMMENT_STATE.VISIBLE) },
 
-  async deleteComment (id: string) {
+  async deleteComment (id: string): Promise<boolean> {
     await db().transaction(async (tx) => {
       // Delete child comments (replies) first, then the parent
       await tx.delete(comments).where(eq(comments.pid, id)).run()
@@ -167,12 +203,12 @@ export const commentStore = {
     return true
   },
 
-  async setTop (id: string, isTop: boolean) {
+  async setTop (id: string, isTop: boolean): Promise<boolean> {
     const result = await db().update(comments).set({ isTop: isTop ? 1 : 0 }).where(eq(comments.id, id)).run()
     return result.rowsAffected > 0
   },
 
-  async setSpam (id: string, isSpam = true) {
+  async setSpam (id: string, isSpam = true): Promise<boolean> {
     const patch = isSpam
       ? { isSpam: 1, state: COMMENT_STATE.SPAM }
       : { isSpam: 0, state: COMMENT_STATE.VISIBLE }
@@ -180,7 +216,7 @@ export const commentStore = {
     return result.rowsAffected > 0
   },
 
-  async getDashboardStats () {
+  async getDashboardStats (): Promise<DashboardStats> {
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
     const todayTs = startOfToday.getTime()
@@ -205,7 +241,7 @@ export const commentStore = {
     }
   },
 
-  async getDashboardTrend (days = 7) {
+  async getDashboardTrend (days = 7): Promise<DashboardTrendItem[]> {
     const n = Math.min(Math.max(Math.floor(days), 1), 30)
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
@@ -221,7 +257,7 @@ export const commentStore = {
       .all()
     const map = new Map<number, number>()
     for (const r of rows) map.set(r.dayStart, r.count)
-    const result: { date: string; count: number }[] = []
+    const result: DashboardTrendItem[] = []
     for (let i = n - 1; i >= 0; i--) {
       const dayStart = todayTs - i * 86400000
       const d = new Date(dayStart)
@@ -233,12 +269,12 @@ export const commentStore = {
     return result
   },
 
-  async setCommentIpRegion (id: string, ipRegion: string) {
+  async setCommentIpRegion (id: string, ipRegion: string): Promise<boolean> {
     const result = await db().update(comments).set({ ipRegion }).where(eq(comments.id, id)).run()
     return result.rowsAffected > 0
   },
 
-  async getAllComments (page = 1, pageSize = 20) {
+  async getAllComments (page = 1, pageSize = 20): Promise<PaginatedResult<Comment>> {
     const total = await db().select({ count: drizzleCount() }).from(comments).get()
     const rows = await db().select().from(comments)
       .orderBy(desc(comments.created))
@@ -247,7 +283,7 @@ export const commentStore = {
     return { data: rows.map(r => fromRow(r)), total: total?.count ?? 0 }
   },
 
-  async searchComments (page = 1, pageSize = 20, searchStr = '', filter = 'all') {
+  async searchComments (page = 1, pageSize = 20, searchStr = '', filter = 'all'): Promise<PaginatedResult<Comment>> {
     const conditions = []
     if (searchStr) {
       const kw = `%${searchStr.toLowerCase()}%`
@@ -275,36 +311,36 @@ export const commentStore = {
   },
 }
 
-export const configStore = {
-  async getConfig (): Promise<Record<string, any>> {
+export const configStore: ConfigStore = {
+  async getConfig (): Promise<Record<string, unknown>> {
     const rows = await db().select().from(configs).all()
-    const result: Record<string, any> = {}
+    const result: Record<string, unknown> = {}
     for (const row of rows) {
       try { result[row.key] = JSON.parse(row.value) } catch { result[row.key] = row.value }
     }
     return result
   },
 
-  async setConfig (key: string, value: any) {
+  async setConfig (key: string, value: unknown): Promise<void> {
     const val = typeof value === 'string' ? value : JSON.stringify(value)
     await db().insert(configs).values({ key, value: val, updatedAt: Date.now() })
       .onConflictDoUpdate({ target: configs.key, set: { value: val, updatedAt: Date.now() } })
       .run()
   },
 
-  async setManyConfig (data: Record<string, any>) {
+  async setManyConfig (data: Record<string, unknown>): Promise<void> {
     for (const [key, value] of Object.entries(data)) {
       await configStore.setConfig(key, value)
     }
   },
 
-  async resetConfig () {
+  async resetConfig (): Promise<void> {
     await db().delete(configs).run()
   },
 }
 
-export const visitorStore = {
-  async getVisitorCount (url: string, title?: string) {
+export const visitorStore: VisitorStore = {
+  async getVisitorCount (url: string, title?: string): Promise<VisitorCount> {
     const existing = await db().select().from(visitors).where(eq(visitors.url, url)).get()
     if (!existing) {
       await db().insert(visitors).values({ url, title: title || '', count: 1, updatedAt: Date.now() }).run()
@@ -316,26 +352,26 @@ export const visitorStore = {
   },
 }
 
-export const sessionStore = {
-  async createToken () {
+export const sessionStore: SessionStore = {
+  async createToken (): Promise<string> {
     const { randomUUID } = await import('node:crypto')
     const token = randomUUID()
     await db().insert(sessions).values({ token, createdAt: Date.now() }).run()
     return token
   },
 
-  async validateToken (token: string) {
+  async validateToken (token: string): Promise<boolean> {
     const row = await db().select().from(sessions).where(eq(sessions.token, token)).get()
     if (!row) return false
     // ponytail: 24h TTL, matches cleanupSessions window
     return Date.now() - row.createdAt < 24 * 60 * 60 * 1000
   },
 
-  async removeToken (token: string) {
+  async removeToken (token: string): Promise<void> {
     await db().delete(sessions).where(eq(sessions.token, token)).run()
   },
 
-  async rotateToken (oldToken: string) {
+  async rotateToken (oldToken: string): Promise<string | null> {
     // Validate old token exists and is not expired
     const row = await db().select().from(sessions).where(eq(sessions.token, oldToken)).get()
     if (!row || Date.now() - row.createdAt > 24 * 60 * 60 * 1000) return null
@@ -349,20 +385,20 @@ export const sessionStore = {
     return newToken
   },
 
-  async removeAllTokens () {
+  async removeAllTokens (): Promise<void> {
     await db().delete(sessions).run()
   },
 
-  async cleanupSessions () {
+  async cleanupSessions (): Promise<void> {
     const dayAgo = Date.now() - 24 * 60 * 60 * 1000
     await db().delete(sessions).where(sql`${sessions.createdAt} < ${dayAgo}`).run()
   },
 }
 
-export const reactionStore = {
-  async getReactions (url: string) {
+export const reactionStore: ReactionStore = {
+  async getReactions (url: string): Promise<ReactionMap> {
     const rows = await db().select().from(reactions).where(eq(reactions.url, url)).all()
-    const result: Record<string, string[]> = {}
+    const result: ReactionMap = {}
     for (const r of rows) {
       if (!result[r.emoji]) result[r.emoji] = []
       result[r.emoji].push(r.ip)
@@ -370,7 +406,7 @@ export const reactionStore = {
     return result
   },
 
-  async toggleReaction (url: string, emoji: string, ip: string) {
+  async toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap> {
     const existing = await db().select().from(reactions)
       .where(and(eq(reactions.url, url), eq(reactions.emoji, emoji), eq(reactions.ip, ip)))
       .get()
@@ -387,25 +423,25 @@ export const reactionStore = {
 
 // ========== Full store export/import ==========
 
-export async function getStore () {
+export async function getStore (): Promise<StoreSnapshot> {
   const allComments = (await db().select().from(comments).all()).map(r => fromRow(r))
   const allConfigs = await db().select().from(configs).all()
   const allVisitors = await db().select().from(visitors).all()
   const allSessions = await db().select().from(sessions).all()
 
-  const store: any = {
+  const store: StoreSnapshot = {
     comments: allComments,
     configs: {},
     visitors: {},
-    sessions: allSessions,
+    sessions: allSessions.map(s => ({ token: s.token, createdAt: s.createdAt })),
     reactions: {},
     commentReactions: {},
   }
   for (const c of allConfigs) store.configs[c.key] = { value: c.value, updatedAt: c.updatedAt }
-  for (const v of allVisitors) store.visitors[v.url] = { title: v.title, count: v.count, updatedAt: v.updatedAt }
+  for (const v of allVisitors) store.visitors[v.url] = { title: v.title || '', count: v.count, updatedAt: v.updatedAt }
 
   const allReactions = await db().select().from(reactions).all()
-  const reactMap: Record<string, Record<string, string[]>> = {}
+  const reactMap: Record<string, ReactionMap> = {}
   for (const r of allReactions) {
     if (!reactMap[r.url]) reactMap[r.url] = {}
     if (!reactMap[r.url][r.emoji]) reactMap[r.url][r.emoji] = []
@@ -414,7 +450,7 @@ export async function getStore () {
   store.reactions = reactMap
 
   const allCommentReactions = await db().select().from(commentReactions).all()
-  const cReactMap: Record<string, Record<string, string[]>> = {}
+  const cReactMap: Record<string, ReactionMap> = {}
   for (const r of allCommentReactions) {
     if (!cReactMap[r.commentId]) cReactMap[r.commentId] = {}
     if (!cReactMap[r.commentId][r.emoji]) cReactMap[r.commentId][r.emoji] = []
@@ -425,7 +461,7 @@ export async function getStore () {
   return store
 }
 
-export async function importStore (data: any) {
+export async function importStore (data: StoreImportData): Promise<void> {
   // 单事务批量导入，避免逐条 insert 的事务开销
   await db().transaction(async (tx) => {
     if (data.comments) {
@@ -460,22 +496,22 @@ export async function importStore (data: any) {
       }
     }
     if (data.configs) {
-      for (const [key, val] of Object.entries(data.configs) as [string, any][]) {
+      for (const [key, val] of Object.entries(data.configs)) {
         await tx.insert(configs).values({ key, value: val.value, updatedAt: val.updatedAt || Date.now() })
           .onConflictDoUpdate({ target: configs.key, set: { value: val.value, updatedAt: Date.now() } })
           .run()
       }
     }
     if (data.visitors) {
-      for (const [url, v] of Object.entries(data.visitors) as [string, any][]) {
+      for (const [url, v] of Object.entries(data.visitors)) {
         await tx.insert(visitors).values({ url, title: v.title, count: v.count, updatedAt: v.updatedAt })
           .onConflictDoUpdate({ target: visitors.url, set: { count: v.count, updatedAt: v.updatedAt } })
           .run()
       }
     }
     if (data.reactions) {
-      for (const [url, emojis] of Object.entries(data.reactions) as [string, any][]) {
-        for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+      for (const [url, emojis] of Object.entries(data.reactions)) {
+        for (const [emoji, ips] of Object.entries(emojis)) {
           for (const ip of ips) {
             await tx.insert(reactions).values({ url, emoji, ip })
               .onConflictDoNothing().run()
@@ -484,8 +520,8 @@ export async function importStore (data: any) {
       }
     }
     if (data.commentReactions) {
-      for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
-        for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+      for (const [commentId, emojis] of Object.entries(data.commentReactions)) {
+        for (const [emoji, ips] of Object.entries(emojis)) {
           for (const ip of ips) {
             await tx.insert(commentReactions).values({ commentId, emoji, ip, createdAt: Date.now() })
               .onConflictDoNothing().run()
@@ -496,6 +532,6 @@ export async function importStore (data: any) {
   })
 }
 
-export async function ensureDb () {
+export async function ensureDb (): Promise<void> {
   await initDb()
 }

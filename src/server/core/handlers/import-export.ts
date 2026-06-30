@@ -6,6 +6,7 @@ import * as crypto from 'node:crypto'
 import { safeValidate } from '../schemas'
 import { ImportSchema, ExportSchema } from '../schemas'
 import { commentStore, getStore, importStore } from '../store/index'
+import type { CommentInput, StoreImportData } from '../store/index'
 import { AppError } from '../config'
 import { logger } from '../utils/logger'
 
@@ -186,14 +187,14 @@ export const handleImport = async (source: string, data: any) => {
   }
 
   if (source === 'takoio') {
-    await importStore(parsed)
+    await importStore(parsed as StoreImportData)
     return { count: parsed.comments?.length || 0 }
   }
 
   logger.info({ count: parsed.length }, 'Import records')
   let count = 0
   for (const item of parsed) {
-    await commentStore.addComment(toComment(item, source))
+    await commentStore.addComment(toComment(item, source) as CommentInput)
     count++
   }
   return { count }
@@ -206,7 +207,7 @@ export const handleExport = async (data: any) => {
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
 
   if (data.format === 'takoio') {
-    const { configs, sessions, rateLimits, ...rest } = await getStore()
+    const { configs: _configs, sessions: _sessions, ...rest } = await getStore()
     return { data: rest, total: rest.comments?.length || 0 }
   }
 

@@ -31,6 +31,7 @@ import type {
   CommentReactionSubmitData,
 } from '../schemas'
 import { commentStore, visitorStore, reactionStore } from '../store/index'
+import type { Comment, CommentListItem, CommentInput, RawComment } from '../store/index'
 import { getConfig, maskSensitiveConfig } from '../config'
 import { verifyCaptcha } from '../auth'
 import { moderateComment, getAuditAction } from '../moderate'
@@ -44,11 +45,19 @@ import { getCommentListCache, setCommentListCache, invalidateCommentListCache } 
 
 // ========== Helpers ==========
 
+/** 可标记博主的结构 — Comment 与 CommentListItem 均满足 */
+interface MarkableComment {
+  nick: string
+  mailMd5?: string
+  isMaster?: boolean
+  children?: MarkableComment[]
+}
+
 /** Mark comments whose nick or email matches the site master */
-function markMasterComments (comments: any[], cfg: { MASTER?: string; MASTER_NAME?: string }) {
+function markMasterComments (comments: MarkableComment[], cfg: { MASTER?: string; MASTER_NAME?: string }) {
   const masterMailMd5 = cfg.MASTER ? crypto.createHash('md5').update(cfg.MASTER.trim().toLowerCase()).digest('hex') : ''
   const masterName = cfg.MASTER_NAME || ''
-  const mark = (c: any) => {
+  const mark = (c: MarkableComment) => {
     if ((masterName && c.nick === masterName) || (masterMailMd5 && c.mailMd5 === masterMailMd5)) {
       c.isMaster = true
     }
@@ -107,10 +116,10 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
 }
 
 /** Stage 2: Rate limit + spam detection + moderation */
-async function moderateSubmit (newComment: any, cfg: TakoioConfig, _ip?: string, mail?: string) {
+async function moderateSubmit (newComment: CommentInput, cfg: TakoioConfig, _ip?: string, mail?: string) {
   const modResult = await runAiModeration(newComment, cfg)
 
-  const rawRecent = await commentStore.getRawRecentComments(50)
+  const rawRecent: RawComment[] = await commentStore.getRawRecentComments(50)
 
   // 1. Rate limit — sliding window: max 3 comments per IP per 60s window
   const COMMENT_WINDOW_MAX = 3
@@ -162,7 +171,7 @@ async function moderateSubmit (newComment: any, cfg: TakoioConfig, _ip?: string,
 }
 
 /** AI moderation helper */
-async function runAiModeration (newComment: any, cfg: TakoioConfig) {
+async function runAiModeration (newComment: CommentInput, cfg: TakoioConfig) {
   let aiEndpoint = ''
   let aiKey = ''
   let aiFormat = ''
@@ -194,7 +203,7 @@ function getBigrams (str: string) {
 }
 
 /** Stage 3: Persist + enrich (IP region, render) */
-async function persistSubmit (newComment: any, _ip?: string) {
+async function persistSubmit (newComment: CommentInput, _ip?: string) {
   if (_ip && _ip !== 'unknown') {
     try { newComment.ipRegion = await lookupIpRegion(_ip) } catch { newComment.ipRegion = '' }
   }
@@ -206,7 +215,7 @@ const escapeHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /** Stage 4: Notifications (SSE, push, email) — fire-and-forget */
-function notifySubmit (saved: any, newComment: any, cfg: TakoioConfig, data: SubmitCommentData & { href?: string }) {
+function notifySubmit (saved: Comment, newComment: CommentInput, cfg: TakoioConfig, data: SubmitCommentData & { href?: string }) {
   const { url, nick, mail, comment, pid, rid, ua, title } = data
   const _ip = newComment.ip
   const siteName = cfg.SITE_NAME || 'Takoio'
@@ -274,7 +283,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     comment: comment.slice(0, cfg.COMMENT_LENGTH_MAX || 5000),
     ua: ua || '',
     ip: _ip || '',
-    state: 'visible',
+    state: 'visible' as const,
     created: Date.now(),
     updated: null as number | null,
     pid: pid || null,
@@ -283,6 +292,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     dislike: 0,
     isSpam: false,
     isTop: false,
+    isPinned: false,
     image: image || null,
     ipRegion: null as string | null,
     renderedComment: null as string | null,
@@ -335,6 +345,7 @@ export const handleCommentReactionGet = async (data: CommentReactionGetData & { 
 
 export const handleCommentReactionSubmit = async (data: CommentReactionSubmitData & { _ip?: string }) => {
   const { id, emoji } = data
+  if (!id) throw new AppError('INVALID_INPUT', '缺少评论 id', 400)
   const ip = data._ip || 'unknown'
   const raw = await commentStore.toggleCommentReaction(id, emoji, ip)
   return formatCommentReactions(raw, ip)

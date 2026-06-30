@@ -1,5 +1,30 @@
 import { MongoClient, type Db, type Collection } from 'mongodb'
 import { randomUUID } from 'node:crypto'
+import type {
+  Comment,
+  CommentInput,
+  CommentListItem,
+  CommentUpdate,
+  RawComment,
+  CommentCount,
+  DashboardStats,
+  DashboardTrendItem,
+  VisitorCount,
+  ReactionMap,
+  CommentReactionMap,
+  PaginatedResult,
+  StoreSnapshot,
+  StoreImportData,
+  CommentState,
+  CommentSort,
+} from './types'
+import type {
+  CommentStore,
+  ConfigStore,
+  VisitorStore,
+  SessionStore,
+  ReactionStore,
+} from './index'
 
 type Col = Collection<any>
 
@@ -32,20 +57,22 @@ const relTime = (ts: number): string => {
   return new Date(ts).toLocaleDateString()
 }
 
-const stripPrivate = (r: any) => {
+/** 移除隐私字段（ip/mail）并附加 relativeTime */
+const stripPrivate = (r: Comment | null): Omit<Comment, 'ip' | 'mail'> & { relativeTime: string } | null => {
   if (!r) return r
-  const { ip, mail, ...rest } = r
+  const { ip: _ip, mail: _mail, ...rest } = r
   return { ...rest, relativeTime: relTime(rest.created) }
 }
 
-const normalizeDoc = (r: any) => {
+/** MongoDB 文档 → 归一化 Comment（_id → id） */
+const normalizeDoc = (r: any): Comment | null => {
   if (!r) return r
   const { _id, ...rest } = r
-  return { id: _id, ...rest, like: r.like ?? 0, dislike: r.dislike ?? 0 }
+  return { id: _id, ...rest, like: r.like ?? 0, dislike: r.dislike ?? 0 } as Comment
 }
 
-export const commentStore = {
-  async addComment (data: any) {
+export const commentStore: CommentStore = {
+  async addComment (data: CommentInput): Promise<Comment> {
     const db = await getDb()
     await col(db, 'comments').insertOne({
       _id: data.id,
@@ -74,16 +101,16 @@ export const commentStore = {
       tags: data.tags,
       renderedComment: data.renderedComment || null,
     })
-    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 }
+    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
   },
 
-  async getComment (id: string) {
+  async getComment (id: string): Promise<Comment | undefined> {
     const db = await getDb()
     const doc = await col(db, 'comments').findOne({ _id: id })
-    return doc ? normalizeDoc(doc) : undefined
+    return doc ? normalizeDoc(doc) ?? undefined : undefined
   },
 
-  async updateComment (id: string, data: any) {
+  async updateComment (id: string, data: CommentUpdate): Promise<boolean> {
     const db = await getDb()
     const set: any = { ...data, updated: Date.now() }
     if ('isSpam' in set) set.isSpam = !!set.isSpam
@@ -92,9 +119,9 @@ export const commentStore = {
     return result.matchedCount > 0
   },
 
-  async getComments (url: string, page = 1, pageSize = 10, sort = 'newest') {
+  async getComments (url: string, page = 1, pageSize = 10, sort: CommentSort = 'newest'): Promise<PaginatedResult<CommentListItem>> {
     const db = await getDb()
-    const visibleStates = ['visible', 'pending']
+    const visibleStates: CommentState[] = ['visible', 'pending']
     const sortOrder: Record<string, 1 | -1> = sort === 'oldest'
       ? { created: 1 }
       : sort === 'hottest'
@@ -107,32 +134,32 @@ export const commentStore = {
       .sort(sortOrder).skip((page - 1) * pageSize).limit(pageSize).toArray()
 
     const parentIds = rows.map(r => r._id)
-    const replyMap = new Map<string, any[]>()
+    const replyMap = new Map<string, CommentListItem[]>()
     if (parentIds.length > 0) {
       const allReplies = await col(db, 'comments').find({ pid: { $in: parentIds }, state: { $in: visibleStates } })
         .sort({ created: 1 }).toArray()
       for (const r of allReplies) {
         if (!replyMap.has(r.pid)) replyMap.set(r.pid, [])
-        replyMap.get(r.pid)!.push(stripPrivate(normalizeDoc(r)))
+        replyMap.get(r.pid)!.push(stripPrivate(normalizeDoc(r)) as CommentListItem)
       }
     }
 
     const data = rows.map(c => {
       const children = replyMap.get(c._id) || []
-      return { ...stripPrivate(normalizeDoc(c)), children, replyCount: children.length }
+      return { ...stripPrivate(normalizeDoc(c)), children, replyCount: children.length } as CommentListItem
     })
 
     return { data, total }
   },
 
-  async getReplies (pid: string) {
+  async getReplies (pid: string): Promise<CommentListItem[]> {
     const db = await getDb()
     const rows = await col(db, 'comments').find({ pid, state: { $in: ['visible', 'pending'] } })
       .sort({ created: 1 }).toArray()
-    return rows.map(r => stripPrivate(normalizeDoc(r)))
+    return rows.map(r => stripPrivate(normalizeDoc(r)) as CommentListItem)
   },
 
-  async getCommentsCount (urls: string[]) {
+  async getCommentsCount (urls: string[]): Promise<CommentCount[]> {
     if (urls.length === 0) return []
     const db = await getDb()
     const counts = await col(db, 'comments').aggregate([
@@ -143,24 +170,24 @@ export const commentStore = {
     return urls.map(url => ({ url, count: map.get(url) ?? 0 }))
   },
 
-  async getRecentComments (limit = 10) {
+  async getRecentComments (limit = 10): Promise<CommentListItem[]> {
     const db = await getDb()
     const rows = await col(db, 'comments').find({ state: 'visible' })
       .sort({ created: -1 }).limit(limit).toArray()
-    return rows.map(r => stripPrivate(normalizeDoc(r)))
+    return rows.map(r => stripPrivate(normalizeDoc(r)) as CommentListItem)
   },
 
-  async getRawRecentComments (limit = 50) {
+  async getRawRecentComments (limit = 50): Promise<RawComment[]> {
     const db = await getDb()
     const rows = await col(db, 'comments').find({})
       .sort({ created: -1 }).limit(limit).toArray()
-    return rows.map(r => normalizeDoc(r))
+    return rows.map(r => normalizeDoc(r) as RawComment)
   },
 
-  async getCommentReactions (commentId: string) {
+  async getCommentReactions (commentId: string): Promise<CommentReactionMap> {
     const db = await getDb()
     const rows = await col(db, 'comment_reactions').find({ commentId }).toArray()
-    const result: Record<string, { count: number, ips: string[] }> = {}
+    const result: CommentReactionMap = {}
     for (const r of rows) {
       if (!result[r.emoji]) result[r.emoji] = { count: 0, ips: [] }
       result[r.emoji].count += 1
@@ -169,7 +196,7 @@ export const commentStore = {
     return result
   },
 
-  async toggleCommentReaction (commentId: string, emoji: string, ip: string) {
+  async toggleCommentReaction (commentId: string, emoji: string, ip: string): Promise<CommentReactionMap> {
     const db = await getDb()
     const coll = col(db, 'comment_reactions')
     const existing = await coll.findOne({ commentId, ip })
@@ -185,28 +212,28 @@ export const commentStore = {
     return commentStore.getCommentReactions(commentId)
   },
 
-  async setCommentState (id: string, state: string) {
+  async setCommentState (id: string, state: CommentState): Promise<boolean> {
     const db = await getDb()
     const result = await col(db, 'comments').updateOne({ _id: id }, { $set: { state } })
     return result.matchedCount > 0
   },
 
-  hideComment (id: string) { return commentStore.setCommentState(id, COMMENT_STATE.HIDDEN) },
-  showComment (id: string) { return commentStore.setCommentState(id, COMMENT_STATE.VISIBLE) },
+  hideComment (id: string): Promise<boolean> { return commentStore.setCommentState(id, COMMENT_STATE.HIDDEN) },
+  showComment (id: string): Promise<boolean> { return commentStore.setCommentState(id, COMMENT_STATE.VISIBLE) },
 
-  async deleteComment (id: string) {
+  async deleteComment (id: string): Promise<boolean> {
     const db = await getDb()
     await col(db, 'comments').deleteMany({ $or: [{ _id: id }, { pid: id }] })
     return true
   },
 
-  async setTop (id: string, isTop: boolean) {
+  async setTop (id: string, isTop: boolean): Promise<boolean> {
     const db = await getDb()
     const result = await col(db, 'comments').updateOne({ _id: id }, { $set: { isTop } })
     return result.matchedCount > 0
   },
 
-  async setSpam (id: string, isSpam = true) {
+  async setSpam (id: string, isSpam = true): Promise<boolean> {
     const db = await getDb()
     const patch = isSpam
       ? { isSpam: true, state: COMMENT_STATE.SPAM }
@@ -215,7 +242,7 @@ export const commentStore = {
     return result.matchedCount > 0
   },
 
-  async getDashboardStats () {
+  async getDashboardStats (): Promise<DashboardStats> {
     const db = await getDb()
     const coll = col(db, 'comments')
     const startOfToday = new Date()
@@ -234,7 +261,7 @@ export const commentStore = {
     return { total, today, yesterday, pending, spam, hidden, topCount }
   },
 
-  async getDashboardTrend (days = 7) {
+  async getDashboardTrend (days = 7): Promise<DashboardTrendItem[]> {
     const db = await getDb()
     const coll = col(db, 'comments')
     const n = Math.min(Math.max(Math.floor(days), 1), 30)
@@ -252,7 +279,7 @@ export const commentStore = {
     ]).toArray()
     const map = new Map<number, number>()
     for (const r of rows) map.set(r._id * 86400000, r.count)
-    const result: { date: string; count: number }[] = []
+    const result: DashboardTrendItem[] = []
     for (let i = n - 1; i >= 0; i--) {
       const dayStart = todayTs - i * 86400000
       const d = new Date(dayStart)
@@ -264,21 +291,21 @@ export const commentStore = {
     return result
   },
 
-  async setCommentIpRegion (id: string, ipRegion: string) {
+  async setCommentIpRegion (id: string, ipRegion: string): Promise<boolean> {
     const db = await getDb()
     const result = await col(db, 'comments').updateOne({ _id: id }, { $set: { ipRegion } })
     return result.matchedCount > 0
   },
 
-  async getAllComments (page = 1, pageSize = 20) {
+  async getAllComments (page = 1, pageSize = 20): Promise<PaginatedResult<Comment>> {
     const db = await getDb()
     const coll = col(db, 'comments')
     const total = await coll.countDocuments()
     const rows = await coll.find({}).sort({ created: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray()
-    return { data: rows.map(r => normalizeDoc(r)), total }
+    return { data: rows.map(r => normalizeDoc(r) as Comment), total }
   },
 
-  async searchComments (page = 1, pageSize = 20, searchStr = '', filter = 'all') {
+  async searchComments (page = 1, pageSize = 20, searchStr = '', filter = 'all'): Promise<PaginatedResult<Comment>> {
     const db = await getDb()
     const filterDoc: any = {}
 
@@ -300,22 +327,22 @@ export const commentStore = {
     const coll = col(db, 'comments')
     const total = await coll.countDocuments(filterDoc)
     const rows = await coll.find(filterDoc).sort({ created: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray()
-    return { data: rows.map(r => normalizeDoc(r)), total }
+    return { data: rows.map(r => normalizeDoc(r) as Comment), total }
   },
 }
 
-export const configStore = {
-  async getConfig (): Promise<Record<string, any>> {
+export const configStore: ConfigStore = {
+  async getConfig (): Promise<Record<string, unknown>> {
     const db = await getDb()
     const rows = await col(db, 'configs').find({}).toArray()
-    const result: Record<string, any> = {}
+    const result: Record<string, unknown> = {}
     for (const row of rows) {
       try { result[row._id] = JSON.parse(row.value) } catch { result[row._id] = row.value }
     }
     return result
   },
 
-  async setConfig (key: string, value: any) {
+  async setConfig (key: string, value: unknown): Promise<void> {
     const db = await getDb()
     const val = typeof value === 'string' ? value : JSON.stringify(value)
     await col(db, 'configs').replaceOne(
@@ -325,20 +352,20 @@ export const configStore = {
     )
   },
 
-  async setManyConfig (data: Record<string, any>) {
+  async setManyConfig (data: Record<string, unknown>): Promise<void> {
     for (const [key, value] of Object.entries(data)) {
       await configStore.setConfig(key, value)
     }
   },
 
-  async resetConfig () {
+  async resetConfig (): Promise<void> {
     const db = await getDb()
     await col(db, 'configs').deleteMany({})
   },
 }
 
-export const visitorStore = {
-  async getVisitorCount (url: string, title?: string) {
+export const visitorStore: VisitorStore = {
+  async getVisitorCount (url: string, title?: string): Promise<VisitorCount> {
     const db = await getDb()
     const coll = col(db, 'visitors')
     const existing = await coll.findOne({ _id: url })
@@ -360,27 +387,27 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const toMs = (v: Date | number): number =>
   v instanceof Date ? v.getTime() : (typeof v === 'number' ? v : 0)
 
-export const sessionStore = {
-  async createToken () {
+export const sessionStore: SessionStore = {
+  async createToken (): Promise<string> {
     const db = await getDb()
     const token = randomUUID()
     await col(db, 'sessions').insertOne({ _id: token, createdAt: new Date() })
     return token
   },
 
-  async validateToken (token: string) {
+  async validateToken (token: string): Promise<boolean> {
     const db = await getDb()
     const row = await col(db, 'sessions').findOne({ _id: token })
     if (!row) return false
     return Date.now() - toMs(row.createdAt) < SESSION_TTL_MS
   },
 
-  async removeToken (token: string) {
+  async removeToken (token: string): Promise<void> {
     const db = await getDb()
     await col(db, 'sessions').deleteOne({ _id: token })
   },
 
-  async cleanupSessions () {
+  async cleanupSessions (): Promise<void> {
     const db = await getDb()
     const cutoff = new Date(Date.now() - SESSION_TTL_MS)
     // Handle both new Date-type and legacy numeric createdAt
@@ -392,12 +419,12 @@ export const sessionStore = {
     })
   },
 
-  async removeAllTokens () {
+  async removeAllTokens (): Promise<void> {
     const db = await getDb()
     await col(db, 'sessions').deleteMany({})
   },
 
-  async rotateToken (oldToken: string) {
+  async rotateToken (oldToken: string): Promise<string | null> {
     const db = await getDb()
     const row = await col(db, 'sessions').findOne({ _id: oldToken })
     if (!row || Date.now() - toMs(row.createdAt) > SESSION_TTL_MS) return null
@@ -409,11 +436,11 @@ export const sessionStore = {
   },
 }
 
-export const reactionStore = {
-  async getReactions (url: string) {
+export const reactionStore: ReactionStore = {
+  async getReactions (url: string): Promise<ReactionMap> {
     const db = await getDb()
     const rows = await col(db, 'reactions').find({ url }).toArray()
-    const result: Record<string, string[]> = {}
+    const result: ReactionMap = {}
     for (const r of rows) {
       if (!result[r.emoji]) result[r.emoji] = []
       result[r.emoji].push(r.ip)
@@ -421,7 +448,7 @@ export const reactionStore = {
     return result
   },
 
-  async toggleReaction (url: string, emoji: string, ip: string) {
+  async toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap> {
     const db = await getDb()
     const coll = col(db, 'reactions')
     const existing = await coll.findOne({ url, emoji, ip })
@@ -436,18 +463,18 @@ export const reactionStore = {
 
 // ========== Full store export/import ==========
 
-export async function getStore () {
+export async function getStore (): Promise<StoreSnapshot> {
   const db = await getDb()
-  const allComments = (await col(db, 'comments').find({}).toArray()).map(r => normalizeDoc(r))
+  const allComments = (await col(db, 'comments').find({}).toArray()).map(r => normalizeDoc(r) as Comment)
   const allConfigs = await col(db, 'configs').find({}).toArray()
   const allVisitors = await col(db, 'visitors').find({}).toArray()
   const allSessions = await col(db, 'sessions').find({}).toArray()
 
-  const store: any = {
+  const store: StoreSnapshot = {
     comments: allComments,
     configs: {},
     visitors: {},
-    sessions: allSessions,
+    sessions: allSessions.map(s => ({ token: s._id, createdAt: toMs(s.createdAt) })),
     reactions: {},
     commentReactions: {},
   }
@@ -455,7 +482,7 @@ export async function getStore () {
   for (const v of allVisitors) store.visitors[v._id] = { title: v.title, count: v.count, updatedAt: v.updatedAt }
 
   const allReactions = await col(db, 'reactions').find({}).toArray()
-  const reactMap: Record<string, Record<string, string[]>> = {}
+  const reactMap: Record<string, ReactionMap> = {}
   for (const r of allReactions) {
     if (!reactMap[r.url]) reactMap[r.url] = {}
     if (!reactMap[r.url][r.emoji]) reactMap[r.url][r.emoji] = []
@@ -464,7 +491,7 @@ export async function getStore () {
   store.reactions = reactMap
 
   const allCommentReactions = await col(db, 'comment_reactions').find({}).toArray()
-  const cReactMap: Record<string, Record<string, string[]>> = {}
+  const cReactMap: Record<string, ReactionMap> = {}
   for (const r of allCommentReactions) {
     if (!cReactMap[r.commentId]) cReactMap[r.commentId] = {}
     if (!cReactMap[r.commentId][r.emoji]) cReactMap[r.commentId][r.emoji] = []
@@ -475,11 +502,11 @@ export async function getStore () {
   return store
 }
 
-export async function importStore (data: any) {
+export async function importStore (data: StoreImportData): Promise<void> {
   const db = await getDb()
   // 批量 bulkWrite，ordered:false 允许并行执行，大幅提升导入速度
   if (data.comments) {
-    const ops = data.comments.map((c: any) => ({
+    const ops = data.comments.map((c: Comment) => ({
       replaceOne: {
         filter: { _id: c.id },
         replacement: {
@@ -515,7 +542,7 @@ export async function importStore (data: any) {
     if (ops.length > 0) await col(db, 'comments').bulkWrite(ops, { ordered: false })
   }
   if (data.configs) {
-    const ops = (Object.entries(data.configs) as [string, any][]).map(([key, val]) => ({
+    const ops = (Object.entries(data.configs)).map(([key, val]) => ({
       replaceOne: {
         filter: { _id: key },
         replacement: { _id: key, value: val.value, updatedAt: val.updatedAt || Date.now() },
@@ -525,7 +552,7 @@ export async function importStore (data: any) {
     if (ops.length > 0) await col(db, 'configs').bulkWrite(ops, { ordered: false })
   }
   if (data.visitors) {
-    const ops = (Object.entries(data.visitors) as [string, any][]).map(([url, v]) => ({
+    const ops = (Object.entries(data.visitors)).map(([url, v]) => ({
       replaceOne: {
         filter: { _id: url },
         replacement: { _id: url, title: v.title, count: v.count, updatedAt: v.updatedAt },
@@ -536,8 +563,8 @@ export async function importStore (data: any) {
   }
   if (data.reactions) {
     const ops: any[] = []
-    for (const [url, emojis] of Object.entries(data.reactions) as [string, any][]) {
-      for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+    for (const [url, emojis] of Object.entries(data.reactions)) {
+      for (const [emoji, ips] of Object.entries(emojis)) {
         for (const ip of ips) {
           ops.push({ replaceOne: { filter: { url, emoji, ip }, replacement: { url, emoji, ip }, upsert: true } })
         }
@@ -547,8 +574,8 @@ export async function importStore (data: any) {
   }
   if (data.commentReactions) {
     const ops: any[] = []
-    for (const [commentId, emojis] of Object.entries(data.commentReactions) as [string, any][]) {
-      for (const [emoji, ips] of Object.entries(emojis) as [string, string[]][]) {
+    for (const [commentId, emojis] of Object.entries(data.commentReactions)) {
+      for (const [emoji, ips] of Object.entries(emojis)) {
         for (const ip of ips) {
           ops.push({ replaceOne: { filter: { commentId, ip }, replacement: { commentId, emoji, ip, createdAt: Date.now() }, upsert: true } })
         }
@@ -558,7 +585,7 @@ export async function importStore (data: any) {
   }
 }
 
-export async function ensureDb () {
+export async function ensureDb (): Promise<void> {
   const db = await getDb()
   await col(db, 'comments').createIndexes([
     { key: { url: 1 } },

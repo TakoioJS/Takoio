@@ -106,7 +106,7 @@ export const handleSetConfig = async (data: any) => {
 
 export const handleConfigReset = async (_: any) => {
   await configStore.resetConfig()
-  await configStore.setManyConfig(DEFAULT_CONFIG)
+  await configStore.setManyConfig(DEFAULT_CONFIG as unknown as Record<string, unknown>)
   return { success: true }
 }
 
@@ -160,7 +160,7 @@ export const handleIpRegionGet = async (data: any) => {
   const { id } = data
   const comment = await commentStore.getComment(id)
   if (!comment || !comment.ip) return { ipRegion: '' }
-  const region = await lookupIpRegion(comment.ip)
+  const region = await lookupIpRegion(comment.ip as string)
   if (region && comment.id) {
     await commentStore.setCommentIpRegion(comment.id, region)
   }
