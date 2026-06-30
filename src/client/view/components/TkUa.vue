@@ -55,16 +55,16 @@ const BROWSER_SVGS: Record<string, string> = {
 }
 
 const uaIconMap: Record<string, { os?: string; browser?: string }> = {
-  'Windows': { os: 'windows' },
-  'Mac': { os: 'macos' },
-  'iOS': { os: 'apple' },
-  'Android': { os: 'android' },
-  'Linux': { os: 'linux' },
-  'Chrome': { browser: 'chrome' },
-  'Edge': { browser: 'edge' },
-  'Firefox': { browser: 'firefox' },
-  'Safari': { browser: 'safari' },
-  'IE': { browser: 'ie' },
+  Windows: { os: 'windows' },
+  Mac: { os: 'macos' },
+  iOS: { os: 'apple' },
+  Android: { os: 'android' },
+  Linux: { os: 'linux' },
+  Chrome: { browser: 'chrome' },
+  Edge: { browser: 'edge' },
+  Firefox: { browser: 'firefox' },
+  Safari: { browser: 'safari' },
+  IE: { browser: 'ie' },
 }
 
 const uaDisplay = computed(() => {

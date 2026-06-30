@@ -62,9 +62,6 @@ const PURIFY_CONFIG = {
   FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur'],
 }
 
-const escapeHtml = (text: string): string =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
 const isSafeImageUrl = (href: string): boolean => {
   try {
     const u = new URL(href)

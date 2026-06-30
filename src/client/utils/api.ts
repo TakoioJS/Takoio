@@ -7,8 +7,6 @@ import type { Comment } from '../types'
 import { isUrl } from './index' // safe: isUrl used at call-time, not module eval
 import { timeago } from './timeago'
 
-
-
 export type ApiErrorCategory = 'network' | 'timeout' | 'rate_limited' | 'server' | 'unknown'
 
 export function classifyApiError (error: unknown): ApiErrorCategory {
@@ -162,7 +160,6 @@ export const toggleCommentReaction = (envId: string, commentId: string, emoji: s
   request(`${baseUrl(envId)}/api/comments/${commentId}/reactions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }),
   })
-
 
 /** Generic admin API call (used by components for admin operations) */
 export const adminRequest = async (envId: string, token: string, path: string, method: string = 'GET', body?: any): Promise<any> => {

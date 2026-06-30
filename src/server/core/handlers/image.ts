@@ -377,7 +377,6 @@ export const handleUploadImage = async (data: any) => {
     throw new AppError('INVALID_PROVIDER', `不支持的图床: ${provider}`, 400)
   }
 
-  const buffer = base64ToBuffer(validation.data.image)
   const filename = generateFilename(mimeType)
   const url = await uploader(buffer, filename, mimeType, cfg)
   logger.info({ provider, url }, '图片上传成功')

@@ -73,7 +73,10 @@
       v-else-if="errorMsg"
       class="tk-error-state"
     >
-      <i class="i-jam-alert tk-icon-32" style="color: var(--tk-danger); margin-bottom: 8px;" />
+      <i
+        class="i-jam-alert tk-icon-32"
+        style="color: var(--tk-danger); margin-bottom: 8px;"
+      />
       <p>{{ errorMsg }}</p>
       <button
         class="tk-btn-retry"
@@ -86,8 +89,13 @@
       v-else-if="comments.length === 0"
       class="tk-empty-state"
     >
-      <i class="i-jam-comments tk-icon-48" style="color: var(--tk-text-3); margin-bottom: 10px;" />
-      <p style="color: var(--tk-text-3); font-size: 13px;">{{ t('noComment') }}</p>
+      <i
+        class="i-jam-comments tk-icon-48"
+        style="color: var(--tk-text-3); margin-bottom: 10px;"
+      />
+      <p style="color: var(--tk-text-3); font-size: 13px;">
+        {{ t('noComment') }}
+      </p>
     </div>
 
     <div
@@ -198,21 +206,6 @@ let observer: IntersectionObserver | null = null
 
 const infiniteMode = computed(() => mergedOptions.value.paginationMode === 'infinite')
 const hasMore = computed(() => allComments.value.length < total.value)
-
-const brandColorStyle = computed(() => {
-  const color = mergedOptions.value.brandColor || siteConfig.value?.GLOBAL_COLOR
-  if (!color) return {}
-  const hex = color.replace('#', '')
-  const m = hex.match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
-  if (!m) return {}
-  const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
-  return {
-    '--tk-brand': color,
-    '--tk-brand-hover': `rgb(${Math.round(r * 0.9)}, ${Math.round(g * 0.9)}, ${Math.round(b * 0.9)})`,
-    '--tk-brand-light': `rgba(${r}, ${g}, ${b}, 0.1)`,
-    '--tk-brand-ring': `rgba(${r}, ${g}, ${b}, 0.4)`,
-  }
-})
 
 const buildCommentMap = (comments: Comment[]): Map<string, Comment> => {
   const map = new Map<string, Comment>()

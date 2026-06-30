@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, vi } from 'vitest'
 import { sendNotification } from '../notify'
 
 vi.mock('../utils/logger', () => ({

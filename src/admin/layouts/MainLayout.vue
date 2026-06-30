@@ -6,25 +6,48 @@
         <!-- 左侧 Brand -->
         <div class="brand-section">
           <div class="brand-logo">
-            <img :src="iconUrl" alt="Takoio" class="brand-img" />
+            <img
+              :src="iconUrl"
+              alt="Takoio"
+              class="brand-img"
+            >
           </div>
           <span class="brand-text">Takoio</span>
         </div>
 
         <!-- 中间 导航栏 -->
         <nav class="header-nav">
-          <template v-for="item in menuItems" :key="item.path">
+          <template
+            v-for="item in menuItems"
+            :key="item.path"
+          >
             <!-- 有子菜单的项 -->
-            <div v-if="item.children" class="nav-item-group" :class="{ active: route.path.startsWith(item.path) }">
-              <button class="nav-item nav-item-main" @click="toggleAiMenu">
-                <n-icon size="16"><component :is="item.icon" /></n-icon>
+            <div
+              v-if="item.children"
+              class="nav-item-group"
+              :class="{ active: route.path.startsWith(item.path) }"
+            >
+              <button
+                class="nav-item nav-item-main"
+                @click="toggleAiMenu"
+              >
+                <n-icon size="16">
+                  <component :is="item.icon" />
+                </n-icon>
                 <span class="nav-label">{{ item.title }}</span>
-                <n-icon size="12" class="nav-arrow" :class="{ rotated: aiMenuOpen }">
+                <n-icon
+                  size="12"
+                  class="nav-arrow"
+                  :class="{ rotated: aiMenuOpen }"
+                >
                   <ChevronDownOutline />
                 </n-icon>
               </button>
               <transition name="submenu">
-                <div v-show="aiMenuOpen" class="nav-submenu">
+                <div
+                  v-show="aiMenuOpen"
+                  class="nav-submenu"
+                >
                   <router-link
                     v-for="child in item.children"
                     :key="child.path"
@@ -55,7 +78,15 @@
 
         <!-- 右侧 操作按钮 -->
         <div class="header-actions">
-          <n-tag v-if="isDev" size="tiny" type="warning" round class="dev-badge">热开发环境</n-tag>
+          <n-tag
+            v-if="isDev"
+            size="tiny"
+            type="warning"
+            round
+            class="dev-badge"
+          >
+            热开发环境
+          </n-tag>
           <n-button
             quaternary
             circle
@@ -66,7 +97,9 @@
             rel="noopener"
           >
             <template #icon>
-              <n-icon size="18"><LogoGithub /></n-icon>
+              <n-icon size="18">
+                <LogoGithub />
+              </n-icon>
             </template>
           </n-button>
           <n-button
@@ -89,7 +122,9 @@
             @click="showPasswordDialog = true"
           >
             <template #icon>
-              <n-icon size="18"><KeyOutline /></n-icon>
+              <n-icon size="18">
+                <KeyOutline />
+              </n-icon>
             </template>
           </n-button>
           <n-button
@@ -99,7 +134,9 @@
             @click="onLogout"
           >
             <template #icon>
-              <n-icon size="18"><LogOutOutline /></n-icon>
+              <n-icon size="18">
+                <LogOutOutline />
+              </n-icon>
             </template>
           </n-button>
         </div>
@@ -110,7 +147,10 @@
     <div class="admin-main">
       <main class="admin-content">
         <router-view v-slot="{ Component }">
-          <transition name="page-fade" mode="out-in">
+          <transition
+            name="page-fade"
+            mode="out-in"
+          >
             <component :is="Component" />
           </transition>
         </router-view>
@@ -118,22 +158,49 @@
     </div>
 
     <!-- 修改密码弹窗 -->
-    <n-modal v-model:show="showPasswordDialog" preset="card" title="修改密码" style="max-width: 420px;">
+    <n-modal
+      v-model:show="showPasswordDialog"
+      preset="card"
+      title="修改密码"
+      style="max-width: 420px;"
+    >
       <n-form>
         <n-form-item label="旧密码">
-          <n-input v-model:value="pwdOld" type="password" show-password-on="click" />
+          <n-input
+            v-model:value="pwdOld"
+            type="password"
+            show-password-on="click"
+          />
         </n-form-item>
         <n-form-item label="新密码">
-          <n-input v-model:value="pwdNew" type="password" show-password-on="click" placeholder="至少8位" />
+          <n-input
+            v-model:value="pwdNew"
+            type="password"
+            show-password-on="click"
+            placeholder="至少8位"
+          />
         </n-form-item>
         <n-form-item label="确认新密码">
-          <n-input v-model:value="pwdConfirm" type="password" show-password-on="click" @keydown.enter="onChangePassword" />
+          <n-input
+            v-model:value="pwdConfirm"
+            type="password"
+            show-password-on="click"
+            @keydown.enter="onChangePassword"
+          />
         </n-form-item>
       </n-form>
       <template #footer>
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <n-button @click="showPasswordDialog = false">取消</n-button>
-          <n-button type="primary" :loading="changingPassword" @click="onChangePassword">保存</n-button>
+          <n-button @click="showPasswordDialog = false">
+            取消
+          </n-button>
+          <n-button
+            type="primary"
+            :loading="changingPassword"
+            @click="onChangePassword"
+          >
+            保存
+          </n-button>
         </div>
       </template>
     </n-modal>
@@ -178,7 +245,9 @@ const menuItems = [
   { path: '/comments', title: '评论', icon: ChatbubblesOutline },
   { path: '/settings', title: '配置', icon: SettingsOutline },
   {
-    path: '/ai', title: 'AI 功能', icon: CubeOutline,
+    path: '/ai',
+    title: 'AI 功能',
+    icon: CubeOutline,
     children: [
       { path: '/ai', title: 'AI 配置' },
       { path: '/ai/summary', title: '文章摘要管理' },

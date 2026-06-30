@@ -6,11 +6,11 @@ export interface ApiError extends Error {
 const BASE_URL = ''
 let _onUnauthorized: (() => void) | null = null
 
-export function setUnauthorizedHandler(handler: () => void) {
+export function setUnauthorizedHandler (handler: () => void) {
   _onUnauthorized = handler
 }
 
-async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+async function request<T> (url: string, options: RequestInit = {}): Promise<T> {
   const auth = useAuthStore()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -50,9 +50,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   get<T>(url: string, params?: Record<string, any>) {
-    const qs = params ? '?' + new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
-    ).toString() : ''
+    const qs = params
+      ? '?' + new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
+      ).toString()
+      : ''
     return request<T>(url + qs)
   },
 

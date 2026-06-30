@@ -20,7 +20,7 @@ import { getClientIp } from '#core/utils/ip'
 import { isRedisAvailable, listSummaryCaches } from '#core/store/redis'
 import { isDev } from '#core/utils/env'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
-import { LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema } from '#core/schemas'
+import { LoginSchema, PasswordSetSchema, TypeSetSchema, SetConfigSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema } from '#core/schemas'
 
 export default defineHandler(async (event) => {
   const path = (event.context.params?.slug as string) || ''

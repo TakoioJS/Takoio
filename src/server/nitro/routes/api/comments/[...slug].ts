@@ -20,8 +20,8 @@ import { getClientIp } from '#core/utils/ip'
 // validateQuery, validateBody, getToken — auto-imported from nitro/utils/ by Nitro
 import {
   RecentCommentsSchema, CounterGetSchema,
-  CounterUpdateSchema, CommentReactionGetSchema, CommentReactionSubmitSchema,
-  UpdateCommentSchema, CommentActionSchema, CommentIdSchema,
+  CounterUpdateSchema, CommentReactionSubmitSchema,
+  UpdateCommentSchema, CommentActionSchema,
 } from '#core/schemas'
 
 export default defineHandler(async (event) => {

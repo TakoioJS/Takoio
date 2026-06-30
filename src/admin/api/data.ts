@@ -5,5 +5,5 @@ export const dataApi = {
     api.post<{ count: number; error?: string }>(`/api/admin/import/${source}`, data),
 
   export: (format: string) =>
-    api.get(`/api/admin/export`, { format }),
+    api.get('/api/admin/export', { format }),
 }

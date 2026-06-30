@@ -1,7 +1,6 @@
 import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import * as schema from './schema'
 
 export type DbClient = ReturnType<typeof drizzle<typeof schema>>
@@ -35,7 +34,6 @@ export function getDb (): DbClient {
 }
 
 export async function initDb () {
-  const db = getDb()
   if (!_raw) return
 
   // Enable foreign key constraint enforcement

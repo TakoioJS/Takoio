@@ -2,7 +2,13 @@
   <div class="sensitive-input">
     <template v-if="hasValue && !editing">
       <div class="sensitive-set">
-        <n-tag type="success" size="small" round>✓ 已配置</n-tag>
+        <n-tag
+          type="success"
+          size="small"
+          round
+        >
+          ✓ 已配置
+        </n-tag>
         <n-input
           :value="''"
           placeholder="输入新值替换"
@@ -11,8 +17,17 @@
           @focus="onFocus"
           @update:value="$emit('update:modelValue', $event)"
         />
-        <n-button size="small" quaternary @click="onClear" title="清除">
-          <template #icon><n-icon size="14"><CloseOutline /></n-icon></template>
+        <n-button
+          size="small"
+          quaternary
+          title="清除"
+          @click="onClear"
+        >
+          <template #icon>
+            <n-icon size="14">
+              <CloseOutline />
+            </n-icon>
+          </template>
         </n-button>
       </div>
     </template>

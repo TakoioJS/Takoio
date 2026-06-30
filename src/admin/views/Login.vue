@@ -1,17 +1,31 @@
 <template>
   <div class="login-page">
-    <div v-if="checking" class="login-container">
-      <div class="login-card"></div>
+    <div
+      v-if="checking"
+      class="login-container"
+    >
+      <div class="login-card" />
     </div>
 
-    <div v-else class="login-container">
+    <div
+      v-else
+      class="login-container"
+    >
       <div class="login-card">
         <div class="login-header">
           <div class="login-logo">
-            <img :src="iconUrl" alt="Takoio" class="login-logo-img" />
+            <img
+              :src="iconUrl"
+              alt="Takoio"
+              class="login-logo-img"
+            >
           </div>
-          <h1 class="login-title">Takoio</h1>
-          <p class="login-subtitle">{{ needSetup ? t('setupDesc') : '评论系统管理后台' }}</p>
+          <h1 class="login-title">
+            Takoio
+          </h1>
+          <p class="login-subtitle">
+            {{ needSetup ? t('setupDesc') : '评论系统管理后台' }}
+          </p>
         </div>
 
         <template v-if="needSetup">
@@ -26,9 +40,18 @@
                 @keydown.enter="onSetup"
               />
             </n-form-item>
-            <div v-if="passwordStrength.level > 0" class="pwd-strength" :style="{ '--strength-color': strengthColor }">
+            <div
+              v-if="passwordStrength.level > 0"
+              class="pwd-strength"
+              :style="{ '--strength-color': strengthColor }"
+            >
               <div class="pwd-strength-bars">
-                <span v-for="i in 4" :key="i" class="pwd-strength-bar" :class="{ filled: i <= passwordStrength.level }"></span>
+                <span
+                  v-for="i in 4"
+                  :key="i"
+                  class="pwd-strength-bar"
+                  :class="{ filled: i <= passwordStrength.level }"
+                />
               </div>
               <span class="pwd-strength-label">{{ passwordStrength.label }}</span>
             </div>
@@ -43,7 +66,12 @@
                 @keydown.enter="onSetup"
               />
             </n-form-item>
-            <p v-if="confirmMismatch" class="login-pwd-error">{{ t('passwordMismatch') }}</p>
+            <p
+              v-if="confirmMismatch"
+              class="login-pwd-error"
+            >
+              {{ t('passwordMismatch') }}
+            </p>
             <n-form-item label="CORS 域名">
               <n-input
                 v-model:value="corsOrigins"
@@ -51,7 +79,12 @@
                 size="large"
               />
             </n-form-item>
-            <p v-if="auth.setupDev" class="login-cors-hint">热开发环境下 CORS 默认开放，无需配置</p>
+            <p
+              v-if="auth.setupDev"
+              class="login-cors-hint"
+            >
+              热开发环境下 CORS 默认开放，无需配置
+            </p>
             <n-button
               type="primary"
               block
@@ -78,13 +111,16 @@
             </n-form-item>
             <CaptchaWidget
               v-if="enableCaptcha"
+              v-model:value="captchaToken"
               :provider="captchaProvider"
               :site-key="captchaSiteKey"
               :captcha-type="captchaType"
-              v-model:value="captchaToken"
               @error="captchaError = $event"
             />
-            <div v-if="captchaError" class="login-captcha-error">
+            <div
+              v-if="captchaError"
+              class="login-captcha-error"
+            >
               {{ captchaError }}
             </div>
             <div class="login-options">
@@ -115,7 +151,9 @@
             rel="noopener"
           >
             <template #icon>
-              <n-icon size="18"><LogoGithub /></n-icon>
+              <n-icon size="18">
+                <LogoGithub />
+              </n-icon>
             </template>
           </n-button>
           <n-button
@@ -215,8 +253,7 @@ const onSetup = async () => {
     const result = await auth.setup(setupPassword.value)
     if (result.success) {
       if (!auth.setupDev && corsOrigins.value.trim()) {
-        try { await configApi.save({ CORS_ORIGINS: corsOrigins.value.trim() }) }
-        catch { /* 非关键，忽略 */ }
+        try { await configApi.save({ CORS_ORIGINS: corsOrigins.value.trim() }) } catch { /* 非关键，忽略 */ }
       }
       message.success(t('setupSuccess'))
       redirectTo()

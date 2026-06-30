@@ -2,10 +2,10 @@
  * Admin / Config / Auth handlers — login, logout, config CRUD, password, notifications, etc.
  */
 
-import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, SetConfigSchema } from '../schemas'
-import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData, SetConfigData } from '../schemas'
+import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema } from '../schemas'
+import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
-import { getConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
+import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
 import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
 import { verifyPassword } from '../utils/crypto'
 import { lookupIpRegion } from '../ip-region'

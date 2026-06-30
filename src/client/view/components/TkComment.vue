@@ -73,9 +73,9 @@
       </div>
 
       <div
-      ref="contentRef"
-      class="tk-comment-content"
-    >
+        ref="contentRef"
+        class="tk-comment-content"
+      >
         <div
           v-if="comment.state === 'pending' || comment.state === 'spam'"
           class="tk-pending-notice"
@@ -120,7 +120,21 @@
           v-if="options._showIpRegion !== false && comment.ipRegion"
           class="tk-meta-item"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;flex-shrink:0;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ displayIpRegion }}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="margin-right:2px;flex-shrink:0;"
+          ><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle
+            cx="12"
+            cy="10"
+            r="3"
+          /></svg>{{ displayIpRegion }}
         </span>
         <span
           v-if="options._showUaInfo && comment.ua"
@@ -161,12 +175,12 @@
           <TkComment
             v-for="child in comment.children"
             :key="child.id"
-              :comment="child"
-              :options="options"
-              :is-reply="true"
-              :depth="depth + 1"
-              @reply="$emit('reply', $event)"
-            />
+            :comment="child"
+            :options="options"
+            :is-reply="true"
+            :depth="depth + 1"
+            @reply="$emit('reply', $event)"
+          />
         </template>
       </div>
     </div>
@@ -237,8 +251,12 @@ const renderContent = async (): Promise<void> => {
 const formatDate = (ts: number): string => {
   if (!ts) return ''
   return new Date(ts).toLocaleString((props.options as any).lang || 'zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   })
 }
 

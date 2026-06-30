@@ -1,41 +1,106 @@
 <template>
   <!-- renderOnly 模式：不渲染内置 UI，仅取数并通过 renderSummary 回调通知宿主 -->
-  <div v-if="!renderOnly" class="tk-summary" v-show="state !== 'hidden'">
+  <div
+    v-if="!renderOnly"
+    v-show="state !== 'hidden'"
+    class="tk-summary"
+  >
     <!-- Loading skeleton -->
-    <div v-if="state === 'loading'" class="tk-summary-card">
+    <div
+      v-if="state === 'loading'"
+      class="tk-summary-card"
+    >
       <div class="tk-summary-header">
         <span class="tk-summary-icon">✦</span>
         <span class="tk-summary-title">{{ t('aiSummaryTitle') }}</span>
       </div>
       <div class="tk-summary-skeleton">
-        <div class="tk-skeleton-line" style="width: 100%" />
-        <div class="tk-skeleton-line" style="width: 92%" />
-        <div class="tk-skeleton-line" style="width: 68%" />
+        <div
+          class="tk-skeleton-line"
+          style="width: 100%"
+        />
+        <div
+          class="tk-skeleton-line"
+          style="width: 92%"
+        />
+        <div
+          class="tk-skeleton-line"
+          style="width: 68%"
+        />
       </div>
     </div>
 
     <!-- Success -->
-    <div v-else-if="state === 'success'" class="tk-summary-card" :class="{ collapsed }">
-      <div class="tk-summary-header" @click="toggleCollapse">
+    <div
+      v-else-if="state === 'success'"
+      class="tk-summary-card"
+      :class="{ collapsed }"
+    >
+      <div
+        class="tk-summary-header"
+        @click="toggleCollapse"
+      >
         <span class="tk-summary-icon">✦</span>
         <span class="tk-summary-title">{{ t('aiSummaryTitle') }}</span>
-        <button class="tk-summary-toggle" :aria-label="collapsed ? t('show') : t('hide')">
-          <svg v-if="collapsed" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-          <svg v-else viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+        <button
+          class="tk-summary-toggle"
+          :aria-label="collapsed ? t('show') : t('hide')"
+        >
+          <svg
+            v-if="collapsed"
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><polyline points="6 9 12 15 18 9" /></svg>
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><polyline points="18 15 12 9 6 15" /></svg>
         </button>
       </div>
-      <div v-show="!collapsed" class="tk-summary-body" v-html="renderedSummary" />
-      <div v-show="!collapsed && keywords.length > 0" class="tk-summary-keywords">
+      <div
+        v-show="!collapsed"
+        class="tk-summary-body"
+        v-html="renderedSummary"
+      />
+      <div
+        v-show="!collapsed && keywords.length > 0"
+        class="tk-summary-keywords"
+      >
         <span class="tk-keywords-label">{{ t('aiKeywords') }}：</span>
-        <span v-for="kw in keywords" :key="kw" class="tk-keyword-tag">{{ kw }}</span>
+        <span
+          v-for="kw in keywords"
+          :key="kw"
+          class="tk-keyword-tag"
+        >{{ kw }}</span>
       </div>
     </div>
 
     <!-- Error: minimal, non-disruptive -->
-    <div v-else class="tk-summary-card tk-summary-error">
+    <div
+      v-else
+      class="tk-summary-card tk-summary-error"
+    >
       <span class="tk-summary-icon">✦</span>
       <span>{{ t('aiSummaryFailed') }}</span>
-      <button class="tk-summary-retry" @click="generateSummary">{{ t('aiSummaryRetry') }}</button>
+      <button
+        class="tk-summary-retry"
+        @click="generateSummary"
+      >
+        {{ t('aiSummaryRetry') }}
+      </button>
     </div>
   </div>
 </template>

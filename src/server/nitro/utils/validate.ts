@@ -35,7 +35,7 @@ export function validateQuery<T> (event: H3Event, schema: ZodType<T>): T {
 /** Validate request body with Zod schema, throw 400 on failure */
 export async function validateBody<T> (
   event: H3Event,
-  schema: ZodType<T>,
+  schema: ZodType<T>
 ): Promise<T> {
   const body = await readBody(event)
   const result = schema.safeParse(body ?? {})

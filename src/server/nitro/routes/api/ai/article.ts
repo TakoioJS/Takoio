@@ -25,7 +25,7 @@ function isSafeUrlPath (str: string): boolean {
     const u = new URL(str)
     return u.protocol === 'http:' || u.protocol === 'https:'
   } catch {
-    return str.startsWith('/') && !/[*?{}\[\]]/.test(str)
+    return str.startsWith('/') && !/[*?{}[\]]/.test(str)
   }
 }
 

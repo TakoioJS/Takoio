@@ -4,36 +4,73 @@
       <!-- AI 提供商 -->
       <div class="section-card">
         <div class="section-header">
-          <n-icon size="18" class="section-icon"><CubeOutline /></n-icon>
+          <n-icon
+            size="18"
+            class="section-icon"
+          >
+            <CubeOutline />
+          </n-icon>
           <span class="section-title">AI 提供商</span>
         </div>
         <div class="section-body">
-          <div v-if="aiProviders.length === 0" class="empty-hint">
+          <div
+            v-if="aiProviders.length === 0"
+            class="empty-hint"
+          >
             暂无 AI 提供商，点击下方按钮添加
           </div>
-          <div v-for="(provider, idx) in aiProviders" :key="idx" class="ai-provider-card">
+          <div
+            v-for="(provider, idx) in aiProviders"
+            :key="idx"
+            class="ai-provider-card"
+          >
             <div class="ai-provider-header">
-              <n-input v-model:value="provider.name" placeholder="提供商名称" class="provider-name-input" />
+              <n-input
+                v-model:value="provider.name"
+                placeholder="提供商名称"
+                class="provider-name-input"
+              />
               <n-tag
                 :type="provider.format === 'openai' ? 'success' : provider.format === 'anthropic' ? 'warning' : 'info'"
-                size="small" round
-              >{{ provider.format }}</n-tag>
-              <n-button quaternary size="small" type="error" @click="removeProvider(idx)">
-                <template #icon><n-icon><TrashOutline /></n-icon></template>
+                size="small"
+                round
+              >
+                {{ provider.format }}
+              </n-tag>
+              <n-button
+                quaternary
+                size="small"
+                type="error"
+                @click="removeProvider(idx)"
+              >
+                <template #icon>
+                  <n-icon><TrashOutline /></n-icon>
+                </template>
               </n-button>
             </div>
             <div class="ai-provider-body">
               <div class="form-field">
                 <label class="form-label">接口格式</label>
-                <n-select v-model:value="provider.format" :options="aiFormatOptions" />
+                <n-select
+                  v-model:value="provider.format"
+                  :options="aiFormatOptions"
+                />
               </div>
               <div class="form-field">
                 <label class="form-label">API 地址</label>
-                <n-input v-model:value="provider.endpoint" placeholder="https://api.openai.com/v1" />
+                <n-input
+                  v-model:value="provider.endpoint"
+                  placeholder="https://api.openai.com/v1"
+                />
               </div>
               <div class="form-field">
                 <label class="form-label">API Key</label>
-                <n-input v-model:value="provider.key" type="password" show-password-on="click" placeholder="sk-..." />
+                <n-input
+                  v-model:value="provider.key"
+                  type="password"
+                  show-password-on="click"
+                  placeholder="sk-..."
+                />
               </div>
               <div class="form-field">
                 <label class="form-label">模型列表</label>
@@ -41,7 +78,9 @@
                   <n-select
                     v-model:value="provider.models"
                     :options="provider.modelOptions || []"
-                    multiple filterable tag
+                    multiple
+                    filterable
+                    tag
                     class="models-select"
                     placeholder="选择或输入模型名称"
                   />
@@ -51,15 +90,23 @@
                     :disabled="!provider.endpoint || !provider.key"
                     @click="onFetchModels(idx)"
                   >
-                    <template #icon><n-icon><DownloadOutline /></n-icon></template>
+                    <template #icon>
+                      <n-icon><DownloadOutline /></n-icon>
+                    </template>
                     拉取
                   </n-button>
                 </div>
               </div>
             </div>
           </div>
-          <n-button dashed block @click="addProvider">
-            <template #icon><n-icon><AddOutline /></n-icon></template>
+          <n-button
+            dashed
+            block
+            @click="addProvider"
+          >
+            <template #icon>
+              <n-icon><AddOutline /></n-icon>
+            </template>
             添加提供商
           </n-button>
         </div>
@@ -68,7 +115,12 @@
       <!-- 文章摘要 -->
       <div class="section-card">
         <div class="section-header">
-          <n-icon size="18" class="section-icon"><DocumentTextOutline /></n-icon>
+          <n-icon
+            size="18"
+            class="section-icon"
+          >
+            <DocumentTextOutline />
+          </n-icon>
           <span class="section-title">文章摘要</span>
         </div>
         <div class="section-body">
@@ -80,25 +132,41 @@
             <label class="form-label">在评论区显示摘要</label>
             <n-switch v-model:value="config.ENABLE_SUMMARY" />
           </div>
-          <div class="form-hint">关闭后前端评论区不展示摘要卡片（宿主仍可通过 API 自行渲染）</div>
+          <div class="form-hint">
+            关闭后前端评论区不展示摘要卡片（宿主仍可通过 API 自行渲染）
+          </div>
           <template v-if="config.AI_SUMMARY_ENABLED">
             <div class="form-field">
               <label class="form-label">摘要提供商</label>
-              <n-select v-model:value="config.AI_SUMMARY_PROVIDER" :options="aiProviderNameOptions" clearable />
+              <n-select
+                v-model:value="config.AI_SUMMARY_PROVIDER"
+                :options="aiProviderNameOptions"
+                clearable
+              />
             </div>
             <div class="form-field">
               <label class="form-label">摘要模型</label>
-              <n-select v-model:value="config.AI_SUMMARY_MODEL" :options="summaryModelOptions" filterable tag clearable />
+              <n-select
+                v-model:value="config.AI_SUMMARY_MODEL"
+                :options="summaryModelOptions"
+                filterable
+                tag
+                clearable
+              />
             </div>
           </template>
         </div>
       </div>
 
-
       <!-- NSFW 检测 -->
       <div class="section-card">
         <div class="section-header">
-          <n-icon size="18" class="section-icon"><EyeOffOutline /></n-icon>
+          <n-icon
+            size="18"
+            class="section-icon"
+          >
+            <EyeOffOutline />
+          </n-icon>
           <span class="section-title">NSFW 检测</span>
         </div>
         <div class="section-body">
@@ -110,20 +178,41 @@
           <template v-if="config.ENABLE_NSFW_DETECTION">
             <div class="form-field">
               <label class="form-label">检测服务</label>
-              <n-select v-model:value="config.NSFW_SERVICE" :options="nsfwServiceOptions" />
+              <n-select
+                v-model:value="config.NSFW_SERVICE"
+                :options="nsfwServiceOptions"
+              />
             </div>
-            <div v-if="config.NSFW_SERVICE === 'self'" class="form-field">
+            <div
+              v-if="config.NSFW_SERVICE === 'self'"
+              class="form-field"
+            >
               <label class="form-label">检测服务地址</label>
-              <n-input v-model:value="config.NSFW_ENDPOINT" placeholder="http://localhost:8080" />
+              <n-input
+                v-model:value="config.NSFW_ENDPOINT"
+                placeholder="http://localhost:8080"
+              />
             </div>
-            <div v-if="config.NSFW_SERVICE === 'modelark'" class="form-field">
+            <div
+              v-if="config.NSFW_SERVICE === 'modelark'"
+              class="form-field"
+            >
               <label class="form-label">API Key</label>
-              <SensitiveInput v-model="config.NSFW_API_KEY" :has-value="!!savedConfig?.NSFW_API_KEY" placeholder="ModelArk API Key" />
+              <SensitiveInput
+                v-model="config.NSFW_API_KEY"
+                :has-value="!!savedConfig?.NSFW_API_KEY"
+                placeholder="ModelArk API Key"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">阈值</label>
               <div class="slider-row">
-                <n-slider v-model:value="config.NSFW_THRESHOLD" :min="0" :max="1" :step="0.05" />
+                <n-slider
+                  v-model:value="config.NSFW_THRESHOLD"
+                  :min="0"
+                  :max="1"
+                  :step="0.05"
+                />
                 <span class="slider-value">{{ config.NSFW_THRESHOLD }}</span>
               </div>
             </div>
@@ -132,9 +221,20 @@
       </div>
     </n-spin>
 
-    <div v-if="isDirty" class="save-bar">
-      <n-button @click="onReset">重置</n-button>
-      <n-button type="primary" :loading="saving" @click="onSave">保存更改</n-button>
+    <div
+      v-if="isDirty"
+      class="save-bar"
+    >
+      <n-button @click="onReset">
+        重置
+      </n-button>
+      <n-button
+        type="primary"
+        :loading="saving"
+        @click="onSave"
+      >
+        保存更改
+      </n-button>
     </div>
   </div>
 </template>

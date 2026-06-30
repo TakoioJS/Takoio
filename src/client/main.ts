@@ -4,7 +4,6 @@
  * 纯 HTTP 通信，需要部署自托管服务端。
  */
 
-
 import { render } from './view'
 import { version } from './utils'
 import {

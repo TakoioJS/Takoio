@@ -17,10 +17,6 @@ import {
   CounterUpdateSchema,
   CommentsCountSchema,
   RecentCommentsSchema,
-  ReactionGetSchema,
-  ReactionSubmitSchema,
-  CommentReactionGetSchema,
-  CommentReactionSubmitSchema,
 } from '../schemas'
 import type {
   GetCommentData,
@@ -173,8 +169,12 @@ async function runAiModeration (newComment: any, cfg: TakoioConfig) {
 
   return moderateComment(newComment.comment, newComment.nick, newComment.link, {
     enabled: cfg.AUTO_AUDIT_METHOD === 'ai',
-    endpoint: aiEndpoint, key: aiKey, model: cfg.AUTO_AUDIT_AI_MODEL,
-    prompt: cfg.AUTO_AUDIT_AI_PROMPT, format: aiFormat, blockedKeywords: cfg.BLOCKED_KEYWORDS,
+    endpoint: aiEndpoint,
+    key: aiKey,
+    model: cfg.AUTO_AUDIT_AI_MODEL,
+    prompt: cfg.AUTO_AUDIT_AI_PROMPT,
+    format: aiFormat,
+    blockedKeywords: cfg.BLOCKED_KEYWORDS,
   })
 }
 
@@ -199,7 +199,7 @@ const escapeHtml = (text: string): string =>
 
 /** Stage 4: Notifications (SSE, push, email) — fire-and-forget */
 function notifySubmit (saved: any, newComment: any, cfg: TakoioConfig, data: SubmitCommentData & { href?: string }) {
-  const { url, nick, mail, link, comment, pid, rid, ua, title } = data
+  const { url, nick, mail, comment, pid, rid, ua, title } = data
   const _ip = newComment.ip
   const siteName = cfg.SITE_NAME || 'Takoio'
 
@@ -257,12 +257,27 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const mailMd5 = mail ? crypto.createHash('md5').update(mail.trim().toLowerCase()).digest('hex') : ''
   const newComment = {
     id: crypto.randomUUID(),
-    url: url || '/', href: data.href || null,
-    nick: nick.slice(0, 50), mail: mail || '', mailMd5, link: link || '',
-    comment: comment.slice(0, cfg.COMMENT_LENGTH_MAX || 5000), ua: ua || '', ip: _ip || '',
-    state: 'visible', created: Date.now(), updated: null as number | null,
-    pid: pid || null, rid: rid || null, like: 0, dislike: 0, isSpam: false, isTop: false,
-    image: image || null, ipRegion: null as string | null, renderedComment: null as string | null,
+    url: url || '/',
+    href: data.href || null,
+    nick: nick.slice(0, 50),
+    mail: mail || '',
+    mailMd5,
+    link: link || '',
+    comment: comment.slice(0, cfg.COMMENT_LENGTH_MAX || 5000),
+    ua: ua || '',
+    ip: _ip || '',
+    state: 'visible',
+    created: Date.now(),
+    updated: null as number | null,
+    pid: pid || null,
+    rid: rid || null,
+    like: 0,
+    dislike: 0,
+    isSpam: false,
+    isTop: false,
+    image: image || null,
+    ipRegion: null as string | null,
+    renderedComment: null as string | null,
   }
 
   // 3. Moderate

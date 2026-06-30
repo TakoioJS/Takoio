@@ -26,9 +26,6 @@ import {
 const auth = useAuthStore()
 const appStore = useAppStore()
 
-
-
-
 const themeOverrides = computed(() => {
   const dark = appStore.isDark
   const ink = dark ? '#ECE6DA' : '#2B2825'

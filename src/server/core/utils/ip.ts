@@ -34,7 +34,7 @@ export const getClientIp = async (event: H3Event): Promise<string> => {
 
   // Determine the direct connection IP (the actual remote address)
   // H3's getRequestIP: in Node.js reads from socket, in serverless reads from headers
-  let directIp = getRequestIP(event, { xForwardedFor: false }) || '127.0.0.1'
+  const directIp = getRequestIP(event, { xForwardedFor: false }) || '127.0.0.1'
 
   // Parse trusted proxies
   const trustedRaw = config.TRUSTED_PROXIES || ''

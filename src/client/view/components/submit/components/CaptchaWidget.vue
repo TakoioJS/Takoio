@@ -73,13 +73,15 @@ const init = (): void => {
   } else if (props.provider === 'geetest') {
     loadScript(scriptUrl.value)
     timer.value = setTimeout(() => {
-      if (w.initGeetest4) w.initGeetest4({ captchaId: props.siteKey, product: 'bind' }, (c: any) => {
-        c.appendTo(containerRef.value!)
-        c.onReady(() => { loading.value = false; emit('ready') })
-        c.onSuccess(() => { const r = c.getValidate(); onSuccess(`${r.lot_number}|${r.captcha_output}|${r.pass_token}|${r.gen_time}`) })
-        c.onError(() => onError(t('captchaLoadFailed') || '验证加载失败'))
-        ;(w as any).__geetest_captcha = c
-      })
+      if (w.initGeetest4) {
+        w.initGeetest4({ captchaId: props.siteKey, product: 'bind' }, (c: any) => {
+          c.appendTo(containerRef.value!)
+          c.onReady(() => { loading.value = false; emit('ready') })
+          c.onSuccess(() => { const r = c.getValidate(); onSuccess(`${r.lot_number}|${r.captcha_output}|${r.pass_token}|${r.gen_time}`) })
+          c.onError(() => onError(t('captchaLoadFailed') || '验证加载失败'))
+          ;(w as any).__geetest_captcha = c
+        })
+      }
     }, 300)
   }
 }
@@ -103,9 +105,20 @@ onBeforeUnmount(() => { if (timer.value) clearTimeout(timer.value) })
 
 <template>
   <div class="tk-captcha-widget">
-    <div v-if="loading" class="tk-captcha-loading">{{ t('loading') || '加载中…' }}</div>
-    <div ref="containerRef" class="tk-captcha-container" />
-    <span v-if="errorMsg" class="tk-captcha-error">{{ errorMsg }}</span>
+    <div
+      v-if="loading"
+      class="tk-captcha-loading"
+    >
+      {{ t('loading') || '加载中…' }}
+    </div>
+    <div
+      ref="containerRef"
+      class="tk-captcha-container"
+    />
+    <span
+      v-if="errorMsg"
+      class="tk-captcha-error"
+    >{{ errorMsg }}</span>
   </div>
 </template>
 

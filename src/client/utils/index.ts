@@ -2,7 +2,6 @@
  * Takoio 工具函数库（TypeScript 重写版）
  */
 
-import type { Comment, TakoioConfig } from '../types'
 import pkg from '../../../package.json'
 
 /** 判断是否未设置 */
@@ -71,7 +70,7 @@ export const blobToDataURL = (blob: Blob): Promise<string> => {
 /** 渲染链接（新窗口打开） */
 export const renderLinks = (el: Element | Element[] | null): void => {
   if (!el) return
-  let aEls: HTMLCollectionOf<HTMLAnchorElement> | HTMLAnchorElement[] = [] as any
+  let aEls: HTMLAnchorElement[] = [] as any
   if (Array.isArray(el)) {
     el.forEach((item) => {
       aEls = [...aEls, ...item.getElementsByTagName('a')]

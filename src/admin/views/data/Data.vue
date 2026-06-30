@@ -4,13 +4,21 @@
       <!-- 数据导入 -->
       <div class="data-section">
         <div class="section-header">
-          <n-icon size="18" class="section-icon"><CloudUploadOutline /></n-icon>
+          <n-icon
+            size="18"
+            class="section-icon"
+          >
+            <CloudUploadOutline />
+          </n-icon>
           <span class="section-title">数据导入</span>
         </div>
         <div class="section-body">
           <div class="form-field">
             <label class="form-label">导入来源</label>
-            <n-select v-model:value="importSource" :options="importSourceOptions" />
+            <n-select
+              v-model:value="importSource"
+              :options="importSourceOptions"
+            />
           </div>
 
           <!-- 文件上传（非 Disqus） -->
@@ -26,8 +34,15 @@
               >
                 <n-upload-dragger class="upload-dragger">
                   <div class="upload-inner">
-                    <n-icon size="32" class="upload-icon"><DocumentTextOutline /></n-icon>
-                    <p class="upload-text">{{ fileName || '点击或拖拽 JSON 文件到此处' }}</p>
+                    <n-icon
+                      size="32"
+                      class="upload-icon"
+                    >
+                      <DocumentTextOutline />
+                    </n-icon>
+                    <p class="upload-text">
+                      {{ fileName || '点击或拖拽 JSON 文件到此处' }}
+                    </p>
                     <span class="upload-hint">支持 {{ importSourceOptions.find(o => o.value === importSource)?.label }} 导出的 JSON 格式</span>
                   </div>
                 </n-upload-dragger>
@@ -39,11 +54,19 @@
           <template v-if="importSource === 'valine'">
             <div class="form-field">
               <label class="form-label">LeanCloud AppId</label>
-              <n-input v-model:value="valineAppId" placeholder="LeanCloud AppId" />
+              <n-input
+                v-model:value="valineAppId"
+                placeholder="LeanCloud AppId"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">LeanCloud AppKey</label>
-              <n-input v-model:value="valineAppKey" type="password" show-password-on="click" placeholder="LeanCloud AppKey" />
+              <n-input
+                v-model:value="valineAppKey"
+                type="password"
+                show-password-on="click"
+                placeholder="LeanCloud AppKey"
+              />
             </div>
           </template>
 
@@ -51,11 +74,19 @@
           <template v-if="importSource === 'disqus'">
             <div class="form-field">
               <label class="form-label">Disqus Forum (站点名)</label>
-              <n-input v-model:value="disqusForum" placeholder="your-site" />
+              <n-input
+                v-model:value="disqusForum"
+                placeholder="your-site"
+              />
             </div>
             <div class="form-field">
               <label class="form-label">Disqus API Key</label>
-              <n-input v-model:value="disqusApiKey" type="password" show-password-on="click" placeholder="Disqus API Key" />
+              <n-input
+                v-model:value="disqusApiKey"
+                type="password"
+                show-password-on="click"
+                placeholder="Disqus API Key"
+              />
             </div>
           </template>
 
@@ -65,40 +96,75 @@
             :disabled="!canImport"
             @click="onImport"
           >
-            <template #icon><n-icon><EnterOutline /></n-icon></template>
+            <template #icon>
+              <n-icon><EnterOutline /></n-icon>
+            </template>
             开始导入
           </n-button>
 
-          <div v-if="importResult !== null" class="result-box">
-            <n-tag :type="importResult > 0 ? 'success' : 'error'" round>
+          <div
+            v-if="importResult !== null"
+            class="result-box"
+          >
+            <n-tag
+              :type="importResult > 0 ? 'success' : 'error'"
+              round
+            >
               {{ importResult > 0 ? `成功导入 ${importResult} 条评论` : '导入失败' }}
             </n-tag>
           </div>
-          <div v-if="importLog" class="log-box">{{ importLog }}</div>
+          <div
+            v-if="importLog"
+            class="log-box"
+          >
+            {{ importLog }}
+          </div>
         </div>
       </div>
 
       <!-- 数据导出 -->
       <div class="data-section">
         <div class="section-header">
-          <n-icon size="18" class="section-icon"><CloudDownloadOutline /></n-icon>
+          <n-icon
+            size="18"
+            class="section-icon"
+          >
+            <CloudDownloadOutline />
+          </n-icon>
           <span class="section-title">数据导出</span>
         </div>
         <div class="section-body">
-          <p class="tip">导出评论数据用于备份或迁移</p>
+          <p class="tip">
+            导出评论数据用于备份或迁移
+          </p>
 
           <n-space>
-            <n-button :loading="exporting" @click="exportData('json')">
-              <template #icon><n-icon><DownloadOutline /></n-icon></template>
+            <n-button
+              :loading="exporting"
+              @click="exportData('json')"
+            >
+              <template #icon>
+                <n-icon><DownloadOutline /></n-icon>
+              </template>
               导出 JSON
             </n-button>
-            <n-button :loading="exporting" @click="exportData('csv')">
-              <template #icon><n-icon><DownloadOutline /></n-icon></template>
+            <n-button
+              :loading="exporting"
+              @click="exportData('csv')"
+            >
+              <template #icon>
+                <n-icon><DownloadOutline /></n-icon>
+              </template>
               导出 CSV
             </n-button>
           </n-space>
 
-          <div v-if="exportLog" class="log-box">{{ exportLog }}</div>
+          <div
+            v-if="exportLog"
+            class="log-box"
+          >
+            {{ exportLog }}
+          </div>
         </div>
       </div>
     </div>
@@ -336,4 +402,3 @@ const exportData = async (format: 'json' | 'csv') => {
 }
 
 </style>
-

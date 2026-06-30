@@ -2,10 +2,9 @@
  * Authentication — password hashing, brute-force protection, CAPTCHA, admin checks
  */
 
-import { hashPassword } from './utils/crypto'
 import { logger } from './utils/logger'
 import { configStore, sessionStore } from './store/index'
-import { getConfig, type TakoioConfig } from './config'
+import { type TakoioConfig } from './config'
 import { AppError } from './config'
 
 // ========== Password Hash Cache ==========

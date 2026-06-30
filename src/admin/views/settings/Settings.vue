@@ -2,18 +2,29 @@
   <div class="settings-page">
     <div class="settings-layout">
       <!-- 主内容区 -->
-      <div class="settings-content" ref="contentRef">
+      <div
+        ref="contentRef"
+        class="settings-content"
+      >
         <n-spin :show="loading">
           <div
             v-for="section in sections"
-            :key="section.key"
             :id="`section-${section.key}`"
+            :key="section.key"
             class="config-section"
           >
             <!-- section 可折叠标题栏 -->
-            <div class="section-header" @click="toggleSection(section.key)">
-              <h2 class="section-title">{{ section.label }}</h2>
-              <n-icon size="16" class="collapse-icon">
+            <div
+              class="section-header"
+              @click="toggleSection(section.key)"
+            >
+              <h2 class="section-title">
+                {{ section.label }}
+              </h2>
+              <n-icon
+                size="16"
+                class="collapse-icon"
+              >
                 <ChevronDownOutline v-if="!isCollapsed(section.key)" />
                 <ChevronForwardOutline v-else />
               </n-icon>
@@ -21,10 +32,16 @@
 
             <!-- 字段行列表 -->
             <transition name="collapse">
-              <div v-show="!isCollapsed(section.key)" class="section-body">
+              <div
+                v-show="!isCollapsed(section.key)"
+                class="section-body"
+              >
                 <!-- 普通非推送配置项 -->
                 <template v-if="section.key !== 'push'">
-                  <template v-for="(field, idx) in section.fields" :key="field.key">
+                  <template
+                    v-for="(field, idx) in section.fields"
+                    :key="field.key"
+                  >
                     <div
                       v-if="!field.condition || field.condition(config)"
                       :class="['field-row', { 'full-row': isFullRow(field), 'last': isLastVisible(section, idx), 'switch-row': field.type === 'switch' }]"
@@ -33,20 +50,37 @@
                       <div class="field-label-col">
                         <div class="field-label">
                           {{ field.label }}
-                          <n-tooltip v-if="field.hint" trigger="hover">
+                          <n-tooltip
+                            v-if="field.hint"
+                            trigger="hover"
+                          >
                             <template #trigger>
-                              <n-icon size="12" class="help-icon"><HelpCircleOutline /></n-icon>
+                              <n-icon
+                                size="12"
+                                class="help-icon"
+                              >
+                                <HelpCircleOutline />
+                              </n-icon>
                             </template>
                             {{ field.hint }}
                           </n-tooltip>
                         </div>
-                        <p v-if="field.description" class="field-desc">{{ field.description }}</p>
+                        <p
+                          v-if="field.description"
+                          class="field-desc"
+                        >
+                          {{ field.description }}
+                        </p>
                       </div>
 
                       <!-- 右侧：控件 -->
                       <div class="field-control-col">
                         <!-- Switch -->
-                        <n-switch v-if="field.type === 'switch'" v-model:value="config[field.key]" size="small" />
+                        <n-switch
+                          v-if="field.type === 'switch'"
+                          v-model:value="config[field.key]"
+                          size="small"
+                        />
 
                         <!-- Select / Tag-Select -->
                         <n-select
@@ -60,27 +94,72 @@
                         />
 
                         <!-- Number -->
-                        <n-input-number v-else-if="field.type === 'number'" v-model:value="config[field.key]" :min="field.min" :max="field.max" size="small" style="width: 100%" />
+                        <n-input-number
+                          v-else-if="field.type === 'number'"
+                          v-model:value="config[field.key]"
+                          :min="field.min"
+                          :max="field.max"
+                          size="small"
+                          style="width: 100%"
+                        />
 
                         <!-- Color -->
-                        <div v-else-if="field.type === 'color'" class="color-row">
-                          <n-input v-model:value="config[field.key]" :placeholder="field.placeholder" size="small" />
-                          <n-color-picker v-model:value="config[field.key]" :show-alpha="false" :swatches="colorSwatches" size="small" />
+                        <div
+                          v-else-if="field.type === 'color'"
+                          class="color-row"
+                        >
+                          <n-input
+                            v-model:value="config[field.key]"
+                            :placeholder="field.placeholder"
+                            size="small"
+                          />
+                          <n-color-picker
+                            v-model:value="config[field.key]"
+                            :show-alpha="false"
+                            :swatches="colorSwatches"
+                            size="small"
+                          />
                         </div>
 
                         <!-- Slider -->
-                        <div v-else-if="field.type === 'slider'" class="slider-row">
-                          <n-slider v-model:value="config[field.key]" :min="field.min" :max="field.max" :step="field.step" :disabled="field.disabled?.(config)" size="small" />
+                        <div
+                          v-else-if="field.type === 'slider'"
+                          class="slider-row"
+                        >
+                          <n-slider
+                            v-model:value="config[field.key]"
+                            :min="field.min"
+                            :max="field.max"
+                            :step="field.step"
+                            :disabled="field.disabled?.(config)"
+                            size="small"
+                          />
                           <span class="slider-value">{{ config[field.key] }}</span>
                         </div>
 
                         <!-- Textarea -->
-                        <n-input v-else-if="field.type === 'textarea'" v-model:value="config[field.key]" type="textarea" :rows="field.rows || 4" :placeholder="field.placeholder" size="small" />
+                        <n-input
+                          v-else-if="field.type === 'textarea'"
+                          v-model:value="config[field.key]"
+                          type="textarea"
+                          :rows="field.rows || 4"
+                          :placeholder="field.placeholder"
+                          size="small"
+                        />
 
                         <!-- Checkbox group -->
-                        <n-checkbox-group v-else-if="field.type === 'checkbox-group'" v-model:value="config[field.key]">
+                        <n-checkbox-group
+                          v-else-if="field.type === 'checkbox-group'"
+                          v-model:value="config[field.key]"
+                        >
                           <n-space>
-                            <n-checkbox v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</n-checkbox>
+                            <n-checkbox
+                              v-for="opt in field.options"
+                              :key="opt.value"
+                              :value="opt.value"
+                            >
+                              {{ opt.label }}
+                            </n-checkbox>
                           </n-space>
                         </n-checkbox-group>
 
@@ -93,27 +172,61 @@
                         />
 
                         <!-- Input (default) -->
-                        <n-input v-else v-model:value="config[field.key]" :placeholder="field.placeholder" size="small" />
+                        <n-input
+                          v-else
+                          v-model:value="config[field.key]"
+                          :placeholder="field.placeholder"
+                          size="small"
+                        />
                       </div>
                     </div>
                   </template>
 
                   <!-- Email test panel (mail section only, after all fields) -->
-                  <div v-if="section.key === 'mail'" class="field-row full-row email-test-row">
+                  <div
+                    v-if="section.key === 'mail'"
+                    class="field-row full-row email-test-row"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">测试发送</div>
-                      <p class="field-desc">发送一封测试邮件验证 SMTP 配置</p>
+                      <div class="field-label">
+                        测试发送
+                      </div>
+                      <p class="field-desc">
+                        发送一封测试邮件验证 SMTP 配置
+                      </p>
                     </div>
                     <div class="field-control-col">
                       <div class="email-test-controls">
-                        <n-input v-model:value="emailTestRecipient" placeholder="收件人邮箱（留空用默认）" size="small" style="flex:1" />
-                        <n-select v-model:value="emailTestTemplate" :options="[{ label: '用户邮件', value: 'user' }, { label: '管理员邮件', value: 'admin' }]" size="small" style="width:120px" />
-                        <n-button type="primary" size="small" :loading="emailTesting" @click="onTestEmail">
-                          <template #icon><n-icon size="14"><MailOutline /></n-icon></template>
+                        <n-input
+                          v-model:value="emailTestRecipient"
+                          placeholder="收件人邮箱（留空用默认）"
+                          size="small"
+                          style="flex:1"
+                        />
+                        <n-select
+                          v-model:value="emailTestTemplate"
+                          :options="[{ label: '用户邮件', value: 'user' }, { label: '管理员邮件', value: 'admin' }]"
+                          size="small"
+                          style="width:120px"
+                        />
+                        <n-button
+                          type="primary"
+                          size="small"
+                          :loading="emailTesting"
+                          @click="onTestEmail"
+                        >
+                          <template #icon>
+                            <n-icon size="14">
+                              <MailOutline />
+                            </n-icon>
+                          </template>
                           发送
                         </n-button>
                       </div>
-                      <div v-if="emailTestLog" class="email-test-log">
+                      <div
+                        v-if="emailTestLog"
+                        class="email-test-log"
+                      >
                         <pre>{{ emailTestLog }}</pre>
                       </div>
                     </div>
@@ -132,7 +245,12 @@
                       <div class="field-label">
                         {{ field.label }}
                       </div>
-                      <p v-if="field.description" class="field-desc">{{ field.description }}</p>
+                      <p
+                        v-if="field.description"
+                        class="field-desc"
+                      >
+                        {{ field.description }}
+                      </p>
                     </div>
 
                     <div class="field-control-col push-control-col">
@@ -151,22 +269,34 @@
                         @click="removePushChannel(field.key)"
                       >
                         <template #icon>
-                          <n-icon size="16"><TrashOutline /></n-icon>
+                          <n-icon size="16">
+                            <TrashOutline />
+                          </n-icon>
                         </template>
                       </n-button>
                     </div>
                   </div>
 
                   <!-- 暂无激活推送提示 -->
-                  <div v-if="activePushKeys.length === 0" class="field-row empty-push-row">
+                  <div
+                    v-if="activePushKeys.length === 0"
+                    class="field-row empty-push-row"
+                  >
                     <span class="empty-text">未启用任何推送通知通道</span>
                   </div>
 
                   <!-- 下拉框添加通道 -->
-                  <div v-if="availablePushOptions.length > 0" class="field-row add-push-row last">
+                  <div
+                    v-if="availablePushOptions.length > 0"
+                    class="field-row add-push-row last"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">添加推送通道</div>
-                      <p class="field-desc">选择要启用的第三方推送平台</p>
+                      <div class="field-label">
+                        添加推送通道
+                      </div>
+                      <p class="field-desc">
+                        选择要启用的第三方推送平台
+                      </p>
                     </div>
                     <div class="field-control-col add-push-controls">
                       <n-select
@@ -196,9 +326,25 @@
         </n-spin>
 
         <!-- 浮动保存按钮栏 -->
-        <div v-if="isDirty" class="save-bar">
-          <n-button size="small" :disabled="loading" @click="onReset">重置</n-button>
-          <n-button size="small" type="primary" :loading="saving" @click="onSave">保存更改</n-button>
+        <div
+          v-if="isDirty"
+          class="save-bar"
+        >
+          <n-button
+            size="small"
+            :disabled="loading"
+            @click="onReset"
+          >
+            重置
+          </n-button>
+          <n-button
+            size="small"
+            type="primary"
+            :loading="saving"
+            @click="onSave"
+          >
+            保存更改
+          </n-button>
         </div>
       </div>
     </div>
@@ -210,7 +356,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   NInput, NInputNumber, NSelect, NSwitch, NCheckbox, NCheckboxGroup,
   NSlider, NColorPicker, NButton, NSpin, NSpace, NIcon, NTooltip,
-  useMessage, useDialog, NLog,
+  useMessage, useDialog,
 } from 'naive-ui'
 import { HelpCircleOutline, TrashOutline, AddOutline, ChevronDownOutline, ChevronForwardOutline, MailOutline } from '@vicons/ionicons5'
 import { configApi } from '../../api/config'
@@ -344,14 +490,14 @@ const updateAiProviderOptions = (rawProviders: any) => {
   const savedProviders: any[] = typeof rawProviders === 'string'
     ? (() => { try { const p = JSON.parse(rawProviders); return Array.isArray(p) ? p : [] } catch { return [] } })()
     : Array.isArray(rawProviders) ? rawProviders : []
-  
+
   parsedAiProviders.value = savedProviders
-  
+
   const options = savedProviders.map((p: any) => ({
     label: p.name || p.format || '未命名提供商',
     value: p.name,
   }))
-  
+
   const securitySection = sections.find(s => s.key === 'security')
   if (securitySection) {
     const aiProviderField = securitySection.fields.find(f => f.key === 'AUTO_AUDIT_AI_PROVIDER')
@@ -359,7 +505,7 @@ const updateAiProviderOptions = (rawProviders: any) => {
       aiProviderField.options = options
     }
   }
-  
+
   updateAiModelOptions(config.AUTO_AUDIT_AI_PROVIDER)
 }
 
@@ -367,7 +513,7 @@ const updateAiModelOptions = (providerName: string) => {
   const provider = parsedAiProviders.value.find((p: any) => p.name === providerName)
   const models: string[] = provider?.models ?? []
   const options = models.map((m: string) => ({ label: m, value: m }))
-  
+
   const securitySection = sections.find(s => s.key === 'security')
   if (securitySection) {
     const modelField = securitySection.fields.find(f => f.key === 'AUTO_AUDIT_AI_MODEL')
@@ -386,7 +532,7 @@ const loadConfig = async () => {
   try {
     const { data } = await configApi.get()
     Object.keys(config).forEach(k => delete config[k])
-    
+
     const activeKeys: string[] = []
     for (const section of sections) {
       for (const field of section.fields) {

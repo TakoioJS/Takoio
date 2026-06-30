@@ -10,7 +10,7 @@ export const useAppStore = defineStore('app', {
   }),
 
   actions: {
-    initTheme() {
+    initTheme () {
       try {
         const saved = localStorage.getItem(DARK_KEY)
         if (saved === '1' || (saved == null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -22,7 +22,7 @@ export const useAppStore = defineStore('app', {
       } catch { /* ignore */ }
     },
 
-    toggleDark() {
+    toggleDark () {
       this.isDark = !this.isDark
       try {
         localStorage.setItem(DARK_KEY, this.isDark ? '1' : '0')
@@ -30,7 +30,7 @@ export const useAppStore = defineStore('app', {
       document.documentElement.classList.toggle('dark', this.isDark)
     },
 
-    toggleSidebar() {
+    toggleSidebar () {
       this.sidebarCollapsed = !this.sidebarCollapsed
       try {
         localStorage.setItem(SIDEBAR_KEY, this.sidebarCollapsed ? '1' : '0')

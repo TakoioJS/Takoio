@@ -20,22 +20,59 @@
           @clear="onSearchClear"
         >
           <template #prefix>
-            <n-icon size="14"><SearchOutline /></n-icon>
+            <n-icon size="14">
+              <SearchOutline />
+            </n-icon>
           </template>
         </n-input>
-        <n-button size="small" quaternary @click="loadComments" title="刷新">
+        <n-button
+          size="small"
+          quaternary
+          title="刷新"
+          @click="loadComments"
+        >
           <template #icon>
             <n-icon><RefreshOutline /></n-icon>
           </template>
         </n-button>
       </div>
-      <div v-if="selectedIds.length > 0" class="batch-bar">
+      <div
+        v-if="selectedIds.length > 0"
+        class="batch-bar"
+      >
         <span class="batch-count">已选 {{ selectedIds.length }} 条</span>
-        <n-button size="small" @click="batchApprove">通过</n-button>
-        <n-button size="small" @click="batchShow">显示</n-button>
-        <n-button size="small" @click="batchHide">隐藏</n-button>
-        <n-button size="small" type="warning" @click="batchSpam">垃圾</n-button>
-        <n-button size="small" type="error" @click="batchDelete">删除</n-button>
+        <n-button
+          size="small"
+          @click="batchApprove"
+        >
+          通过
+        </n-button>
+        <n-button
+          size="small"
+          @click="batchShow"
+        >
+          显示
+        </n-button>
+        <n-button
+          size="small"
+          @click="batchHide"
+        >
+          隐藏
+        </n-button>
+        <n-button
+          size="small"
+          type="warning"
+          @click="batchSpam"
+        >
+          垃圾
+        </n-button>
+        <n-button
+          size="small"
+          type="error"
+          @click="batchDelete"
+        >
+          删除
+        </n-button>
       </div>
     </div>
 
@@ -43,8 +80,16 @@
     <div class="list-card">
       <n-spin :show="loading">
         <div class="comment-list">
-          <div v-if="comments.length === 0 && !loading" class="empty-state">
-            <n-icon size="40" :depth="3"><ChatbubblesOutline /></n-icon>
+          <div
+            v-if="comments.length === 0 && !loading"
+            class="empty-state"
+          >
+            <n-icon
+              size="40"
+              :depth="3"
+            >
+              <ChatbubblesOutline />
+            </n-icon>
             <p>暂无评论</p>
           </div>
 
@@ -60,8 +105,16 @@
               @update:checked="toggleSelect(item)"
             />
             <div class="avatar-wrap">
-              <img :src="getAvatar(item)" class="comment-avatar" :alt="item.nick" @error="onImgError" />
-              <span :class="['status-dot', stateClass(item)]" :title="stateLabel(item)" />
+              <img
+                :src="getAvatar(item)"
+                class="comment-avatar"
+                :alt="item.nick"
+                @error="onImgError"
+              >
+              <span
+                :class="['status-dot', stateClass(item)]"
+                :title="stateLabel(item)"
+              />
             </div>
 
             <div class="comment-body">
@@ -70,48 +123,130 @@
                 <div class="head-left">
                   <span class="comment-name">{{ item.nick }}</span>
                   <div class="status-tags">
-                    <n-tag v-if="item.isMaster" size="tiny" type="success" round>博主</n-tag>
-                    <n-tag v-if="item.isTop" size="tiny" type="warning" round>置顶</n-tag>
-                    <n-tag v-if="item.state === 'pending'" size="tiny" type="default" round>待审</n-tag>
-                    <n-tag v-else-if="item.state === 'hidden'" size="tiny" type="warning" round>隐藏</n-tag>
-                    <n-tag v-else-if="item.isSpam" size="tiny" type="error" round>垃圾</n-tag>
+                    <n-tag
+                      v-if="item.isMaster"
+                      size="tiny"
+                      type="success"
+                      round
+                    >
+                      博主
+                    </n-tag>
+                    <n-tag
+                      v-if="item.isTop"
+                      size="tiny"
+                      type="warning"
+                      round
+                    >
+                      置顶
+                    </n-tag>
+                    <n-tag
+                      v-if="item.state === 'pending'"
+                      size="tiny"
+                      type="default"
+                      round
+                    >
+                      待审
+                    </n-tag>
+                    <n-tag
+                      v-else-if="item.state === 'hidden'"
+                      size="tiny"
+                      type="warning"
+                      round
+                    >
+                      隐藏
+                    </n-tag>
+                    <n-tag
+                      v-else-if="item.isSpam"
+                      size="tiny"
+                      type="error"
+                      round
+                    >
+                      垃圾
+                    </n-tag>
                   </div>
                 </div>
                 <span class="comment-time">{{ formatTime(item.created) }}</span>
               </div>
 
               <!-- 联系方式行 -->
-              <div v-if="item.mail || item.link" class="comment-contact">
-                <span v-if="item.mail" class="contact-item">
+              <div
+                v-if="item.mail || item.link"
+                class="comment-contact"
+              >
+                <span
+                  v-if="item.mail"
+                  class="contact-item"
+                >
                   <n-icon size="11"><MailOutline /></n-icon>
                   <span class="contact-text">{{ item.mail }}</span>
                 </span>
-                <a v-if="item.link" :href="item.link" target="_blank" rel="noopener noreferrer nofollow" class="contact-item contact-link" :title="item.link">
+                <a
+                  v-if="item.link"
+                  :href="item.link"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  class="contact-item contact-link"
+                  :title="item.link"
+                >
                   <n-icon size="11"><LinkOutline /></n-icon>
                   <span class="contact-text">{{ item.link }}</span>
                 </a>
               </div>
 
               <!-- 原文链接 -->
-              <div v-if="item.url || item.href" class="comment-source">
-                <n-icon size="11"><DocumentTextOutline /></n-icon>
-                <a :href="sourceUrl(item)" target="_blank" rel="noopener noreferrer" class="source-link" :title="item.url">
+              <div
+                v-if="item.url || item.href"
+                class="comment-source"
+              >
+                <n-icon size="11">
+                  <DocumentTextOutline />
+                </n-icon>
+                <a
+                  :href="sourceUrl(item)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="source-link"
+                  :title="item.url"
+                >
                   {{ item.url }}
                 </a>
               </div>
 
               <!-- 评论内容 -->
-              <div class="comment-content" v-html="(item as any)._safeContent || ''" />
+              <div
+                class="comment-content"
+                v-html="(item as any)._safeContent || ''"
+              />
 
               <!-- 底部信息行 -->
               <div class="comment-meta">
-                <TkUa v-if="item.ua" :ua="item.ua" class="meta-ua" />
-                <span class="meta-divider" v-if="item.ua && (item.ipRegion || isValidIp(item.ip))">·</span>
-                <span class="meta-item" v-if="item.ipRegion">
-                  <n-tag size="tiny" type="success" round>{{ item.ipRegion }}</n-tag>
+                <TkUa
+                  v-if="item.ua"
+                  :ua="item.ua"
+                  class="meta-ua"
+                />
+                <span
+                  v-if="item.ua && (item.ipRegion || isValidIp(item.ip))"
+                  class="meta-divider"
+                >·</span>
+                <span
+                  v-if="item.ipRegion"
+                  class="meta-item"
+                >
+                  <n-tag
+                    size="tiny"
+                    type="success"
+                    round
+                  >{{ item.ipRegion }}</n-tag>
                 </span>
-                <span class="meta-item" v-if="isValidIp(item.ip)">
-                  <n-tag size="tiny" round>{{ item.ip }}</n-tag>
+                <span
+                  v-if="isValidIp(item.ip)"
+                  class="meta-item"
+                >
+                  <n-tag
+                    size="tiny"
+                    round
+                  >{{ item.ip }}</n-tag>
                 </span>
                 <n-button
                   v-if="!item.ipRegion && isValidIp(item.ip)"
@@ -121,25 +256,70 @@
                   title="解析IP归属地"
                   @click="refreshRegion(item)"
                 >
-                  <template #icon><n-icon size="12"><RefreshCircleOutline /></n-icon></template>
+                  <template #icon>
+                    <n-icon size="12">
+                      <RefreshCircleOutline />
+                    </n-icon>
+                  </template>
                 </n-button>
               </div>
 
               <!-- 操作栏 -->
               <div class="comment-actions">
-                <n-button v-if="item.state === 'pending'" size="tiny" type="success" secondary @click="approveOne(item)">通过</n-button>
-                <n-button size="tiny" type="primary" secondary @click="openReply(item)">回复</n-button>
-                <n-button size="tiny" secondary @click="openEdit(item)">编辑</n-button>
-                <n-button size="tiny" secondary @click="toggleTop(item)">
+                <n-button
+                  v-if="item.state === 'pending'"
+                  size="tiny"
+                  type="success"
+                  secondary
+                  @click="approveOne(item)"
+                >
+                  通过
+                </n-button>
+                <n-button
+                  size="tiny"
+                  type="primary"
+                  secondary
+                  @click="openReply(item)"
+                >
+                  回复
+                </n-button>
+                <n-button
+                  size="tiny"
+                  secondary
+                  @click="openEdit(item)"
+                >
+                  编辑
+                </n-button>
+                <n-button
+                  size="tiny"
+                  secondary
+                  @click="toggleTop(item)"
+                >
                   {{ item.isTop ? '取消置顶' : '置顶' }}
                 </n-button>
-                <n-button size="tiny" secondary @click="toggleHide(item)">
+                <n-button
+                  size="tiny"
+                  secondary
+                  @click="toggleHide(item)"
+                >
                   {{ item.state === 'hidden' ? '显示' : '隐藏' }}
                 </n-button>
-                <n-button size="tiny" :type="item.isSpam ? 'warning' : 'error'" secondary @click="toggleSpam(item)">
+                <n-button
+                  size="tiny"
+                  :type="item.isSpam ? 'warning' : 'error'"
+                  secondary
+                  @click="toggleSpam(item)"
+                >
                   {{ item.isSpam ? '取消垃圾' : '标垃圾' }}
                 </n-button>
-                <n-button size="tiny" type="error" secondary @click="onDeleteOne(item)">删除</n-button>
+                <n-button
+                  size="tiny"
+                  type="error"
+                  secondary
+                  @click="onDeleteOne(item)"
+                >
+                  删除
+                </n-button>
               </div>
             </div>
           </div>
@@ -163,47 +343,114 @@
     </div>
 
     <!-- 编辑 Modal -->
-    <n-modal v-model:show="editVisible" preset="card" title="编辑评论" style="max-width: 520px;">
-      <n-form label-placement="left" label-width="60">
-        <n-form-item label="昵称"><n-input v-model:value="editForm.nick" /></n-form-item>
-        <n-form-item label="邮箱"><n-input v-model:value="editForm.mail" /></n-form-item>
-        <n-form-item label="链接"><n-input v-model:value="editForm.link" /></n-form-item>
+    <n-modal
+      v-model:show="editVisible"
+      preset="card"
+      title="编辑评论"
+      style="max-width: 520px;"
+    >
+      <n-form
+        label-placement="left"
+        label-width="60"
+      >
+        <n-form-item label="昵称">
+          <n-input v-model:value="editForm.nick" />
+        </n-form-item>
+        <n-form-item label="邮箱">
+          <n-input v-model:value="editForm.mail" />
+        </n-form-item>
+        <n-form-item label="链接">
+          <n-input v-model:value="editForm.link" />
+        </n-form-item>
         <n-form-item label="内容">
-          <n-input v-model:value="editForm.comment" type="textarea" :rows="6" />
+          <n-input
+            v-model:value="editForm.comment"
+            type="textarea"
+            :rows="6"
+          />
         </n-form-item>
       </n-form>
       <template #footer>
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <n-button size="small" @click="editVisible = false">取消</n-button>
-          <n-button size="small" type="primary" :loading="editSaving" @click="saveEdit">保存</n-button>
+          <n-button
+            size="small"
+            @click="editVisible = false"
+          >
+            取消
+          </n-button>
+          <n-button
+            size="small"
+            type="primary"
+            :loading="editSaving"
+            @click="saveEdit"
+          >
+            保存
+          </n-button>
         </div>
       </template>
     </n-modal>
 
     <!-- 回复 Modal -->
-    <n-modal v-model:show="replyVisible" preset="card" title="回复评论" style="max-width: 520px;">
-      <div v-if="replyTarget" class="reply-quote">
+    <n-modal
+      v-model:show="replyVisible"
+      preset="card"
+      title="回复评论"
+      style="max-width: 520px;"
+    >
+      <div
+        v-if="replyTarget"
+        class="reply-quote"
+      >
         <div class="quote-meta">
           <span class="quote-name">{{ replyTarget.nick }}</span>
           <span class="quote-time">{{ formatTime(replyTarget.created) }}</span>
         </div>
-        <div class="quote-content" v-html="(replyTarget as any)._safeContent || ''" />
+        <div
+          class="quote-content"
+          v-html="(replyTarget as any)._safeContent || ''"
+        />
       </div>
-      <n-form label-placement="left" label-width="60">
+      <n-form
+        label-placement="left"
+        label-width="60"
+      >
         <n-form-item label="昵称">
-          <n-input v-model:value="replyForm.nick" placeholder="博主" />
+          <n-input
+            v-model:value="replyForm.nick"
+            placeholder="博主"
+          />
         </n-form-item>
         <n-form-item label="邮箱">
-          <n-input v-model:value="replyForm.mail" placeholder="博主邮箱（选填）" />
+          <n-input
+            v-model:value="replyForm.mail"
+            placeholder="博主邮箱（选填）"
+          />
         </n-form-item>
         <n-form-item label="回复">
-          <n-input v-model:value="replyForm.comment" type="textarea" :rows="5" placeholder="输入回复内容..." />
+          <n-input
+            v-model:value="replyForm.comment"
+            type="textarea"
+            :rows="5"
+            placeholder="输入回复内容..."
+          />
         </n-form-item>
       </n-form>
       <template #footer>
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <n-button size="small" @click="replyVisible = false">取消</n-button>
-          <n-button size="small" type="primary" :loading="replySaving" @click="saveReply">发送回复</n-button>
+          <n-button
+            size="small"
+            @click="replyVisible = false"
+          >
+            取消
+          </n-button>
+          <n-button
+            size="small"
+            type="primary"
+            :loading="replySaving"
+            @click="saveReply"
+          >
+            发送回复
+          </n-button>
         </div>
       </template>
     </n-modal>
@@ -261,7 +508,7 @@ const filterOptions = [
 
 const formatTime = (ts: number): string => {
   const d = new Date(ts)
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 const stateClass = (row: Comment): string => {
@@ -455,10 +702,7 @@ const onPageSizeChange = (size: number) => { pageSize.value = size; page.value =
 const editVisible = ref(false)
 const editSaving = ref(false)
 const editForm = ref({ id: '', nick: '', mail: '', link: '', comment: '' })
-let editingItem: Comment | null = null
-
 const openEdit = (item: Comment) => {
-  editingItem = item
   editForm.value = { id: item.id, nick: item.nick, mail: item.mail || '', link: item.link || '', comment: item.comment || '' }
   editVisible.value = true
 }

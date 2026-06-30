@@ -1,5 +1,8 @@
 <template>
-  <div v-if="images.length" class="tk-image-previews">
+  <div
+    v-if="images.length"
+    class="tk-image-previews"
+  >
     <div
       v-for="(img, idx) in images"
       :key="idx"

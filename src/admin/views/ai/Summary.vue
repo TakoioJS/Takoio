@@ -3,16 +3,36 @@
     <!-- Redis 状态 -->
     <div class="section-card">
       <div class="section-header">
-        <n-icon size="18" class="section-icon"><ServerOutline /></n-icon>
+        <n-icon
+          size="18"
+          class="section-icon"
+        >
+          <ServerOutline />
+        </n-icon>
         <span class="section-title">Redis 状态</span>
       </div>
       <div class="section-body">
         <div class="redis-status-row">
-          <n-tag v-if="isDev" type="warning" size="small" round>热开发</n-tag>
-          <n-tag v-else :type="redisAvailable ? 'success' : 'error'" size="small" round>
+          <n-tag
+            v-if="isDev"
+            type="warning"
+            size="small"
+            round
+          >
+            热开发
+          </n-tag>
+          <n-tag
+            v-else
+            :type="redisAvailable ? 'success' : 'error'"
+            size="small"
+            round
+          >
             {{ redisAvailable ? '已连接' : '未连接' }}
           </n-tag>
-          <span v-if="!isDev && !redisAvailable" class="redis-hint">
+          <span
+            v-if="!isDev && !redisAvailable"
+            class="redis-hint"
+          >
             请设置环境变量 REDIS_URL（摘要功能需要 Redis）
           </span>
         </div>
@@ -22,33 +42,78 @@
     <!-- 摘要测试 -->
     <div class="section-card">
       <div class="section-header">
-        <n-icon size="18" class="section-icon"><DocumentTextOutline /></n-icon>
+        <n-icon
+          size="18"
+          class="section-icon"
+        >
+          <DocumentTextOutline />
+        </n-icon>
         <span class="section-title">摘要测试</span>
       </div>
       <div class="section-body">
         <div class="form-field">
           <label class="form-label">文章标题（可选）</label>
-          <n-input v-model:value="testForm.title" placeholder="文章标题" />
+          <n-input
+            v-model:value="testForm.title"
+            placeholder="文章标题"
+          />
         </div>
         <div class="form-field">
           <label class="form-label">文章内容</label>
-          <n-input v-model:value="testForm.content" type="textarea" :rows="8" placeholder="粘贴文章内容测试摘要生成" />
+          <n-input
+            v-model:value="testForm.content"
+            type="textarea"
+            :rows="8"
+            placeholder="粘贴文章内容测试摘要生成"
+          />
         </div>
-        <n-button type="primary" :loading="testing" :disabled="!testForm.content.trim()" @click="onTestGenerate">
-          <template #icon><n-icon><FlashOutline /></n-icon></template>
+        <n-button
+          type="primary"
+          :loading="testing"
+          :disabled="!testForm.content.trim()"
+          @click="onTestGenerate"
+        >
+          <template #icon>
+            <n-icon><FlashOutline /></n-icon>
+          </template>
           生成摘要
         </n-button>
 
         <!-- 测试结果 -->
-        <div v-if="testResult" class="test-result" :class="{ error: !testResult.success }">
-          <div v-if="testResult.success" class="test-result-content">
-            <div class="test-result-summary">{{ testResult.summary }}</div>
-            <div v-if="testResult.keywords?.length" class="test-result-keywords">
+        <div
+          v-if="testResult"
+          class="test-result"
+          :class="{ error: !testResult.success }"
+        >
+          <div
+            v-if="testResult.success"
+            class="test-result-content"
+          >
+            <div class="test-result-summary">
+              {{ testResult.summary }}
+            </div>
+            <div
+              v-if="testResult.keywords?.length"
+              class="test-result-keywords"
+            >
               <span class="kw-label">关键词：</span>
-              <n-tag v-for="kw in testResult.keywords" :key="kw" size="small" round type="success">{{ kw }}</n-tag>
+              <n-tag
+                v-for="kw in testResult.keywords"
+                :key="kw"
+                size="small"
+                round
+                type="success"
+              >
+                {{ kw }}
+              </n-tag>
             </div>
           </div>
-          <div v-else class="test-result-error">{{ testResult.message }}</div>
+          <div
+            v-else
+            class="test-result-error"
+          >
+            {{ testResult.message }}
+          </div>
         </div>
       </div>
     </div>
@@ -56,34 +121,98 @@
     <!-- 已生成摘要列表 -->
     <div class="section-card">
       <div class="section-header">
-        <n-icon size="18" class="section-icon"><ListOutline /></n-icon>
+        <n-icon
+          size="18"
+          class="section-icon"
+        >
+          <ListOutline />
+        </n-icon>
         <span class="section-title">已生成摘要（{{ summaries.length }}）</span>
         <div class="section-actions">
-          <n-button size="small" quaternary @click="loadSummaries" :loading="loadingList">刷新</n-button>
-          <n-button v-if="summaries.length > 0" size="small" type="error" quaternary @click="onClearAll">清空全部</n-button>
+          <n-button
+            size="small"
+            quaternary
+            :loading="loadingList"
+            @click="loadSummaries"
+          >
+            刷新
+          </n-button>
+          <n-button
+            v-if="summaries.length > 0"
+            size="small"
+            type="error"
+            quaternary
+            @click="onClearAll"
+          >
+            清空全部
+          </n-button>
         </div>
       </div>
       <div class="section-body">
-        <div v-if="summaries.length === 0" class="empty-hint">
+        <div
+          v-if="summaries.length === 0"
+          class="empty-hint"
+        >
           暂无已生成的摘要
         </div>
-        <div v-else class="summary-list">
-          <div v-for="item in summaries" :key="item.key" class="summary-item">
+        <div
+          v-else
+          class="summary-list"
+        >
+          <div
+            v-for="item in summaries"
+            :key="item.key"
+            class="summary-item"
+          >
             <div class="summary-item-main">
-              <div class="summary-item-url">{{ item.url }}</div>
-              <div class="summary-item-title" v-if="item.title">{{ item.title }}</div>
-              <div class="summary-item-text">{{ item.summary.slice(0, 80) }}{{ item.summary.length > 80 ? '…' : '' }}</div>
-              <div v-if="item.keywords?.length" class="summary-item-keywords">
-                <n-tag v-for="kw in item.keywords.slice(0, 5)" :key="kw" size="tiny" round>{{ kw }}</n-tag>
+              <div class="summary-item-url">
+                {{ item.url }}
               </div>
-              <div class="summary-item-time">{{ formatTime(item.created) }}</div>
+              <div
+                v-if="item.title"
+                class="summary-item-title"
+              >
+                {{ item.title }}
+              </div>
+              <div class="summary-item-text">
+                {{ item.summary.slice(0, 80) }}{{ item.summary.length > 80 ? '…' : '' }}
+              </div>
+              <div
+                v-if="item.keywords?.length"
+                class="summary-item-keywords"
+              >
+                <n-tag
+                  v-for="kw in item.keywords.slice(0, 5)"
+                  :key="kw"
+                  size="tiny"
+                  round
+                >
+                  {{ kw }}
+                </n-tag>
+              </div>
+              <div class="summary-item-time">
+                {{ formatTime(item.created) }}
+              </div>
             </div>
             <div class="summary-item-actions">
-              <n-button size="tiny" quaternary @click="onEditSummary(item)">
-                <template #icon><n-icon><CreateOutline /></n-icon></template>
+              <n-button
+                size="tiny"
+                quaternary
+                @click="onEditSummary(item)"
+              >
+                <template #icon>
+                  <n-icon><CreateOutline /></n-icon>
+                </template>
               </n-button>
-              <n-button size="tiny" type="error" quaternary @click="onDeleteSummary(item.url)">
-                <template #icon><n-icon><TrashOutline /></n-icon></template>
+              <n-button
+                size="tiny"
+                type="error"
+                quaternary
+                @click="onDeleteSummary(item.url)"
+              >
+                <template #icon>
+                  <n-icon><TrashOutline /></n-icon>
+                </template>
               </n-button>
             </div>
           </div>
@@ -92,14 +221,27 @@
     </div>
 
     <!-- 编辑摘要对话框 -->
-    <n-modal v-model:show="showEditModal" preset="card" title="编辑摘要" style="max-width: 600px">
+    <n-modal
+      v-model:show="showEditModal"
+      preset="card"
+      title="编辑摘要"
+      style="max-width: 600px"
+    >
       <div class="form-field">
         <label class="form-label">标题（可选）</label>
-        <n-input v-model:value="editForm.title" placeholder="文章标题" />
+        <n-input
+          v-model:value="editForm.title"
+          placeholder="文章标题"
+        />
       </div>
       <div class="form-field">
         <label class="form-label">摘要内容</label>
-        <n-input v-model:value="editForm.summary" type="textarea" :rows="6" placeholder="摘要正文" />
+        <n-input
+          v-model:value="editForm.summary"
+          type="textarea"
+          :rows="6"
+          placeholder="摘要正文"
+        />
       </div>
       <div class="form-field">
         <label class="form-label">关键词</label>
@@ -107,8 +249,17 @@
       </div>
       <template #footer>
         <div style="display: flex; justify-content: flex-end; gap: 8px">
-          <n-button @click="showEditModal = false">取消</n-button>
-          <n-button type="primary" :loading="savingEdit" :disabled="!editForm.summary.trim()" @click="onSaveEdit">保存</n-button>
+          <n-button @click="showEditModal = false">
+            取消
+          </n-button>
+          <n-button
+            type="primary"
+            :loading="savingEdit"
+            :disabled="!editForm.summary.trim()"
+            @click="onSaveEdit"
+          >
+            保存
+          </n-button>
         </div>
       </template>
     </n-modal>
@@ -229,7 +380,7 @@ const onTestGenerate = async () => {
 const onDeleteSummary = (url: string) => {
   dialog.warning({
     title: '确认删除',
-    content: `确定要删除该 URL 的摘要缓存吗？`,
+    content: '确定要删除该 URL 的摘要缓存吗？',
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {

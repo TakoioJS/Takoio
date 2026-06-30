@@ -27,7 +27,6 @@ const ModerationLLMSchema = z.object({
   confidence: z.number().min(0).max(100),
   reason: z.string(),
 })
-type ModerationLLMResult = z.infer<typeof ModerationLLMSchema>
 
 export interface ModerationResult {
   passed: boolean

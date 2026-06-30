@@ -101,13 +101,12 @@ const REPLY_TEXTS = [
 
 // ─── 工具 ────────────────────────────────────────────────────────────────────
 const now = Date.now()
-const MINUTE = 60_000
 const HOUR = 3_600_000
 const DAY = 86_400_000
 let _seq = 0
 /** 单调递增的创建时间：从 60 天前到现在，按插入顺序递增 */
 const nextCreated = () => now - 60 * DAY + Math.floor((_seq++ / 50) * 60 * DAY) + Math.floor(Math.random() * HOUR)
-const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 const randInt = (max: number) => Math.floor(Math.random() * max)
 
 /** md5 — 与 handler 保持一致（用于 mailMd5） */
@@ -213,7 +212,6 @@ function buildComments (): SeedRow[] {
   }
 
   // 给前 12 条顶级评论各加 1~3 条回复（共约 24 条），部分回复再嵌套子回复
-  let replyCount = 0
   for (let i = 0; i < 12 && rows.length < 50; i++) {
     const parent = tops[i]
     const n = 1 + randInt(3) // 1~3 条直接回复
@@ -227,7 +225,6 @@ function buildComments (): SeedRow[] {
         like: randInt(25),
       })
       rows.push(reply)
-      replyCount++
 
       // 30% 概率给回复再加一条子回复（三层嵌套）
       if (Math.random() < 0.3 && rows.length < 50) {
@@ -240,7 +237,6 @@ function buildComments (): SeedRow[] {
           like: randInt(10),
         })
         rows.push(sub)
-        replyCount++
       }
     }
   }
@@ -314,7 +310,7 @@ async function main () {
   console.info(`[seed] 写入完成 url=${SEED_URL}`)
   console.info(`[seed]   插入 ${rows.length} 条（顶级 ${topLevel}，回复 ${replies}，其中含三层嵌套）`)
   console.info(`[seed]   DB 校验：总数 ${total?.count}，有 pid 的 ${withPid?.count}`)
-  console.info(`[seed]   时间跨度：${new Date(Math.min(...rows.map(r => r.created))).toISOString().slice(0,10)} ~ ${new Date(Math.max(...rows.map(r => r.created))).toISOString().slice(0,10)}`)
+  console.info(`[seed]   时间跨度：${new Date(Math.min(...rows.map(r => r.created))).toISOString().slice(0, 10)} ~ ${new Date(Math.max(...rows.map(r => r.created))).toISOString().slice(0, 10)}`)
   console.info(`[seed]   置顶评论：${rows.filter(r => r.isTop).length} 条`)
 }
 

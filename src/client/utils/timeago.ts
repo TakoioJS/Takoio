@@ -28,7 +28,7 @@ let lang: string = 'zh-CN'
 
 const format = (diff: number, future: boolean): string => {
   lang = detectLang()
-  const [s, m, h, d, w, mo, y, now, ago, inStr] = i18n[lang] || i18n['zh-CN']
+  const [, m, h, d, w, mo, y, now, ago] = i18n[lang] || i18n['zh-CN']
 
   if (diff < MINUTE) return future ? now : `1 ${m}${ago}`
   if (diff < HOUR) return `${Math.floor(diff / MINUTE)} ${m}${ago}`

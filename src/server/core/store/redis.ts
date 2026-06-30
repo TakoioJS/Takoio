@@ -148,7 +148,7 @@ const _memRateBuckets = new Map<string, { count: number; reset: number }>()
 export async function redisRateLimit (
   identifier: string,
   max: number,
-  windowMs: number,
+  windowMs: number
 ): Promise<boolean> {
   const key = `takoio:rate:${identifier}`
   try {

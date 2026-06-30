@@ -101,7 +101,7 @@ export async function handleArticleSummary (data: {
       provider.format as AiFormat,
       provider.endpoint,
       provider.key,
-      modelName,
+      modelName
     )
 
     const prompt = data.title

@@ -51,7 +51,7 @@ const draft = useDraft({
   form,
   toast,
 })
-const { draftTimer, saveDraft, clearDraftTimer, loadDraft } = draft
+const { draftTimer, saveDraft, loadDraft } = draft
 
 // --- Reactions (composable) ---
 const reactionsApi = useReactions({ options: props.options, toast })
@@ -108,7 +108,7 @@ const onSubmit = async (): Promise<void> => {
     form.comment = ''
     uploadedImages.value = []
     localStorage.removeItem('takoio-draft')
-        toast(t('submitSuccess'))
+    toast(t('submitSuccess'))
   } catch (e: unknown) { toast(e instanceof Error ? e.message : t('submitFailed')) } finally { submitting.value = false }
 }
 
@@ -118,110 +118,251 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 </script>
 
 <template>
-    <div v-if="!replyTo && options.enableArticleReaction" class="tk-article-reactions">
-      <ReactionBar
-        :emojis="defaultEmojis"
-        :reactions="reactions"
-        :my-reactions="myReactions"
-        @toggle="toggleReaction"
-      />
-    </div>
-
-    <div v-if="replyTo" class="tk-reply-to">
-      {{ t('replyTo') }} <strong>{{ replyTo.nick }}</strong>：
-      <button class="tk-btn-link tk-btn-sm" :aria-label="t('cancel') || '取消'" @click="emit('clear-reply')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-    </div>
-
-    <form ref="formRef">
-      <div class="tk-meta-row">
-        <div class="tk-meta-item">
-          <input v-model="form.nick" :aria-label="t('nickname')" :placeholder="t('nickname')" class="tk-input" :class="{ 'tk-input-error': errors.nick }">
-          <span v-if="errors.nick" class="tk-field-error">{{ errors.nick }}</span>
-        </div>
-        <div class="tk-meta-item">
-          <input v-model="form.mail" type="email" :aria-label="t('email')" :placeholder="t('email')" class="tk-input" :class="{ 'tk-input-error': errors.mail }">
-          <span v-if="errors.mail" class="tk-field-error">{{ errors.mail }}</span>
-        </div>
-        <div v-if="options.enableLinkInput" class="tk-meta-item">
-          <input v-model="form.link" :aria-label="t('link')" :placeholder="t('link')" class="tk-input" :class="{ 'tk-input-error': errors.link }">
-          <span v-if="errors.link" class="tk-field-error">{{ errors.link }}</span>
-        </div>
-      </div>
-
-      <div class="tk-editor-item">
-        <textarea
-          ref="editorRef"
-          v-model="form.comment"
-          class="tk-textarea"
-          :aria-label="t('placeholder')"
-          :placeholder="t('placeholder')"
-          :maxlength="commentMaxLength"
-          rows="4"
-          @keydown.ctrl.enter="onSubmit"
-          @paste="onPaste"
-        />
-        <div class="tk-word-limit"><span>{{ form.comment.length }}</span>/{{ commentMaxLength }}</div>
-      </div>
-
-      <ImagePreview
-        :images="uploadedImages"
-        :alt-text="t('imageAlt')"
-        :remove-label="t('delete')"
-        @remove="removeImage"
-      />
-
-      <div v-if="imageUploading" class="tk-image-uploading">
-        <svg class="tk-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10" opacity=".25" /><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round" />
-        </svg>
-        <span>{{ t('imageUploading') }}</span>
-      </div>
-
-      <div v-if="errorMsg" class="tk-error-row">
-        <span class="tk-error-msg">{{ errorMsg }}</span>
-      </div>
-
-      <div class="tk-toolbar">
-        <div class="tk-toolbar-left">
-          <MarkdownToolbar :editor-ref="{ value: editorRef }" v-model="form.comment" />
-        </div>
-
-        <div class="tk-toolbar-right">
-          <button v-if="showUploadBtn" type="button" class="tk-btn-outline" @click="triggerUpload">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            {{ t('uploadImage') }}
-          </button>
-          <input ref="uploadRef" type="file" accept="image/*" class="tk-hidden-upload" @change="onFileChange">
-          <button type="button" class="tk-btn-outline" @click="showPreview = !showPreview">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            {{ t('preview') }}
-          </button>
-          <button type="submit" class="tk-btn-primary" :disabled="submitting" @click.prevent="onSubmit">
-            <svg v-if="submitting" class="tk-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            {{ submitting ? (t('submitting') || '提交中…') : t('submit') }}
-          </button>
-        </div>
-      </div>
-    </form>
-
-    <div v-show="showPreview" class="tk-preview" v-html="previewHtml" />
-
-    <!-- Captcha -->
-    <CaptchaWidget
-      v-if="options.enableCaptcha"
-      :provider="(options.captchaProvider as any)"
-      :site-key="(options.captchaSiteKey as string)"
-      :theme="'auto'"
-      :captcha-type="(options.captchaType as any)"
-      :model-value="captchaToken"
-      @update:model-value="captchaToken = $event"
-      @error="captchaError = $event"
+  <div
+    v-if="!replyTo && options.enableArticleReaction"
+    class="tk-article-reactions"
+  >
+    <ReactionBar
+      :emojis="defaultEmojis"
+      :reactions="reactions"
+      :my-reactions="myReactions"
+      @toggle="toggleReaction"
     />
-  </template>
+  </div>
+
+  <div
+    v-if="replyTo"
+    class="tk-reply-to"
+  >
+    {{ t('replyTo') }} <strong>{{ replyTo.nick }}</strong>：
+    <button
+      class="tk-btn-link tk-btn-sm"
+      :aria-label="t('cancel') || '取消'"
+      @click="emit('clear-reply')"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line
+          x1="18"
+          y1="6"
+          x2="6"
+          y2="18"
+        /><line
+          x1="6"
+          y1="6"
+          x2="18"
+          y2="18"
+        />
+      </svg>
+    </button>
+  </div>
+
+  <form ref="formRef">
+    <div class="tk-meta-row">
+      <div class="tk-meta-item">
+        <input
+          v-model="form.nick"
+          :aria-label="t('nickname')"
+          :placeholder="t('nickname')"
+          class="tk-input"
+          :class="{ 'tk-input-error': errors.nick }"
+        >
+        <span
+          v-if="errors.nick"
+          class="tk-field-error"
+        >{{ errors.nick }}</span>
+      </div>
+      <div class="tk-meta-item">
+        <input
+          v-model="form.mail"
+          type="email"
+          :aria-label="t('email')"
+          :placeholder="t('email')"
+          class="tk-input"
+          :class="{ 'tk-input-error': errors.mail }"
+        >
+        <span
+          v-if="errors.mail"
+          class="tk-field-error"
+        >{{ errors.mail }}</span>
+      </div>
+      <div
+        v-if="options.enableLinkInput"
+        class="tk-meta-item"
+      >
+        <input
+          v-model="form.link"
+          :aria-label="t('link')"
+          :placeholder="t('link')"
+          class="tk-input"
+          :class="{ 'tk-input-error': errors.link }"
+        >
+        <span
+          v-if="errors.link"
+          class="tk-field-error"
+        >{{ errors.link }}</span>
+      </div>
+    </div>
+
+    <div class="tk-editor-item">
+      <textarea
+        ref="editorRef"
+        v-model="form.comment"
+        class="tk-textarea"
+        :aria-label="t('placeholder')"
+        :placeholder="t('placeholder')"
+        :maxlength="commentMaxLength"
+        rows="4"
+        @keydown.ctrl.enter="onSubmit"
+        @paste="onPaste"
+      />
+      <div class="tk-word-limit">
+        <span>{{ form.comment.length }}</span>/{{ commentMaxLength }}
+      </div>
+    </div>
+
+    <ImagePreview
+      :images="uploadedImages"
+      :alt-text="t('imageAlt')"
+      :remove-label="t('delete')"
+      @remove="removeImage"
+    />
+
+    <div
+      v-if="imageUploading"
+      class="tk-image-uploading"
+    >
+      <svg
+        class="tk-spin"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+          opacity=".25"
+        /><path
+          d="M12 2a10 10 0 0 1 10 10"
+          stroke-linecap="round"
+        />
+      </svg>
+      <span>{{ t('imageUploading') }}</span>
+    </div>
+
+    <div
+      v-if="errorMsg"
+      class="tk-error-row"
+    >
+      <span class="tk-error-msg">{{ errorMsg }}</span>
+    </div>
+
+    <div class="tk-toolbar">
+      <div class="tk-toolbar-left">
+        <MarkdownToolbar
+          v-model="form.comment"
+          :editor-ref="{ value: editorRef }"
+        />
+      </div>
+
+      <div class="tk-toolbar-right">
+        <button
+          v-if="showUploadBtn"
+          type="button"
+          class="tk-btn-outline"
+          @click="triggerUpload"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line
+            x1="12"
+            y1="3"
+            x2="12"
+            y2="15"
+          /></svg>
+          {{ t('uploadImage') }}
+        </button>
+        <input
+          ref="uploadRef"
+          type="file"
+          accept="image/*"
+          class="tk-hidden-upload"
+          @change="onFileChange"
+        >
+        <button
+          type="button"
+          class="tk-btn-outline"
+          @click="showPreview = !showPreview"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+            cx="12"
+            cy="12"
+            r="3"
+          /></svg>
+          {{ t('preview') }}
+        </button>
+        <button
+          type="submit"
+          class="tk-btn-primary"
+          :disabled="submitting"
+          @click.prevent="onSubmit"
+        >
+          <svg
+            v-if="submitting"
+            class="tk-spin"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+          {{ submitting ? (t('submitting') || '提交中…') : t('submit') }}
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div
+    v-show="showPreview"
+    class="tk-preview"
+    v-html="previewHtml"
+  />
+
+  <!-- Captcha -->
+  <CaptchaWidget
+    v-if="options.enableCaptcha"
+    :provider="(options.captchaProvider as any)"
+    :site-key="(options.captchaSiteKey as string)"
+    :theme="'auto'"
+    :captcha-type="(options.captchaType as any)"
+    :model-value="captchaToken"
+    @update:model-value="captchaToken = $event"
+    @error="captchaError = $event"
+  />
+</template>
 
 <style scoped>
 .tk-submit { padding:0 0 20px; margin-bottom:24px; }

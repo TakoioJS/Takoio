@@ -19,11 +19,11 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   actions: {
-    getBaseUrl(): string {
+    getBaseUrl (): string {
       return window.location.origin.replace(/\/$/, '')
     },
 
-    restoreSession(): boolean {
+    restoreSession (): boolean {
       const check = (key: string): boolean => {
         const saved = localStorage.getItem(key)
         if (!saved) return false
@@ -50,7 +50,7 @@ export const useAuthStore = defineStore('auth', {
       return this.isAuthenticated
     },
 
-    _saveSession(newToken: string, remember = true) {
+    _saveSession (newToken: string, remember = true) {
       this.token = newToken
       this.isAuthenticated = true
       if (remember) {
@@ -62,7 +62,7 @@ export const useAuthStore = defineStore('auth', {
       this._startRefresh()
     },
 
-    async _refreshSession() {
+    async _refreshSession () {
       if (!this.token) return
       try {
         const res = await fetch(`${this.getBaseUrl()}/api/admin/refresh`, {
@@ -85,19 +85,19 @@ export const useAuthStore = defineStore('auth', {
       } catch { /* silent */ }
     },
 
-    _startRefresh() {
+    _startRefresh () {
       this._stopRefresh()
       this._refreshTimer = setInterval(() => this._refreshSession(), 30 * 60 * 1000)
     },
 
-    _stopRefresh() {
+    _stopRefresh () {
       if (this._refreshTimer) {
         clearInterval(this._refreshTimer)
         this._refreshTimer = null
       }
     },
 
-    async checkSetup(): Promise<boolean> {
+    async checkSetup (): Promise<boolean> {
       try {
         const res = await fetch(`${this.getBaseUrl()}/api/admin/setup`)
         const data = await res.json()
@@ -109,7 +109,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async login(password: string, remember = true, captchaToken?: string): Promise<{ success: boolean; message?: string }> {
+    async login (password: string, remember = true, captchaToken?: string): Promise<{ success: boolean; message?: string }> {
       try {
         const res = await fetch(`${this.getBaseUrl()}/api/admin/login`, {
           method: 'POST',
@@ -130,7 +130,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async setup(password: string): Promise<{ success: boolean; message?: string }> {
+    async setup (password: string): Promise<{ success: boolean; message?: string }> {
       try {
         const res = await fetch(`${this.getBaseUrl()}/api/admin/password`, {
           method: 'PUT',
@@ -149,7 +149,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async logout() {
+    async logout () {
       try {
         await fetch(`${this.getBaseUrl()}/api/admin/logout`, {
           method: 'POST',
@@ -162,7 +162,7 @@ export const useAuthStore = defineStore('auth', {
       this._stopRefresh()
     },
 
-    async changePassword(oldPwd: string, newPwd: string): Promise<{ success: boolean; message?: string }> {
+    async changePassword (oldPwd: string, newPwd: string): Promise<{ success: boolean; message?: string }> {
       try {
         const verifyRes = await fetch(`${this.getBaseUrl()}/api/admin/login`, {
           method: 'POST',

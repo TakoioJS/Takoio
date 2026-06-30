@@ -75,7 +75,13 @@ export const useImageUpload = (opts: UseImageUploadOptions) => {
   }
 
   return {
-    imageUploading, uploadedImages, uploadRef,
-    uploadImageFile, removeImage, triggerUpload, onFileChange, onPaste,
+    imageUploading,
+    uploadedImages,
+    uploadRef,
+    uploadImageFile,
+    removeImage,
+    triggerUpload,
+    onFileChange,
+    onPaste,
   }
 }
