@@ -78,7 +78,6 @@
     "@vitest/coverage-v8": "^4.1.9",
     "@vue/compiler-sfc": "^3.5.39",
     "@vue/test-utils": "^2.4.11",
-    "@vueuse/core": "14.3.0",
     "eslint": "^10.6.0",
     "eslint-plugin-vue": "^10.9.2",
     "globals": "^17.7.0",

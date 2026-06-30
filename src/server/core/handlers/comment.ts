@@ -42,6 +42,7 @@ import { requireAdmin } from '../auth'
 import { AppError } from '../config'
 import { renderComment } from '../utils/render'
 import { getCommentListCache, setCommentListCache, invalidateCommentListCache } from '../store/redis'
+import type { TakoioConfig } from '../config'
 
 // ========== Helpers ==========
 
@@ -260,8 +261,6 @@ function notifySubmit (saved: Comment, newComment: CommentInput, cfg: TakoioConf
     }
   }
 }
-
-import type { TakoioConfig } from '../config'
 
 export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: string }): Promise<any> => {
   const _ip = data._ip

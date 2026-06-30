@@ -1,0 +1,14 @@
+node_modules
+src/admin/node_modules
+src/server/node_modules
+src/server/.output
+src/server/.vercel
+src/admin/dist
+dist
+.git
+.github
+docs
+e2e
+.env
+.env.local
+*.md

@@ -40,12 +40,29 @@ let _db: Db | null = null
 const connUri = () => process.env.MONGODB_URI || 'mongodb://localhost:27017'
 const dbName = () => process.env.MONGODB_DB || 'takoio'
 
+let _connectPromise: Promise<Db> | null = null
+
 async function getDb (): Promise<Db> {
   if (_db) return _db
-  _client = new MongoClient(connUri())
-  await _client.connect()
-  _db = _client.db(dbName())
-  return _db
+  if (_connectPromise) return _connectPromise
+
+  _connectPromise = (async () => {
+    _client = new MongoClient(connUri(), {
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      serverSelectionTimeoutMS: 10_000,
+      connectTimeoutMS: 10_000,
+      socketTimeoutMS: 30_000,
+      retryWrites: true,
+      retryReads: true,
+    })
+    await _client.connect()
+    _db = _client.db(dbName())
+    _client.on('close', () => { _db = null; _connectPromise = null })
+    return _db
+  })()
+
+  return _connectPromise
 }
 
 const relTime = (ts: number): string => {

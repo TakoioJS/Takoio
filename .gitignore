@@ -1,11 +1,16 @@
 # 依赖
 node_modules/
+src/admin/node_modules/
+src/server/node_modules/
 .pnp
 .pnp.js
 
 # 构建输出
 dist/
 build/
+src/admin/dist/
+src/server/.output/
+src/server/.vercel/
 *.tsbuildinfo
 
 # 日志

@@ -26,7 +26,8 @@ export default definePlugin(async () => {
   // C1(deploy): Fail fast on serverless if DB_TYPE is sqlite — ephemeral filesystem causes data loss
   const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
   if (isServerless() && dbType !== 'mongodb') {
-    logger.error(`[init] Serverless preset "${getServerlessPreset()}" requires DB_TYPE=mongodb, got "${dbType}". Set MONGODB_URI and DB_TYPE=mongodb in your deployment environment.`)
+    logger.fatal(`[init] Serverless preset "${getServerlessPreset()}" requires DB_TYPE=mongodb, got "${dbType}". Set MONGODB_URI and DB_TYPE=mongodb in your deployment environment.`)
+    throw new Error(`Serverless 环境必须使用 MongoDB（DB_TYPE=mongodb），当前为 "${dbType}"。文件系统临时，SQLite 会丢失数据。`)
   }
 
   // initIpSearcher (file I/O) is independent of DB — start in parallel

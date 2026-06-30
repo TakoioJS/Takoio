@@ -45,32 +45,6 @@ export type {
 
 const DB_TYPE = (process.env.DB_TYPE || 'sqlite').toLowerCase()
 
-// Lazy-loaded backend module — resolved once on first init, cached thereafter
-let _impl: any = null
-
-async function getImpl () {
-  if (_impl) return _impl
-  if (DB_TYPE === 'mongodb') {
-    _impl = await import('./mongodb.js')
-  } else if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg') {
-    _impl = await import('./postgres.js')
-  } else {
-    _impl = await import('./sqlite.js')
-  }
-  return _impl
-}
-
-/** Initialize the store backend — called from Nitro init plugin */
-export async function initStore () {
-  const impl = await getImpl()
-  // Copy exports to module-level variables so consumers can use them directly
-  Object.assign(commentStore, impl.commentStore)
-  Object.assign(configStore, impl.configStore)
-  Object.assign(visitorStore, impl.visitorStore)
-  Object.assign(sessionStore, impl.sessionStore)
-  Object.assign(reactionStore, impl.reactionStore)
-}
-
 // Store interfaces for typing
 // 注意：所有后端实现（sqlite.ts / mongodb.ts / 未来的 postgres.ts）
 // 必须返回符合这些 interface 的数据，由 TS 编译器强制校验签名一致性。
@@ -124,6 +98,45 @@ export interface ReactionStore {
   toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap>
 }
 
+/**
+ * Store backend module shape — every backend (sqlite/mongodb/postgres)
+ * must export these members. Enforces compile-time consistency across implementations.
+ */
+export interface StoreBackend {
+  commentStore: CommentStore
+  configStore: ConfigStore
+  visitorStore: VisitorStore
+  sessionStore: SessionStore
+  reactionStore: ReactionStore
+  getStore (): Promise<StoreSnapshot>
+  importStore (data: StoreImportData): Promise<void>
+  ensureDb (): Promise<void>
+}
+
+let _impl: StoreBackend | null = null
+
+async function getImpl (): Promise<StoreBackend> {
+  if (_impl) return _impl
+  if (DB_TYPE === 'mongodb') {
+    _impl = await import('./mongodb.js') as StoreBackend
+  } else if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg') {
+    _impl = await import('./postgres.js') as StoreBackend
+  } else {
+    _impl = await import('./sqlite.js') as StoreBackend
+  }
+  return _impl
+}
+
+/** Initialize the store backend — called from Nitro init plugin */
+export async function initStore () {
+  const impl = await getImpl()
+  Object.assign(commentStore, impl.commentStore)
+  Object.assign(configStore, impl.configStore)
+  Object.assign(visitorStore, impl.visitorStore)
+  Object.assign(sessionStore, impl.sessionStore)
+  Object.assign(reactionStore, impl.reactionStore)
+}
+
 // Module-level store objects — populated by initStore(), used by all consumers
 export const commentStore = {} as CommentStore
 export const configStore = {} as ConfigStore
@@ -132,7 +145,7 @@ export const sessionStore = {} as SessionStore
 export const reactionStore = {} as ReactionStore
 
 // Direct async functions for one-off use (import, export, ensureDb)
-export async function getStore (): Promise<StoreSnapshot> { return (await getImpl()).getStore() as StoreSnapshot }
+export async function getStore (): Promise<StoreSnapshot> { return (await getImpl()).getStore() }
 export async function importStore (data: StoreImportData): Promise<void> { return (await getImpl()).importStore(data) }
 export async function ensureDb (): Promise<void> { return (await getImpl()).ensureDb() }
 
