@@ -7,7 +7,7 @@
 
 /** 是否为开发（热开发）模式 */
 export function isDev (): boolean {
-  return !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
+  return !!(import.meta as any).dev || process.env.NODE_ENV === 'development'
 }
 
 /** 是否为生产模式 */

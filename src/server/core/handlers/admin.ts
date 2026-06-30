@@ -14,6 +14,7 @@ import { logger } from '../utils/logger'
 import { sendNotification } from '../notify'
 import { sendEmail } from '../email'
 import { AppError } from '../config'
+import { isDev } from '../utils/env'
 
 // ========== Check Setup ==========
 
@@ -22,8 +23,7 @@ const SETUP_TOKEN = process.env.SETUP_TOKEN
 
 export const handleCheckSetup = async () => {
   const hash = await getAuthHash()
-  const dev = !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
-  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN, dev }
+  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN, dev: isDev() }
 }
 
 // ========== Login ==========
@@ -125,7 +125,10 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
       throw new AppError('NEED_LOGIN', '需要管理员权限才能修改密码', 401)
     }
   } else {
-    // First-time setup — require SETUP_TOKEN if configured
+    // First-time setup — require SETUP_TOKEN in production
+    if (!isDev() && !SETUP_TOKEN) {
+      throw new AppError('INVALID_INPUT', '生产环境必须配置 SETUP_TOKEN 环境变量才能初始化管理员密码', 403)
+    }
     if (SETUP_TOKEN && data.setupToken !== SETUP_TOKEN) {
       throw new AppError('INVALID_INPUT', 'Setup token 不匹配，无法初始化', 403)
     }

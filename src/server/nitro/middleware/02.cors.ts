@@ -10,6 +10,7 @@
 
 import { getConfig } from '#core/config'
 import { logger } from '#core/utils/logger'
+import { isDev } from '#core/utils/env'
 
 let cachedWarn = false
 
@@ -28,8 +29,8 @@ export default defineMiddleware(async (event) => {
   } else if (origins.length > 0) {
     allowed = origins.includes(origin)
     hasExplicitOrigins = true
-  } else if (origin) {
-    // Dev mode: reflect origin but don't send credentials
+  } else if (origin && isDev()) {
+    // Dev mode only: reflect origin but don't send credentials
     allowed = true
     if (!cachedWarn) {
       cachedWarn = true
@@ -53,7 +54,7 @@ export default defineMiddleware(async (event) => {
   }
 
   setResponseHeader(event, 'Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
-  setResponseHeader(event, 'Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  setResponseHeader(event, 'Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
   setResponseHeader(event, 'Access-Control-Max-Age', '86400')
 
   // Preflight: return 204 immediately

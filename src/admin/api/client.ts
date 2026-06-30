@@ -10,6 +10,15 @@ export function setUnauthorizedHandler (handler: () => void) {
   _onUnauthorized = handler
 }
 
+/**
+ * Get the base URL for API requests.
+ * In production (standalone deployment), the API base might be configured
+ * via the VITE_API_BASE env var; otherwise same-origin is assumed.
+ */
+function getBaseUrl (): string {
+  return (import.meta as any).env?.VITE_API_BASE || BASE_URL
+}
+
 async function request<T> (url: string, options: RequestInit = {}): Promise<T> {
   const auth = useAuthStore()
   const headers: Record<string, string> = {
@@ -22,7 +31,7 @@ async function request<T> (url: string, options: RequestInit = {}): Promise<T> {
   }
 
   try {
-    const res = await fetch(BASE_URL + url, {
+    const res = await fetch(getBaseUrl() + url, {
       ...options,
       headers,
     })

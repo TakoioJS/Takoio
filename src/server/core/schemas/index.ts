@@ -129,6 +129,12 @@ export const RecentCommentsSchema = z.object({
   count: z.coerce.number().int().positive().default(10),
 })
 
+// ========== Dashboard ==========
+
+export const DashboardTrendSchema = z.object({
+  days: z.coerce.number().int().min(1).max(30).default(7),
+})
+
 // ========== Reaction ==========
 
 export const ReactionGetSchema = z.object({

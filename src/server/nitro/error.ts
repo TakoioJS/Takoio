@@ -10,6 +10,7 @@
 import { H3Error } from 'h3'
 import { AppError } from '#core/config'
 import { logger } from '#core/utils/logger'
+import { isDev } from '#core/utils/env'
 
 export default defineErrorHandler((error, event) => {
   // AppError: business logic errors with structured codes
@@ -28,7 +29,11 @@ export default defineErrorHandler((error, event) => {
   }
 
   // Unknown: log and return generic 500
-  logger.error({ error: error.message, stack: error.stack }, 'Unhandled API Error')
+  if (isDev()) {
+    logger.error({ error: error.message, stack: error.stack }, 'Unhandled API Error')
+  } else {
+    logger.error({ error: error.message }, 'Unhandled API Error')
+  }
   setResponseStatus(event, 500)
   return { message: '服务器内部错误' }
 })

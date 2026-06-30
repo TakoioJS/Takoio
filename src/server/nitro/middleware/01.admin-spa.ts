@@ -17,6 +17,8 @@ const candidates = [
   join(process.cwd(), 'admin-dist'),         // Docker deployment
   join(process.cwd(), '../../dist/admin'),    // CI build (vite outDir relative to src/server)
   join(process.cwd(), 'src/admin/dist'),      // Alternate dev path
+  join(process.cwd(), '.vercel/output/static/admin'), // Vercel serverless static output
+  join(process.cwd(), 'static/admin'),        // Vercel static fallback
 ]
 const adminDistDir = candidates.find(p => existsSync(p))
 

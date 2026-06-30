@@ -65,10 +65,8 @@ async function collectRedisDiagnostics (): Promise<Record<string, unknown>> {
 
   return {
     urlConfigured: !!redisUrl,
-    urlProtocol: redisUrl ? redisUrl.split('://')[0] : undefined,
     status: redisStatus,
     clientStatus: redisClientStatus,
     error: redisError,
-    env: { nodeEnv, isDev: isDev() },
   }
 }

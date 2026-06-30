@@ -20,7 +20,7 @@ import { getClientIp } from '#core/utils/ip'
 import { isRedisAvailable, listSummaryCaches } from '#core/store/redis'
 import { isDev } from '#core/utils/env'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
-import { LoginSchema, PasswordSetSchema, TypeSetSchema, SetConfigSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema } from '#core/schemas'
+import { LoginSchema, PasswordSetSchema, TypeSetSchema, SetConfigSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema, DashboardTrendSchema } from '#core/schemas'
 
 export default defineHandler(async (event) => {
   const path = (event.context.params?.slug as string) || ''
@@ -87,7 +87,7 @@ export default defineHandler(async (event) => {
   // GET /api/admin/dashboard/trend
   if (segments[0] === 'dashboard' && segments[1] === 'trend' && method === 'GET') {
     await requireAdmin({ token: getToken(event) })
-    const days = Math.min(Math.max(parseInt(String(getQuery(event).days) || '7', 10) || 7, 1), 30)
+    const { days } = validateQuery(event, DashboardTrendSchema)
     return handleDashboardTrend(days)
   }
 

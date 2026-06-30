@@ -59,6 +59,12 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
+  // Always try to restore session from localStorage before checking auth.
+  // This prevents race conditions where Pinia state is reset (e.g. HMR, memory pressure)
+  // but the session is still valid in localStorage — which would cause a redirect to /login.
+  if (!auth.isAuthenticated) {
+    auth.restoreSession()
+  }
   if (!to.meta.public && !auth.isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
