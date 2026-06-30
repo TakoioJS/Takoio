@@ -54,8 +54,9 @@ export default defineHandler(async (event) => {
     })
   }
 
-  // GET /api/admin/config (public)
+  // GET /api/admin/config (admin only — contains masked secrets & full config structure)
   if (segments[0] === 'config' && method === 'GET') {
+    await requireAdmin({ token: getToken(event) })
     return handleGetConfig({})
   }
 

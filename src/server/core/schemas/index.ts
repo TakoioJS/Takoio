@@ -98,6 +98,9 @@ export const ALLOWED_CONFIG_KEYS = [
   'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL', 'ENABLE_SUMMARY',
   'CORS_ORIGINS',
   'PUSHOO_CHANNELS',
+  // IP region & audit — present in DEFAULT_CONFIG and Settings.vue schema.ts
+  // but were missing from the whitelist, causing 400 on config save.
+  'AUDIT_MODE', 'IP_REGION_ENABLED', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES', 'SHOW_IP_REGION',
 
 ] as const
 

@@ -2,18 +2,40 @@
  * Serverless diagnostic health check — GET /api/health
  *
  * Lightweight: does NOT import or initialize the database.
- * Returns minimal status for deployment debugging.
- * Includes Redis connection diagnostics (safe — no credentials leaked).
+ * Public response is minimal (status only). Redis connection
+ * diagnostics require admin auth to avoid leaking internal state.
  */
 
 import { isDev } from '#core/utils/env'
 import { getRedisClient } from '#core/store/redis'
+import { requireAdmin } from '#core/auth'
+// getToken — auto-imported from nitro/utils/ by Nitro
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  // Public: minimal liveness probe only
+  if (event.method !== 'GET') {
+    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
+  }
+
+  // Admin-only diagnostics: Redis connection state + error details
+  let redisDiagnostics: Record<string, unknown> | null = null
+  try {
+    await requireAdmin({ token: getToken(event) })
+    redisDiagnostics = await collectRedisDiagnostics()
+  } catch {
+    // Not authenticated — return minimal public status only
+  }
+
+  return {
+    status: 'ok',
+    ...(redisDiagnostics ? { redis: redisDiagnostics } : {}),
+  }
+})
+
+async function collectRedisDiagnostics (): Promise<Record<string, unknown>> {
   const redisUrl = process.env.REDIS_URL
   const nodeEnv = process.env.NODE_ENV
 
-  // Try Redis connection and capture the specific error
   let redisStatus: 'connected' | 'disconnected' | 'error' | 'skipped' = 'disconnected'
   let redisError: string | undefined
   let redisClientStatus: string | undefined
@@ -42,17 +64,11 @@ export default defineEventHandler(async () => {
   }
 
   return {
-    status: 'ok',
-    env: {
-      nodeEnv,
-      isDev: isDev(),
-    },
-    redis: {
-      urlConfigured: !!redisUrl,
-      urlProtocol: redisUrl ? redisUrl.split('://')[0] : undefined,
-      status: redisStatus,
-      clientStatus: redisClientStatus,
-      error: redisError,
-    },
+    urlConfigured: !!redisUrl,
+    urlProtocol: redisUrl ? redisUrl.split('://')[0] : undefined,
+    status: redisStatus,
+    clientStatus: redisClientStatus,
+    error: redisError,
+    env: { nodeEnv, isDev: isDev() },
   }
-})
+}
