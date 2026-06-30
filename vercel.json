@@ -1,5 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build:admin && cd src/server && pnpm install && NITRO_PRESET=vercel npx nitro build",
+  "buildCommand": "build:serverless && NITRO_PRESET=vercel npx nitro build",
   "framework": null
 }

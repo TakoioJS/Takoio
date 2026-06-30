@@ -7,14 +7,16 @@
     <div v-else class="login-container">
       <div class="login-card">
         <div class="login-header">
-          <LogoMark class="login-logo" />
-          <h1 class="login-title">Takoio Admin</h1>
+          <div class="login-logo">
+            <img src="/icon/icon_108x108.png" alt="Takoio" class="login-logo-img" />
+          </div>
+          <h1 class="login-title">Takoio</h1>
           <p class="login-subtitle">{{ needSetup ? t('setupDesc') : '评论系统管理后台' }}</p>
         </div>
 
         <template v-if="needSetup">
           <n-form @submit.prevent="onSetup">
-            <n-form-item>
+            <n-form-item class="pwd-item">
               <n-input
                 v-model:value="setupPassword"
                 type="password"
@@ -24,16 +26,32 @@
                 @keydown.enter="onSetup"
               />
             </n-form-item>
-            <n-form-item>
+            <div v-if="passwordStrength.level > 0" class="pwd-strength" :style="{ '--strength-color': strengthColor }">
+              <div class="pwd-strength-bars">
+                <span v-for="i in 4" :key="i" class="pwd-strength-bar" :class="{ filled: i <= passwordStrength.level }"></span>
+              </div>
+              <span class="pwd-strength-label">{{ passwordStrength.label }}</span>
+            </div>
+            <n-form-item class="pwd-item">
               <n-input
                 v-model:value="setupPasswordConfirm"
                 type="password"
                 show-password-on="click"
                 :placeholder="t('confirmPassword')"
                 size="large"
+                :status="confirmMismatch ? 'error' : undefined"
                 @keydown.enter="onSetup"
               />
             </n-form-item>
+            <p v-if="confirmMismatch" class="login-pwd-error">{{ t('passwordMismatch') }}</p>
+            <n-form-item label="CORS 域名">
+              <n-input
+                v-model:value="corsOrigins"
+                :disabled="auth.setupDev"
+                size="large"
+              />
+            </n-form-item>
+            <p v-if="auth.setupDev" class="login-cors-hint">热开发环境下 CORS 默认开放，无需配置</p>
             <n-button
               type="primary"
               block
@@ -87,8 +105,31 @@
         </template>
 
         <div class="login-footer">
-          <n-button text size="small" @click="appStore.toggleDark">
-            {{ appStore.isDark ? t('lightMode') : t('darkMode') }}
+          <n-button
+            quaternary
+            circle
+            title="GitHub"
+            tag="a"
+            href="https://github.com/ArsFuturum/Takoio"
+            target="_blank"
+            rel="noopener"
+          >
+            <template #icon>
+              <n-icon size="18"><LogoGithub /></n-icon>
+            </template>
+          </n-button>
+          <n-button
+            quaternary
+            circle
+            :title="appStore.isDark ? '切换浅色' : '切换深色'"
+            @click="appStore.toggleDark"
+          >
+            <template #icon>
+              <n-icon size="18">
+                <SunnyOutline v-if="appStore.isDark" />
+                <MoonOutline v-else />
+              </n-icon>
+            </template>
           </n-button>
         </div>
       </div>
@@ -97,12 +138,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
-  NForm, NFormItem, NInput, NButton, NCheckbox, useMessage,
+  NForm, NFormItem, NInput, NButton, NCheckbox, NIcon, useMessage,
 } from 'naive-ui'
+import { SunnyOutline, MoonOutline, LogoGithub } from '@vicons/ionicons5'
 import CaptchaWidget from '@shared/view/components/submit/components/CaptchaWidget.vue'
-import LogoMark from '../components/LogoMark.vue'
+import { configApi } from '../api/config'
 import { t } from '@shared/utils/i18n'
 
 const appStore = useAppStore()
@@ -114,6 +156,31 @@ const message = useMessage()
 const password = ref('')
 const setupPassword = ref('')
 const setupPasswordConfirm = ref('')
+const corsOrigins = ref('')
+
+const passwordStrength = computed(() => {
+  const pwd = setupPassword.value
+  if (!pwd) return { level: 0, label: '' }
+  let score = 0
+  if (pwd.length >= 8) score++
+  if (pwd.length >= 12) score++
+  if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
+  if (/\d/.test(pwd)) score++
+  if (/[^a-zA-Z0-9]/.test(pwd)) score++
+  if (score > 4) score = 4
+  if (score < 1) score = 1
+  const labels = ['', t('pwdWeak'), t('pwdFair'), t('pwdStrong'), t('pwdVeryStrong')]
+  return { level: score, label: labels[score] }
+})
+
+const strengthColor = computed(() => {
+  const colors = ['', 'var(--danger)', 'var(--warning)', 'var(--accent)', 'var(--accent)']
+  return colors[passwordStrength.value.level]
+})
+
+const confirmMismatch = computed(() =>
+  setupPasswordConfirm.value.length > 0 && setupPassword.value !== setupPasswordConfirm.value
+)
 const rememberMe = ref(false)
 const loading = ref(false)
 const checking = ref(true)
@@ -145,6 +212,10 @@ const onSetup = async () => {
   try {
     const result = await auth.setup(setupPassword.value)
     if (result.success) {
+      if (!auth.setupDev && corsOrigins.value.trim()) {
+        try { await configApi.save({ CORS_ORIGINS: corsOrigins.value.trim() }) }
+        catch { /* 非关键，忽略 */ }
+      }
       message.success(t('setupSuccess'))
       redirectTo()
     } else {
@@ -205,11 +276,16 @@ const onLogin = async () => {
   margin-bottom: 24px;
 }
 .login-logo {
-  display: block;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   margin: 0 auto 12px;
-  color: var(--accent);
+  overflow: hidden;
+}
+.login-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .login-title {
   margin: 0;
@@ -237,9 +313,63 @@ const onLogin = async () => {
   margin: 8px 0;
 }
 
+.login-cors-hint {
+  margin: -4px 0 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* 密码强度指示器 */
+.pwd-strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 2px 6px;
+}
+.pwd-strength-bars {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.pwd-strength-bar {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--edge-soft);
+  transition: background 0.2s;
+}
+.pwd-strength-bar.filled {
+  background: var(--strength-color);
+}
+.pwd-strength-label {
+  font-size: 12px;
+  color: var(--strength-color);
+  white-space: nowrap;
+}
+
+/* 收紧密码框之间的间距 */
+.login-card :deep(.pwd-item) {
+  margin-bottom: 0;
+}
+
+.login-pwd-error {
+  margin: -4px 2px 12px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* 禁用态下保留可见边框，避免输入框“没有框” */
+.login-card :deep(.n-input.n-input--disabled .n-input__border) {
+  border-color: var(--edge-soft);
+}
+
 .login-footer {
   margin-top: 16px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--edge-soft);
 }

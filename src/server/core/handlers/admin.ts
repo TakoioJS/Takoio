@@ -21,7 +21,8 @@ const SETUP_TOKEN = process.env.SETUP_TOKEN
 
 export const handleCheckSetup = async () => {
   const hash = await getAuthHash()
-  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN }
+  const dev = !!(import.meta as any).dev || process.env.NODE_ENV !== 'production'
+  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN, dev }
 }
 
 // ========== Login ==========

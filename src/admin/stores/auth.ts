@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', {
     token: '' as string,
     isAuthenticated: false,
     needSetup: false,
+    setupDev: false,
     _refreshTimer: null as ReturnType<typeof setInterval> | null,
   }),
 
@@ -101,6 +102,7 @@ export const useAuthStore = defineStore('auth', {
         const res = await fetch(`${this.getBaseUrl()}/api/admin/setup`)
         const data = await res.json()
         this.needSetup = !!data.needSetup
+        this.setupDev = !!data.dev
         return this.needSetup
       } catch {
         return false
