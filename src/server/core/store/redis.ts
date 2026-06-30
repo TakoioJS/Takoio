@@ -5,12 +5,19 @@
  * Falls back gracefully when Redis is unavailable.
  */
 
-import Redis from 'ioredis'
+// ponytail: dynamic import for ioredis — the package is externalized in nitro.config.ts
+// (rolldownConfig.external). On serverless platforms (Vercel/Netlify) where node_modules
+// is not available at runtime, a static top-level import would crash module loading.
+// Dynamic import inside getRedisClient() defers the load until Redis is actually needed,
+// and the try/catch gracefully degrades to null (memory fallback) if the package is missing.
+import type Redis from 'ioredis'
 import { logger } from '../utils/logger'
 import { isDev } from '../utils/env'
 
 let _client: Redis | null = null
 let _connectPromise: Promise<Redis | null> | null = null
+// True once ioredis import has failed — avoids retrying the import on every call
+let _ioredisUnavailable = false
 
 /**
  * Get or create a Redis client singleton.
@@ -25,11 +32,17 @@ export async function getRedisClient (): Promise<Redis | null> {
 
   if (_connectPromise) return _connectPromise
 
+  // Skip if ioredis package is known to be unavailable (serverless without node_modules)
+  if (_ioredisUnavailable) return null
+
   _connectPromise = (async () => {
     try {
+      // Dynamic import — ioredis is externalized in nitro.config.ts.
+      // On serverless platforms the package may be absent; we degrade gracefully.
+      const { default: IORedis } = await import('ioredis')
       const url = process.env.REDIS_URL || 'redis://localhost:6379'
 
-      _client = new Redis(url, {
+      _client = new IORedis(url, {
         maxRetriesPerRequest: 3,
         retryStrategy (times) {
           if (times > 3) {
@@ -56,6 +69,11 @@ export async function getRedisClient (): Promise<Redis | null> {
       logger.warn('[redis] Failed to connect:', e.message)
       _client = null
       _connectPromise = null
+      // If the import itself failed (package missing), mark as unavailable so we
+      // don't retry the dynamic import on every subsequent call.
+      if (e?.code === 'ERR_MODULE_NOT_FOUND' || /Cannot find package/.test(e?.message || '')) {
+        _ioredisUnavailable = true
+      }
       return null
     }
   })()
