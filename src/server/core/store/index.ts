@@ -1,43 +1,37 @@
+/**
+ * Store facade — lazy-loads the selected backend (sqlite or mongodb).
+ *
+ * ponytail: replaced Proxy+makeThenable with simple async init.
+ * Consumers already write `await store.method()`, so a plain object works.
+ */
+
 const DB_TYPE = (process.env.DB_TYPE || 'sqlite').toLowerCase()
 
-let _mongo: any = null
-let _sqlite: any = null
+// Lazy-loaded backend module — resolved once on first init, cached thereafter
+let _impl: any = null
 
 async function getImpl () {
+  if (_impl) return _impl
   if (DB_TYPE === 'mongodb') {
-    if (!_mongo) _mongo = await import('./mongodb.js')
-    return _mongo
+    _impl = await import('./mongodb.js')
+  } else {
+    _impl = await import('./sqlite.js')
   }
-  if (!_sqlite) _sqlite = await import('./sqlite.js')
-  return _sqlite
+  return _impl
 }
 
-// Load implementation lazily; these re-export the selected backend's exports.
-// Each consumer calls the function at module scope to get a live reference.
-// The promise will resolve once on first call and cache thereafter.
-const _load = (key: string) => getImpl().then(m => m[key])
-
-/**
- * Wrap a Promise<value> into a thenable function.
- * - `await proxy.prop` resolves to the value (backward compatible)
- * - `proxy.prop(...args)` calls the resolved function and returns its Promise
- *
- * This is needed because the Proxy `get` trap returns a Promise, but consumers
- * write `store.method()` (call-then-await). Without this wrapper, calling a
- * Promise as a function throws "xxx is not a function".
- */
-const makeThenable = (promise: Promise<any>): any => {
-  const fn: any = (...args: any[]) => promise.then((f: any) => {
-    if (typeof f !== 'function') throw new TypeError(`resolved value is not callable`)
-    return f(...args)
-  })
-  // make the function itself await-able (so `await proxy.prop` still works for non-function values)
-  fn.then = (onFulfilled?: any, onRejected?: any) => promise.then(onFulfilled, onRejected)
-  fn.catch = (onRejected?: any) => promise.then(undefined, onRejected)
-  return fn
+/** Initialize the store backend — called from Nitro init plugin */
+export async function initStore () {
+  const impl = await getImpl()
+  // Copy exports to module-level variables so consumers can use them directly
+  Object.assign(commentStore, impl.commentStore)
+  Object.assign(configStore, impl.configStore)
+  Object.assign(visitorStore, impl.visitorStore)
+  Object.assign(sessionStore, impl.sessionStore)
+  Object.assign(reactionStore, impl.reactionStore)
 }
 
-// Store interfaces for Proxy typing
+// Store interfaces for typing
 
 export interface CommentStore {
   addComment (data: any): Promise<any>
@@ -88,30 +82,20 @@ export interface ReactionStore {
   toggleReaction (url: string, emoji: string, ip: string): Promise<Record<string, string[]>>
 }
 
-// Dynamically resolved exports — resolved on first access per property.
-// Each access returns a thenable function so consumers can write `store.method()`
-// (call-then-await) as well as `await store.method` for non-function values.
-export const commentStore = new Proxy({} as CommentStore, {
-  get (_, prop) { return makeThenable(_load('commentStore').then(m => (m as any)[prop])) }
-})
-export const configStore = new Proxy({} as ConfigStore, {
-  get (_, prop) { return makeThenable(_load('configStore').then(m => (m as any)[prop])) }
-})
-export const visitorStore = new Proxy({} as VisitorStore, {
-  get (_, prop) { return makeThenable(_load('visitorStore').then(m => (m as any)[prop])) }
-})
-export const sessionStore = new Proxy({} as SessionStore, {
-  get (_, prop) { return makeThenable(_load('sessionStore').then(m => (m as any)[prop])) }
-})
-export const reactionStore = new Proxy({} as ReactionStore, {
-  get (_, prop) { return makeThenable(_load('reactionStore').then(m => (m as any)[prop])) }
-})
+// Module-level store objects — populated by initStore(), used by all consumers
+export const commentStore = {} as CommentStore
+export const configStore = {} as ConfigStore
+export const visitorStore = {} as VisitorStore
+export const sessionStore = {} as SessionStore
+export const reactionStore = {} as ReactionStore
 
-export async function getStore () { return (await _load('getStore'))() as any }
-export async function importStore (data: any) { return (await _load('importStore'))(data) as any }
-export async function ensureDb () { return (await _load('ensureDb'))() as any }
+// Direct async functions for one-off use (import, export, ensureDb)
+export async function getStore () { return (await getImpl()).getStore() as any }
+export async function importStore (data: any) { return (await getImpl()).importStore(data) as any }
+export async function ensureDb () { return (await getImpl()).ensureDb() as any }
 
-// ponytail: in-memory rate limits, shared across all backends
+// ponytail: unified rate limiting — Redis when available, in-memory fallback
+// In-memory resets on serverless cold start; Redis survives. Same function for all callers.
 const rateLimitMap = new Map<string, { timestamps: number[] }>()
 
 // Periodic cleanup: remove stale entries every 5 minutes
@@ -125,7 +109,14 @@ setInterval(() => {
 }, CLEANUP_INTERVAL).unref()
 
 export const rateLimitStore = {
-  checkRateLimit (ip: string, maxRequests = 60) {
+  async checkRateLimit (ip: string, maxRequests = 60) {
+    // Try Redis first (survives serverless cold starts)
+    try {
+      const { redisRateLimit } = await import('./redis')
+      return await redisRateLimit(`global:${ip}`, maxRequests, 60_000)
+    } catch { /* fall through to memory */ }
+
+    // In-memory fallback
     const now = Date.now()
     const entry = rateLimitMap.get(ip) || { timestamps: [] }
     entry.timestamps = entry.timestamps.filter(t => now - t < 60000)

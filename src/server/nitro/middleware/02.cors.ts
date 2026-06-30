@@ -13,7 +13,7 @@ import { getConfig } from '#core/config'
 let cachedWarn = false
 
 export default defineMiddleware(async (event) => {
-  const cfg = await getConfig()
+  const cfg = await getConfig(event)
   const origins = (cfg.CORS_ORIGINS || '').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
   const origin = getRequestHeader(event, 'origin') || ''
 

@@ -97,14 +97,7 @@ export const ALLOWED_CONFIG_KEYS = [
   'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL', 'AI_PROVIDERS', 'AUTO_AUDIT_AI_PROMPT',
   'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL',
   'CORS_ORIGINS',
-  // Pushoo tokens
-  'PUSHOO_SC_KEY', 'PUSHOO_QMSG_KEY', 'PUSHOO_DINGTALK_TOKEN',
-  'PUSHOO_WECOMBOT_TOKEN', 'PUSHOO_WECOM_TOKEN', 'PUSHOO_FEISHU_TOKEN',
-  'PUSHOO_TELEGRAM_TOKEN', 'PUSHOO_BARK_TOKEN', 'PUSHOO_PUSHPLUS_TOKEN',
-  'PUSHOO_PUSHPLUSHXTRIP_TOKEN', 'PUSHOO_PUSHDEER_TOKEN', 'PUSHOO_WXPUSHER_TOKEN',
-  'PUSHOO_ONEBOT_TOKEN', 'PUSHOO_ATRI_TOKEN', 'PUSHOO_IGOT_TOKEN',
-  'PUSHOO_DISCORD_TOKEN', 'PUSHOO_IFTTT_TOKEN', 'PUSHOO_JOIN_TOKEN',
-  'PUSHOO_WEBHOOK_TOKEN',
+  'PUSHOO_CHANNELS',
 
 ] as const
 
@@ -131,6 +124,51 @@ export const CommentsCountSchema = z.object({
 
 export const RecentCommentsSchema = z.object({
   count: z.coerce.number().int().positive().default(10),
+})
+
+// ========== Reaction ==========
+
+export const ReactionGetSchema = z.object({
+  url: z.string().default('/'),
+})
+
+export const ReactionSubmitSchema = z.object({
+  url: z.string().default('/'),
+  emoji: z.string().min(1),
+})
+
+export const CommentReactionGetSchema = z.object({
+  id: z.string().min(1),
+})
+
+export const CommentReactionSubmitSchema = z.object({
+  id: z.string().min(1),
+  emoji: z.string().min(1),
+})
+
+// ========== Admin (partial — missing schemas) ==========
+
+export const TypeSetSchema = z.object({
+  type: z.string().min(1).default('self-hosted'),
+})
+
+export const PrivateKeyGetSchema = z.object({
+  key: z.string().min(1),
+})
+
+export const PrivateKeySetSchema = z.object({
+  key: z.string().min(1),
+  value: z.unknown(),
+})
+
+export const SendNotificationSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+})
+
+export const EmailTestSchema = z.object({
+  email: z.string().email().optional(),
+  template: z.enum(['user', 'admin']).optional(),
 })
 
 // ========== Import / Export ==========
@@ -184,3 +222,12 @@ export type CounterUpdateData = z.infer<typeof CounterUpdateSchema>
 export type ImportData = z.infer<typeof ImportSchema>
 export type ExportData = z.infer<typeof ExportSchema>
 export type UploadImageData = z.infer<typeof UploadImageSchema>
+export type ReactionGetData = z.infer<typeof ReactionGetSchema>
+export type ReactionSubmitData = z.infer<typeof ReactionSubmitSchema>
+export type CommentReactionGetData = z.infer<typeof CommentReactionGetSchema>
+export type CommentReactionSubmitData = z.infer<typeof CommentReactionSubmitSchema>
+export type TypeSetData = z.infer<typeof TypeSetSchema>
+export type PrivateKeyGetData = z.infer<typeof PrivateKeyGetSchema>
+export type PrivateKeySetData = z.infer<typeof PrivateKeySetSchema>
+export type SendNotificationData = z.infer<typeof SendNotificationSchema>
+export type EmailTestData = z.infer<typeof EmailTestSchema>

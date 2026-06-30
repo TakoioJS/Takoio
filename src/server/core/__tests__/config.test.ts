@@ -28,14 +28,12 @@ describe('maskSensitiveConfig', () => {
     expect(masked.SITE_NAME).toBe('Blog')
   })
 
-  it('masks all Pushoo tokens', () => {
+  it('masks PUSHOO_CHANNELS', () => {
     const cfg = {
-      PUSHOO_TELEGRAM_TOKEN: 'bot123456:abcdef',
-      PUSHOO_SC_KEY: 'SCT123456789',
+      PUSHOO_CHANNELS: '{"serverchan":"SCT123456789","telegram":"bot123456:abcdef"}',
     } as any
     const masked = maskSensitiveConfig(cfg)
-    expect(masked.PUSHOO_TELEGRAM_TOKEN).not.toBe('bot123456:abcdef')
-    expect(masked.PUSHOO_SC_KEY).not.toBe('SCT123456789')
+    expect(masked.PUSHOO_CHANNELS).not.toBe(cfg.PUSHOO_CHANNELS)
   })
 
   it('does not mask non-sensitive values', () => {
@@ -58,10 +56,8 @@ describe('SENSITIVE_CONFIG_KEYS', () => {
     expect(SENSITIVE_CONFIG_KEYS.has('SMTP_PASS')).toBe(true)
   })
 
-  it('includes all Pushoo tokens', () => {
-    expect(SENSITIVE_CONFIG_KEYS.has('PUSHOO_TELEGRAM_TOKEN')).toBe(true)
-    expect(SENSITIVE_CONFIG_KEYS.has('PUSHOO_DISCORD_TOKEN')).toBe(true)
-    expect(SENSITIVE_CONFIG_KEYS.has('PUSHOO_WEBHOOK_TOKEN')).toBe(true)
+  it('includes PUSHOO_CHANNELS', () => {
+    expect(SENSITIVE_CONFIG_KEYS.has('PUSHOO_CHANNELS')).toBe(true)
   })
 
   it('does not include non-sensitive keys', () => {

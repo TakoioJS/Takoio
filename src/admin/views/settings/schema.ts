@@ -171,18 +171,7 @@ export const sections: ConfigSection[] = [
   {
     key: 'push', label: '推送', icon: NotificationsOutline,
     fields: [
-      { key: 'PUSHOO_SC_KEY', label: 'Server酱', type: 'sensitive', placeholder: 'SCT...' },
-      { key: 'PUSHOO_QMSG_KEY', label: 'Qmsg酱', type: 'sensitive', placeholder: 'xxx' },
-      { key: 'PUSHOO_DINGTALK_TOKEN', label: '钉钉机器人', type: 'sensitive', placeholder: 'https://oapi.dingtalk.com/...' },
-      { key: 'PUSHOO_WECOMBOT_TOKEN', label: '企业微信群', type: 'sensitive', placeholder: 'https://qyapi.weixin.qq.com/...' },
-      { key: 'PUSHOO_WECOM_TOKEN', label: '企业微信应用', type: 'sensitive', placeholder: 'corpId:agentId:secret' },
-      { key: 'PUSHOO_FEISHU_TOKEN', label: '飞书机器人', type: 'sensitive', placeholder: 'https://open.feishu.cn/...' },
-      { key: 'PUSHOO_TELEGRAM_TOKEN', label: 'Telegram', type: 'sensitive', placeholder: '123456:ABC-DEF' },
-      { key: 'PUSHOO_BARK_TOKEN', label: 'Bark', type: 'sensitive', placeholder: 'https://api.day.app/xxx' },
-      { key: 'PUSHOO_PUSHPLUS_TOKEN', label: 'PushPlus', type: 'sensitive', placeholder: 'xxx' },
-      { key: 'PUSHOO_PUSHDEER_TOKEN', label: 'PushDeer', type: 'sensitive', placeholder: 'PDUxxx' },
-      { key: 'PUSHOO_DISCORD_TOKEN', label: 'Discord', type: 'sensitive', placeholder: 'https://discord.com/api/webhooks/...' },
-      { key: 'PUSHOO_WEBHOOK_TOKEN', label: 'Webhook', type: 'sensitive', placeholder: 'https://example.com/hook' },
+      { key: 'PUSHOO_CHANNELS', label: '推送通道', type: 'textarea', rows: 4, full: true, placeholder: '{"serverchan":"SCTxxx","telegram":"123456:ABC-DEF"}' },
     ]
   },
   {

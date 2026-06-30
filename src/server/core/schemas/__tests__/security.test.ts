@@ -69,9 +69,9 @@ describe('SetConfigSchema whitelist', () => {
     expect(result.success).toBe(false)
   })
 
-  it('should accept Pushoo token keys', () => {
+  it('should accept PUSHOO_CHANNELS key', () => {
     const result = safeValidate(SetConfigSchema, {
-      config: { PUSHOO_TELEGRAM_TOKEN: 'bot123:abc' },
+      config: { PUSHOO_CHANNELS: '{"telegram":"bot123:abc"}' },
     })
     expect(result.success).toBe(true)
   })

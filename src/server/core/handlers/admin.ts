@@ -2,8 +2,8 @@
  * Admin / Config / Auth handlers — login, logout, config CRUD, password, notifications, etc.
  */
 
-import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema } from '../schemas'
-import type { LoginData, PasswordSetData } from '../schemas'
+import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema } from '../schemas'
+import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
 import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
@@ -16,9 +16,12 @@ import { AppError } from '../config'
 
 // ========== Check Setup ==========
 
+// ponytail: SETUP_TOKEN env var gates first-time setup; without it, setup is open (backward compat)
+const SETUP_TOKEN = process.env.SETUP_TOKEN
+
 export const handleCheckSetup = async () => {
   const hash = await getAuthHash()
-  return { needSetup: !hash }
+  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN }
 }
 
 // ========== Login ==========
@@ -46,7 +49,7 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
 
   // Brute-force protection
   if (ip) {
-    const rateCheck = checkLoginRateLimit(ip)
+    const rateCheck = await checkLoginRateLimit(ip)
     if (!rateCheck.allowed) {
       return { success: false, message: '登录尝试过于频繁，请 15 分钟后再试' }
     }
@@ -54,12 +57,12 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
 
   const valid = await verifyPassword(hash, validation.data.password)
   if (!valid) {
-    if (ip) recordLoginFailure(ip)
+    if (ip) await recordLoginFailure(ip)
     return { success: false, message: '密码错误' }
   }
 
   // Login success — clear failure count and create session
-  if (ip) clearLoginFailures(ip)
+  if (ip) await clearLoginFailures(ip)
   return { success: true, token: await sessionStore.createToken() }
 }
 
@@ -101,7 +104,7 @@ export const handleConfigReset = async (_: any) => {
 
 // ========== Password Set ==========
 
-export const handlePasswordSet = async (data: PasswordSetData & { token?: string; _token?: string }) => {
+export const handlePasswordSet = async (data: PasswordSetData & { token?: string; _token?: string; setupToken?: string }) => {
   const validation = safeValidate(PasswordSetSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
 
@@ -113,8 +116,12 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
     if (!token || !await sessionStore.validateToken(token)) {
       throw new AppError('NEED_LOGIN', '需要管理员权限才能修改密码', 401)
     }
+  } else {
+    // First-time setup — require SETUP_TOKEN if configured
+    if (SETUP_TOKEN && data.setupToken !== SETUP_TOKEN) {
+      throw new AppError('INVALID_INPUT', 'Setup token 不匹配，无法初始化', 403)
+    }
   }
-  // If no existing hash → first-time setup, no auth required
 
   const newHash = await hashPassword(validation.data.password)
   await configStore.setConfig('AUTH_HASH', newHash)
@@ -129,10 +136,10 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
 
 // ========== Type Set ==========
 
-export const handleTypeSet = async (data: any) => {
-  const cfg = await getConfig()
-  cfg.TYPE = data.type || 'self-hosted'
-  await configStore.setConfig('TYPE', cfg.TYPE)
+export const handleTypeSet = async (data: TypeSetData) => {
+  const validation = safeValidate(TypeSetSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  await configStore.setConfig('TYPE', validation.data.type)
   return { success: true }
 }
 
@@ -151,9 +158,10 @@ export const handleIpRegionGet = async (data: any) => {
 
 // ========== Private Key Get ==========
 
-export const handlePrivateKeyGet = async (data: any) => {
-  const { key } = data
-  if (!key) return { data: null }
+export const handlePrivateKeyGet = async (data: PrivateKeyGetData) => {
+  const validation = safeValidate(PrivateKeyGetSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  const { key } = validation.data
   if (!ALLOWED_CONFIG_KEYS.includes(key as any)) return { data: null }
   const cfg = await getConfig()
   return { data: (cfg as Record<string, any>)[key] || null }
@@ -161,9 +169,10 @@ export const handlePrivateKeyGet = async (data: any) => {
 
 // ========== Private Key Set ==========
 
-export const handlePrivateKeySet = async (data: any) => {
-  const { key, value } = data
-  if (!key) throw new AppError('INVALID_INPUT', 'key is required', 400)
+export const handlePrivateKeySet = async (data: PrivateKeySetData) => {
+  const validation = safeValidate(PrivateKeySetSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+  const { key, value } = validation.data
   if (!ALLOWED_CONFIG_KEYS.includes(key as any)) throw new AppError('INVALID_INPUT', '不允许的配置键', 400)
   await configStore.setConfig(key, value)
   return { success: true }
@@ -171,9 +180,11 @@ export const handlePrivateKeySet = async (data: any) => {
 
 // ========== Send Notification ==========
 
-export const handleSendNotification = async (data: any) => {
+export const handleSendNotification = async (data: SendNotificationData) => {
+  const validation = safeValidate(SendNotificationSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const cfg = await getConfig()
-  const { title, content } = data
+  const { title, content } = validation.data
   await sendNotification(cfg, { title: title || 'Takoio 通知', content: content || '' })
   return { success: true }
 }
@@ -190,11 +201,13 @@ export const handleHiddenFieldsGet = async () => {
 const renderTemplate = (tpl: string, vars: Record<string, string>) =>
   tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => vars[k] || `{{ ${k} }}`)
 
-export const handleEmailTest = async (data: any) => {
+export const handleEmailTest = async (data: EmailTestData) => {
+  const validation = safeValidate(EmailTestSchema, data)
+  if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const cfg = await getConfig()
-  if (data.email) cfg.SMTP_TO = data.email
+  if (validation.data.email) cfg.SMTP_TO = validation.data.email
 
-  const isAdmin = data.template === 'admin'
+  const isAdmin = validation.data.template === 'admin'
   const subject = isAdmin
     ? (cfg.MAIL_SUBJECT_ADMIN || '新的评论：{nick} 在 {title}')
     : (cfg.MAIL_SUBJECT || '有人在 {title} 中回复了你')

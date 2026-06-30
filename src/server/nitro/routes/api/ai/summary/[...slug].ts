@@ -25,7 +25,8 @@ export default defineHandler(async (event) => {
   // ── POST /api/ai/summary (original: generate summary, no cache) ──
   // ── POST /api/ai/summary/test (alias: test generate, no cache) ──
   if ((segments.length === 0 || segments[0] === 'test') && method === 'POST') {
-    const body = await readBody(event).catch(() => ({}))
+    const body = await readBody(event).catch(() => null)
+    if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
     if (!body.content || typeof body.content !== 'string') {
       throw createError({ statusCode: 400, statusMessage: 'Missing required field: content' })
     }

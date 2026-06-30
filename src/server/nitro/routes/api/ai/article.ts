@@ -39,7 +39,8 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'AI 摘要功能未启用' })
   }
 
-  const body = await readBody(event).catch(() => ({}))
+  const body = await readBody(event).catch(() => null)
+  if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
 
   // H1: content length caps
   if (!body.content || typeof body.content !== 'string' || body.content.trim().length < 10) {

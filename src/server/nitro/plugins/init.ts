@@ -4,7 +4,7 @@
  * In node-server preset, starts hourly session cleanup.
  */
 
-import { ensureDb, sessionStore } from '#core/store/index'
+import { ensureDb, sessionStore, initStore } from '#core/store/index'
 import { initPassword } from '#core/auth'
 import { initIpSearcher } from '#core/ip-region'
 
@@ -30,8 +30,10 @@ export default definePlugin(async () => {
 
   // initIpSearcher (file I/O) is independent of DB — start in parallel
   const dbPromise = ensureDb()
+  const storePromise = initStore()
   initIpSearcher()
   await dbPromise
+  await storePromise
   await initPassword()
   initialized = true
 

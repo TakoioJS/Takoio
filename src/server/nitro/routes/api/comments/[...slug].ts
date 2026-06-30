@@ -20,6 +20,8 @@ import { getClientIp } from '#core/utils/ip'
 // validateQuery, validateBody, getToken — auto-imported from nitro/utils/ by Nitro
 import {
   RecentCommentsSchema, CounterGetSchema,
+  CounterUpdateSchema, CommentReactionGetSchema, CommentReactionSubmitSchema,
+  UpdateCommentSchema, CommentActionSchema, CommentIdSchema,
 } from '#core/schemas'
 
 export default defineHandler(async (event) => {
@@ -67,8 +69,8 @@ export default defineHandler(async (event) => {
 
   // POST /api/comments/counter
   if (segments[0] === 'counter' && method === 'POST') {
-    const body = await readBody(event).catch(() => ({}))
-    return handleCounterUpdate(body)
+    const data = await validateBody(event, CounterUpdateSchema)
+    return handleCounterUpdate(data)
   }
 
   // ── /:id routes ──────────────────────────────────────
@@ -86,9 +88,9 @@ export default defineHandler(async (event) => {
 
     // PUT /api/comments/:id
     if (segments.length === 1 && method === 'PUT') {
-      const body = await readBody(event)
       await requireAdmin({ token: getToken(event) })
-      return handleCommentUpdate({ id, ...body })
+      const data = await validateBody(event, UpdateCommentSchema)
+      return handleCommentUpdate({ id, ...data })
     }
 
     // DELETE /api/comments/:id
@@ -99,23 +101,23 @@ export default defineHandler(async (event) => {
 
     // PATCH /api/comments/:id/hide
     if (segments[1] === 'hide' && method === 'PATCH') {
-      const body = await readBody(event)
       await requireAdmin({ token: getToken(event) })
-      return handleCommentHide({ id, hide: body.hide })
+      const data = await validateBody(event, CommentActionSchema)
+      return handleCommentHide({ id, hide: data.hide })
     }
 
     // PATCH /api/comments/:id/top
     if (segments[1] === 'top' && method === 'PATCH') {
-      const body = await readBody(event)
       await requireAdmin({ token: getToken(event) })
-      return handleCommentSetTop({ id, isTop: body.isTop })
+      const body = await readBody(event).catch(() => null) as { isTop?: boolean } | null
+      return handleCommentSetTop({ id, isTop: body?.isTop })
     }
 
     // PATCH /api/comments/:id/spam
     if (segments[1] === 'spam' && method === 'PATCH') {
-      const body = await readBody(event).catch(() => ({}))
       await requireAdmin({ token: getToken(event) })
-      return handleCommentSetSpam({ id, isSpam: body.isSpam })
+      const body = await readBody(event).catch(() => null) as { isSpam?: boolean } | null
+      return handleCommentSetSpam({ id, isSpam: body?.isSpam })
     }
 
     // PATCH /api/comments/:id/approve
@@ -133,8 +135,8 @@ export default defineHandler(async (event) => {
     // POST /api/comments/:id/reactions
     if (segments[1] === 'reactions' && method === 'POST') {
       const ip = await getClientIp(event)
-      const body = await readBody(event).catch(() => ({}))
-      return handleCommentReactionSubmit({ id, emoji: body.emoji, _ip: ip })
+      const data = await validateBody(event, CommentReactionSubmitSchema)
+      return handleCommentReactionSubmit({ id: data.id || id, emoji: data.emoji, _ip: ip })
     }
   }
 

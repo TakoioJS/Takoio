@@ -121,25 +121,7 @@ export interface TakoioConfig {
   CUSTOM_CSS?: string
   CDN_PREFIX?: string
   COMMENT_BG_IMAGE?: string
-  PUSHOO_SC_KEY: string
-  PUSHOO_QMSG_KEY: string
-  PUSHOO_DINGTALK_TOKEN: string
-  PUSHOO_WECOMBOT_TOKEN: string
-  PUSHOO_WECOM_TOKEN: string
-  PUSHOO_FEISHU_TOKEN: string
-  PUSHOO_TELEGRAM_TOKEN: string
-  PUSHOO_BARK_TOKEN: string
-  PUSHOO_PUSHPLUS_TOKEN: string
-  PUSHOO_PUSHPLUSHXTRIP_TOKEN: string
-  PUSHOO_PUSHDEER_TOKEN: string
-  PUSHOO_WXPUSHER_TOKEN: string
-  PUSHOO_ONEBOT_TOKEN: string
-  PUSHOO_ATRI_TOKEN: string
-  PUSHOO_IGOT_TOKEN: string
-  PUSHOO_DISCORD_TOKEN: string
-  PUSHOO_IFTTT_TOKEN: string
-  PUSHOO_JOIN_TOKEN: string
-  PUSHOO_WEBHOOK_TOKEN: string
+  PUSHOO_CHANNELS: string
 }
 
 // ========== Default Config ==========
@@ -235,25 +217,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   <div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">{{ siteName }} · 管理通知</div>
 </div>`,
   CORS_ORIGINS: '',
-  PUSHOO_SC_KEY: '',
-  PUSHOO_QMSG_KEY: '',
-  PUSHOO_DINGTALK_TOKEN: '',
-  PUSHOO_WECOMBOT_TOKEN: '',
-  PUSHOO_WECOM_TOKEN: '',
-  PUSHOO_FEISHU_TOKEN: '',
-  PUSHOO_TELEGRAM_TOKEN: '',
-  PUSHOO_BARK_TOKEN: '',
-  PUSHOO_PUSHPLUS_TOKEN: '',
-  PUSHOO_PUSHPLUSHXTRIP_TOKEN: '',
-  PUSHOO_PUSHDEER_TOKEN: '',
-  PUSHOO_WXPUSHER_TOKEN: '',
-  PUSHOO_ONEBOT_TOKEN: '',
-  PUSHOO_ATRI_TOKEN: '',
-  PUSHOO_IGOT_TOKEN: '',
-  PUSHOO_DISCORD_TOKEN: '',
-  PUSHOO_IFTTT_TOKEN: '',
-  PUSHOO_JOIN_TOKEN: '',
-  PUSHOO_WEBHOOK_TOKEN: '',
+  PUSHOO_CHANNELS: '',
 }
 
 // ========== Config Retrieval + Cache ==========
@@ -262,11 +226,17 @@ let configCache: TakoioConfig | null = null
 let cacheTimestamp = 0
 const CACHE_TTL = 60_000 // 60 seconds
 
-export const getConfig = async (): Promise<TakoioConfig> => {
-  if (configCache && Date.now() - cacheTimestamp < CACHE_TTL) return configCache
+export const getConfig = async (event?: { context?: Record<string, any> }): Promise<TakoioConfig> => {
+  // Request-level cache: avoid repeated DB reads within a single request
+  if (event?.context?.__takoioConfig) return event.context.__takoioConfig as TakoioConfig
+  if (configCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    if (event?.context) event.context.__takoioConfig = configCache
+    return configCache
+  }
   const dbConfig = await configStore.getConfig()
   configCache = { ...DEFAULT_CONFIG, ...dbConfig } as TakoioConfig
   cacheTimestamp = Date.now()
+  if (event?.context) event.context.__takoioConfig = configCache
   return configCache!
 }
 
@@ -286,14 +256,7 @@ export const SENSITIVE_CONFIG_KEYS = new Set([
   'CAPTCHA_SITE_KEY',
 
   'NSFW_API_KEY',
-  // Pushoo notification tokens (18 channels)
-  'PUSHOO_SC_KEY', 'PUSHOO_QMSG_KEY', 'PUSHOO_DINGTALK_TOKEN',
-  'PUSHOO_WECOMBOT_TOKEN', 'PUSHOO_WECOM_TOKEN', 'PUSHOO_FEISHU_TOKEN',
-  'PUSHOO_TELEGRAM_TOKEN', 'PUSHOO_BARK_TOKEN', 'PUSHOO_PUSHPLUS_TOKEN',
-  'PUSHOO_PUSHPLUSHXTRIP_TOKEN', 'PUSHOO_PUSHDEER_TOKEN', 'PUSHOO_WXPUSHER_TOKEN',
-  'PUSHOO_ONEBOT_TOKEN', 'PUSHOO_ATRI_TOKEN', 'PUSHOO_IGOT_TOKEN',
-  'PUSHOO_DISCORD_TOKEN', 'PUSHOO_IFTTT_TOKEN', 'PUSHOO_JOIN_TOKEN',
-  'PUSHOO_WEBHOOK_TOKEN',
+  'PUSHOO_CHANNELS',
 ])
 
 /** 对敏感值做掩码处理：仅显示前 3 位和后 4 位，中间用 **** 替代 */

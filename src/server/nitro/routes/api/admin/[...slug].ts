@@ -19,7 +19,7 @@ import { requireAdmin } from '#core/auth'
 import { getClientIp } from '#core/utils/ip'
 import { isRedisAvailable, listSummaryCaches, clearAllSummaryCaches } from '#core/store/redis'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
-import { LoginSchema, PasswordSetSchema } from '#core/schemas'
+import { LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema } from '#core/schemas'
 
 export default defineHandler(async (event) => {
   const path = (event.context.params?.slug as string) || ''
@@ -60,8 +60,9 @@ export default defineHandler(async (event) => {
 
   // PUT /api/admin/config
   if (segments[0] === 'config' && method === 'PUT') {
-    const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
+    const body = await readBody(event).catch(() => null)
+    if (!body) throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
     return handleSetConfig({ ...body, _ip: await getClientIp(event) })
   }
 
@@ -96,9 +97,9 @@ export default defineHandler(async (event) => {
 
   // PUT /api/admin/type
   if (segments[0] === 'type' && method === 'PUT') {
-    const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
-    return handleTypeSet(body)
+    const data = await validateBody(event, TypeSetSchema)
+    return handleTypeSet(data)
   }
 
   // GET /api/admin/private-key
@@ -111,23 +112,23 @@ export default defineHandler(async (event) => {
 
   // PUT /api/admin/private-key
   if (segments[0] === 'private-key' && method === 'PUT') {
-    const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
-    return handlePrivateKeySet(body)
+    const data = await validateBody(event, PrivateKeySetSchema)
+    return handlePrivateKeySet(data)
   }
 
   // POST /api/admin/notification
   if (segments[0] === 'notification' && method === 'POST') {
-    const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
-    return handleSendNotification(body)
+    const data = await validateBody(event, SendNotificationSchema)
+    return handleSendNotification(data)
   }
 
   // POST /api/admin/email-test
   if (segments[0] === 'email-test' && method === 'POST') {
-    const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
-    return handleEmailTest(body)
+    const data = await validateBody(event, EmailTestSchema)
+    return handleEmailTest(data)
   }
 
   // POST /api/admin/refresh — special: inline token check, not requireAdmin
@@ -149,8 +150,8 @@ export default defineHandler(async (event) => {
   // POST /api/admin/import/:source — handleImport(source, data) positional args
   if (segments[0] === 'import' && method === 'POST' && segments.length === 2) {
     const source = segments[1]
-    const body = await readBody(event).catch(() => ({}))
     await requireAdmin({ token: getToken(event) })
+    const body = await validateBody(event, ImportSchema)
     return handleImport(source, body)
   }
 

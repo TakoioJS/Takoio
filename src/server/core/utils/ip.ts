@@ -30,7 +30,7 @@ const isTrustedProxy = (ip: string, trusted: string[]): boolean =>
   trusted.length === 0 ? false : trusted.includes(ip)
 
 export const getClientIp = async (event: H3Event): Promise<string> => {
-  const config = await getConfig()
+  const config = await getConfig(event)
 
   // Determine the direct connection IP (the actual remote address)
   // H3's getRequestIP: in Node.js reads from socket, in serverless reads from headers

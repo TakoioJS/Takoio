@@ -45,6 +45,11 @@
               class="tk-tag tk-tag-info"
             >{{ t('pendingReview') }}</span>
           </span>
+          <span class="tk-time-sep">·</span>
+          <span
+            class="tk-time"
+            :title="comment.created ? formatDate(comment.created) : undefined"
+          >{{ comment.relativeTime || timeago(comment.created) }}</span>
         </div>
 
         <div class="tk-comment-actions">
@@ -84,12 +89,16 @@
           >@{{ comment.replyToNick }} </span>
           <span v-html="renderedContent" />
         </div>
-        <div class="tk-comment-content-footer">
-          <span
-            class="tk-time"
-            :title="comment.created ? formatDate(comment.created) : undefined"
-          >{{ comment.relativeTime || timeago(comment.created) }}</span>
-        </div>
+      </div>
+
+      <div
+        v-if="options.enableCommentReaction"
+        class="tk-comment-reactions"
+      >
+        <CommentReactionBar
+          :comment-id="comment.id"
+          :env-id="options.envId"
+        />
       </div>
 
       <div
@@ -101,16 +110,6 @@
           :alt="t('image')"
           @error="onImageError($event)"
         >
-      </div>
-
-      <div
-        v-if="options.enableCommentReaction"
-        class="tk-comment-reactions"
-      >
-        <CommentReactionBar
-          :comment-id="comment.id"
-          :env-id="options.envId"
-        />
       </div>
 
       <div
@@ -287,7 +286,7 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-btn-icon.tk-liked { color: var(--tk-brand); opacity: 1; font-weight: 600; }
 .tk-btn-icon.tk-disliked { color: var(--tk-danger); opacity: 1; }
 .tk-comment-content { word-break: break-word; line-height: 1.75; font-size: var(--tk-fs-base); color: inherit; }
-.tk-comment-content-footer { display: flex; justify-content: flex-end; margin-top: 4px; }
+.tk-time-sep { margin: 0 4px; opacity: .35; }
 .tk-reply-at { color: var(--tk-brand); font-weight: 500; margin-right: 4px; }
 .tk-pending-notice { padding: 8px 12px; background: var(--tk-bg-muted); border-radius: var(--tk-r-input); font-size: 13px; color: var(--tk-warning); }
 .tk-comment-content :deep(p) { margin: 4px 0; }

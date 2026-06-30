@@ -7,14 +7,16 @@
 
 import { handleUploadImage } from '#core/handlers/image'
 import { getClientIp } from '#core/utils/ip'
+import { UploadImageSchema } from '#core/schemas'
+// validateBody — auto-imported from nitro/utils/ by Nitro
 
 export default defineHandler(async (event) => {
   if (event.method !== 'POST') {
     throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
   }
-  const body = await readBody(event).catch(() => ({}))
+  const data = await validateBody(event, UploadImageSchema)
   return handleUploadImage({
-    image: body.image,
+    image: data.image,
     _ip: await getClientIp(event),
   })
 })
