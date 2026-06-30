@@ -2,7 +2,7 @@
   <div class="tk-footer">
     <span class="tk-footer-text">
       Powered by <a
-        href="https://github.com/takoio/takoio"
+        href="https://github.com/takoioJS/takoio"
         target="_blank"
       >Takoio</a> v{{ version }}
     </span>
