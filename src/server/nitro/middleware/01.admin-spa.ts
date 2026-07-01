@@ -34,7 +34,14 @@ export default defineMiddleware((event) => {
   // SPA fallback: return index.html for vue-router history mode
   if (adminDistDir) {
     setResponseHeader(event, 'Content-Type', 'text/html')
-    return readFileSync(join(adminDistDir, 'index.html'), 'utf-8')
+    let html = readFileSync(join(adminDistDir, 'index.html'), 'utf-8')
+    // 注入 CSP nonce 到所有 <script> 标签（00.security-headers 已生成 nonce 存到 context）
+    // 这样 CSP script-src 'nonce-xxx' 才能放行内联/外部 script
+    const nonce = (event.context as { __cspNonce?: string }).__cspNonce
+    if (nonce) {
+      html = html.replace(/<script(\s)/g, `<script nonce="${nonce}"$1`)
+    }
+    return html
   }
   // adminDistDir not found (not built yet) — fall through to 404
 })

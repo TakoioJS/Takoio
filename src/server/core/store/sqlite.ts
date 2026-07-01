@@ -74,8 +74,12 @@ export const commentStore: CommentStore = {
     // 批量插入：分批避免 SQLite 参数上限，每批多行 INSERT 比 N 次单行快一个数量级
     const BATCH = 50
     const rows = data.map(d => ({
-      ...d, like: d.like ?? 0, dislike: d.dislike ?? 0,
-      isSpam: d.isSpam ? 1 : 0, isTop: d.isTop ? 1 : 0, isPinned: d.isPinned ? 1 : 0,
+      ...d,
+      like: d.like ?? 0,
+      dislike: d.dislike ?? 0,
+      isSpam: d.isSpam ? 1 : 0,
+      isTop: d.isTop ? 1 : 0,
+      isPinned: d.isPinned ? 1 : 0,
     }))
     for (let i = 0; i < rows.length; i += BATCH) {
       await db().insert(comments).values(rows.slice(i, i + BATCH)).run()
@@ -368,33 +372,44 @@ export const visitorStore: VisitorStore = {
 
 export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
-    const { randomUUID } = await import('node:crypto')
+    const { randomUUID, createHash } = await import('node:crypto')
     const token = randomUUID()
-    await db().insert(sessions).values({ token, createdAt: Date.now() }).run()
+    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    await db().insert(sessions).values({ token: tokenHash, createdAt: Date.now() }).run()
     return token
   },
 
   async validateToken (token: string): Promise<boolean> {
-    const row = await db().select().from(sessions).where(eq(sessions.token, token)).get()
+    if (!token) return false
+    const { createHash } = await import('node:crypto')
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const row = await db().select().from(sessions).where(eq(sessions.token, tokenHash)).get()
     if (!row) return false
     // ponytail: 24h TTL, matches cleanupSessions window
     return Date.now() - row.createdAt < 24 * 60 * 60 * 1000
   },
 
   async removeToken (token: string): Promise<void> {
-    await db().delete(sessions).where(eq(sessions.token, token)).run()
+    if (!token) return
+    const { createHash } = await import('node:crypto')
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    await db().delete(sessions).where(eq(sessions.token, tokenHash)).run()
   },
 
   async rotateToken (oldToken: string): Promise<string | null> {
+    if (!oldToken) return null
+    const { randomUUID, createHash } = await import('node:crypto')
+    const oldHash = createHash('sha256').update(oldToken).digest('hex')
     // Validate old token exists and is not expired
-    const row = await db().select().from(sessions).where(eq(sessions.token, oldToken)).get()
+    const row = await db().select().from(sessions).where(eq(sessions.token, oldHash)).get()
     if (!row || Date.now() - row.createdAt > 24 * 60 * 60 * 1000) return null
     // Create new token and remove old one in a transaction
-    const { randomUUID } = await import('node:crypto')
     const newToken = randomUUID()
+    const newHash = createHash('sha256').update(newToken).digest('hex')
     await db().transaction(async (tx) => {
-      await tx.delete(sessions).where(eq(sessions.token, oldToken)).run()
-      await tx.insert(sessions).values({ token: newToken, createdAt: Date.now() }).run()
+      await tx.delete(sessions).where(eq(sessions.token, oldHash)).run()
+      await tx.insert(sessions).values({ token: newHash, createdAt: Date.now() }).run()
     })
     return newToken
   },

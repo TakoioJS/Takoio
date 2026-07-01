@@ -31,8 +31,8 @@ import type {
   CommentReactionSubmitData,
 } from '../schemas'
 import { commentStore, visitorStore, reactionStore } from '../store/index'
-import type { Comment, CommentListItem, CommentInput, RawComment } from '../store/index'
-import { getConfig, maskSensitiveConfig } from '../config'
+import type { Comment, CommentInput, RawComment } from '../store/index'
+import { getConfig, publicConfigSubset } from '../config'
 import { verifyCaptcha } from '../auth'
 import { moderateComment, getAuditAction } from '../moderate'
 import { sendNotification } from '../notify'
@@ -83,7 +83,7 @@ export const handleCommentGet = async (data: GetCommentData) => {
   const rawCfg = await getConfig()
   markMasterComments(result.data, rawCfg)
 
-  const cfg = maskSensitiveConfig(rawCfg)
+  const cfg = publicConfigSubset(rawCfg)
   return { ...result, config: cfg }
 }
 

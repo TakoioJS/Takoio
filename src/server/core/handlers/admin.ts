@@ -6,8 +6,8 @@ import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, Type
 import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
-import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
-import { verifyPassword } from '../utils/crypto'
+import { hashPassword, getAuthHash, updateAuthHashCache, invalidateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
+import { verifyPassword, needsRehash } from '../utils/crypto'
 import { lookupIpRegion } from '../ip-region'
 import { commentStore } from '../store/index'
 import { logger } from '../utils/logger'
@@ -65,6 +65,19 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
 
   // Login success — clear failure count and create session
   if (ip) await clearLoginFailures(ip)
+
+  // 重哈希：旧哈希 N 低于当前推荐值时，用新参数重新哈希并写回（透明升级）
+  if (needsRehash(hash)) {
+    try {
+      const newHash = await hashPassword(validation.data.password)
+      await configStore.setConfig('AUTH_HASH', newHash)
+      updateAuthHashCache(newHash)
+      logger.info('Admin password rehashed with stronger scrypt parameters')
+    } catch (e: any) {
+      logger.warn({ error: e.message }, 'Failed to rehash password')
+    }
+  }
+
   return { success: true, token: await sessionStore.createToken() }
 }
 
@@ -94,7 +107,14 @@ export const handleSetConfig = async (data: any) => {
     const defaultValue = DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG]
     if (typeof defaultValue === 'boolean' && typeof value !== 'boolean') continue
     if (typeof defaultValue === 'number' && typeof value !== 'number') continue
-    if (typeof defaultValue === 'string' && typeof value !== 'string') continue
+    if (typeof defaultValue === 'string' && typeof value !== 'string') {
+      // AI_PROVIDERS arrives as an array from the frontend — serialize to JSON string
+      if (key === 'AI_PROVIDERS' && Array.isArray(value)) {
+        filtered[key] = JSON.stringify(value)
+        continue
+      }
+      continue
+    }
     filtered[key] = value
   }
   await configStore.setManyConfig(filtered)
@@ -107,6 +127,12 @@ export const handleSetConfig = async (data: any) => {
 export const handleConfigReset = async (_: any) => {
   await configStore.resetConfig()
   await configStore.setManyConfig(DEFAULT_CONFIG as unknown as Record<string, unknown>)
+  // 关键：重置配置后清除所有 session token + 失效密码哈希缓存，
+  // 防止旧 admin token 在 AUTH_HASH 被清后仍能通过 requireAdmin 校验（权限维持漏洞）
+  await sessionStore.removeAllTokens()
+  invalidateAuthHashCache()
+  invalidateConfig()
+  logger.info('Config reset — all sessions invalidated, AUTH_HASH cache cleared')
   return { success: true }
 }
 

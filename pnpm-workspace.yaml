@@ -25,3 +25,7 @@ onlyBuiltDependencies:
 
 overrides:
   '@stylistic/eslint-plugin': '^4.4.1'
+  # 修复 pushoo@0.1.12 拉入的 axios@0.x 的 21 个漏洞（SSRF/ReDoS/CVE-2025-X 等）
+  # pushoo 上次发布于 2022 年疑似停维，强制升级 axios 到 1.x 最新稳定版
+  # pushoo 仅用 axios 发 POST 请求，1.x 向后兼容基本 API
+  axios: '1.18.1'

@@ -256,7 +256,6 @@ export const SENSITIVE_CONFIG_KEYS = new Set([
   'IMAGE_HOSTING_ACCESS_KEY',
   'IMAGE_HOSTING_SECRET_KEY',
   'CAPTCHA_SECRET_KEY',
-  'CAPTCHA_SITE_KEY',
 
   'NSFW_API_KEY',
   'PUSHOO_CHANNELS',
@@ -272,13 +271,67 @@ export const maskSensitiveValue = (value: string): string => {
 // AI_PROVIDERS is a JSON string containing cleartext LLM API keys — masking the whole blob is insufficient.
 // REDIS_URL may contain a password (redis://:secret@host). AKISMET_KEY is a secret token.
 // MASTER is the site owner's email — only needed server-side for markMasterComments hash; never expose to visitors.
+// SMTP_USER/SMTP_FROM/SMTP_TO/SENDER_EMAIL are emails (PII) and not needed client-side.
+// IMAGE_HOSTING_*/NSFW_ENDPOINT are internal endpoints not needed client-side.
+// CAPTCHA_SITE_KEY was wrongly masked — it's public by design (embedded in frontend HTML).
 // These are dropped entirely from the public response; admin panel reads them via the admin-gated endpoints.
 export const PUBLIC_EXCLUDED_KEYS = new Set([
   'AI_PROVIDERS',
   'AKISMET_KEY',
   'AUTO_AUDIT_AI_PROMPT',
   'MASTER',
+  // SMTP-related (emails + credentials, not needed by visitors)
+  'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'SMTP_TO', 'SMTP_TLS',
+  // Sender email (PII)
+  'SENDER_EMAIL',
+  // Image hosting internals (admin-configured endpoints, not for visitors)
+  'IMAGE_HOSTING_ENDPOINT', 'IMAGE_HOSTING_TOKEN', 'IMAGE_HOSTING_BUCKET', 'IMAGE_HOSTING_REGION',
+  'IMAGE_HOSTING_ACCESS_KEY', 'IMAGE_HOSTING_SECRET_KEY', 'IMAGE_HOSTING_CDN_DOMAIN',
+  // NSFW service internals
+  'NSFW_ENDPOINT', 'NSFW_API_KEY', 'NSFW_THRESHOLD', 'NSFW_SERVICE',
+  // Push channels (contain tokens)
+  'PUSHOO_CHANNELS',
+  // CORS / proxy internals
+  'CORS_ORIGINS', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES',
+  // AI audit internals
+  'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL',
+  'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL',
+  // Blocked keywords (server-side moderation only)
+  'BLOCKED_KEYWORDS',
 ])
+
+/**
+ * 公开评论接口专用配置子集：仅返回前端展示必需的非敏感键。
+ * maskSensitiveConfig 即便掩码也会泄露前 3+后 4 位密钥片段，
+ * 公开接口不应返回任何敏感字段（即便是掩码形式）。
+ *
+ * 此函数为白名单模式，仅返回明确允许的公开键，其余一律不下发。
+ */
+export function publicConfigSubset (cfg: TakoioConfig): Partial<TakoioConfig> {
+  const PUBLIC_ALLOWED_KEYS: ReadonlySet<string> = new Set([
+    // 基础展示
+    'SITE_NAME', 'SITE_URL', 'MASTER_NAME', 'GLOBAL_COLOR', 'PAGE_SIZE', 'COMMENT_SORT', 'COMMENT_LENGTH_MAX',
+    'GRAVATAR_URL', 'GRAVATAR_URL_CUSTOM', 'GRAVATAR_DEFAULT', 'MASTER_LABEL', 'MASTER_LABEL_COLOR', 'COMMENT_BG_IMAGE',
+    // 行为开关
+    'REQUIRED_FIELDS', 'COMMENT_NICK_REQUIRED', 'COMMENT_PAGINATION_MODE', 'COMMENT_RATE_LIMIT',
+    'ENABLE_VISITOR_COUNTER', 'ENABLE_LIKE', 'ENABLE_DISLIKE', 'ENABLE_ARTICLE_REACTION', 'ENABLE_EMOTION',
+    'ENABLE_LINK_INPUT', 'COMMENT_LINK_REQUIRED', 'COMMENT_FEATURES',
+    'ENABLE_CODE_HIGHLIGHT', 'CODE_HIGHLIGHT_THEME', 'CODE_SHOW_LANGUAGE', 'CODE_SHOW_COPY',
+    'ENABLE_CAPTCHA', 'CAPTCHA_PROVIDER', 'CAPTCHA_TYPE', 'CAPTCHA_SITE_KEY',
+    'ENABLE_IMAGE_UPLOAD', 'IMAGE_HOSTING_PROVIDER',
+    'ENABLE_NSFW_DETECTION',
+    'ENABLE_MAIL_NOTIFICATION', 'MAIL_NOTIFY_ENABLED',
+    'SENDER_NAME', 'MAIL_SUBJECT', 'MAIL_SUBJECT_ADMIN',
+    'ENABLE_ANTI_SPAM', 'ENABLE_SUMMARY', 'AI_SUMMARY_ENABLED',
+    'AUDIT_MODE', 'IP_REGION_ENABLED', 'SHOW_IP_REGION',
+    'CUSTOM_CSS', 'CDN_PREFIX',
+  ])
+  const out: Record<string, any> = {}
+  for (const key of PUBLIC_ALLOWED_KEYS) {
+    if (key in cfg) out[key] = cfg[key as keyof TakoioConfig]
+  }
+  return out as Partial<TakoioConfig>
+}
 
 export const maskSensitiveConfig = (cfg: TakoioConfig): TakoioConfig => {
   const ALLOWED = new Set<string>(ALLOWED_CONFIG_KEYS)

@@ -84,7 +84,6 @@ export const renderLinks = (el: Element | Element[] | null): void => {
   }
 }
 
-
 /** 获取 URL（兼容魔法路径） */
 export const getUrl = (path?: string): string => {
   let url: string

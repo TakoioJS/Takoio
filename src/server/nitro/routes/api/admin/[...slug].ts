@@ -50,6 +50,7 @@ export default defineHandler(async (event) => {
     const data = await validateBody(event, PasswordSetSchema)
     return handlePasswordSet({
       password: data.password,
+      setupToken: data.setupToken,
       token: getToken(event),
     })
   }

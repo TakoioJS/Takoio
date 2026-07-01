@@ -1,5 +1,5 @@
 import { MongoClient, type Db, type Collection } from 'mongodb'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
 import type {
   Comment,
   CommentInput,
@@ -429,20 +429,26 @@ export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
     const db = await getDb()
     const token = randomUUID()
-    await col(db, 'sessions').insertOne({ _id: token, createdAt: new Date() })
+    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    await col(db, 'sessions').insertOne({ _id: tokenHash, createdAt: new Date() })
     return token
   },
 
   async validateToken (token: string): Promise<boolean> {
+    if (!token) return false
     const db = await getDb()
-    const row = await col(db, 'sessions').findOne({ _id: token })
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const row = await col(db, 'sessions').findOne({ _id: tokenHash })
     if (!row) return false
     return Date.now() - toMs(row.createdAt) < SESSION_TTL_MS
   },
 
   async removeToken (token: string): Promise<void> {
+    if (!token) return
     const db = await getDb()
-    await col(db, 'sessions').deleteOne({ _id: token })
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    await col(db, 'sessions').deleteOne({ _id: tokenHash })
   },
 
   async cleanupSessions (): Promise<void> {
@@ -463,13 +469,15 @@ export const sessionStore: SessionStore = {
   },
 
   async rotateToken (oldToken: string): Promise<string | null> {
+    if (!oldToken) return null
     const db = await getDb()
-    const row = await col(db, 'sessions').findOne({ _id: oldToken })
+    const oldHash = createHash('sha256').update(oldToken).digest('hex')
+    const row = await col(db, 'sessions').findOne({ _id: oldHash })
     if (!row || Date.now() - toMs(row.createdAt) > SESSION_TTL_MS) return null
-    const { randomUUID } = await import('node:crypto')
     const newToken = randomUUID()
-    await col(db, 'sessions').insertOne({ _id: newToken, createdAt: new Date() })
-    await col(db, 'sessions').deleteOne({ _id: oldToken })
+    const newHash = createHash('sha256').update(newToken).digest('hex')
+    await col(db, 'sessions').insertOne({ _id: newHash, createdAt: new Date() })
+    await col(db, 'sessions').deleteOne({ _id: oldHash })
     return newToken
   },
 }

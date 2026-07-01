@@ -51,6 +51,7 @@ export const PasswordSetSchema = z.object({
     .max(128)
     .refine(v => !/^\d+$/.test(v), '密码不能全为数字')
     .refine(v => !/^[a-zA-Z]+$/.test(v), '密码不能全为字母'),
+  setupToken: z.string().optional(),
 })
 
 export const AdminCommentSchema = z.object({

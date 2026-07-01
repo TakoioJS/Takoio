@@ -352,8 +352,8 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   </form>
 
   <div
-    ref="previewRef"
     v-show="showPreview"
+    ref="previewRef"
     class="tk-preview"
     v-html="previewHtml"
   />

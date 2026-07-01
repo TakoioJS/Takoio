@@ -353,33 +353,44 @@ export const visitorStore: VisitorStore = {
 
 export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
-    const { randomUUID } = await import('node:crypto')
+    const { randomUUID, createHash } = await import('node:crypto')
     const token = randomUUID()
-    await db().insert(sessions).values({ token, createdAt: Date.now() })
+    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    await db().insert(sessions).values({ token: tokenHash, createdAt: Date.now() })
     return token
   },
 
   async validateToken (token: string): Promise<boolean> {
-    const rows = await db().select().from(sessions).where(eq(sessions.token, token)).limit(1)
+    if (!token) return false
+    const { createHash } = await import('node:crypto')
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const rows = await db().select().from(sessions).where(eq(sessions.token, tokenHash)).limit(1)
     if (!rows[0]) return false
     // ponytail: 24h TTL, matches cleanupSessions window
     return Date.now() - rows[0].createdAt < 24 * 60 * 60 * 1000
   },
 
   async removeToken (token: string): Promise<void> {
-    await db().delete(sessions).where(eq(sessions.token, token))
+    if (!token) return
+    const { createHash } = await import('node:crypto')
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    await db().delete(sessions).where(eq(sessions.token, tokenHash))
   },
 
   async rotateToken (oldToken: string): Promise<string | null> {
+    if (!oldToken) return null
+    const { randomUUID, createHash } = await import('node:crypto')
+    const oldHash = createHash('sha256').update(oldToken).digest('hex')
     // Validate old token exists and is not expired
-    const rows = await db().select().from(sessions).where(eq(sessions.token, oldToken)).limit(1)
+    const rows = await db().select().from(sessions).where(eq(sessions.token, oldHash)).limit(1)
     if (!rows[0] || Date.now() - rows[0].createdAt > 24 * 60 * 60 * 1000) return null
     // Create new token and remove old one in a transaction
-    const { randomUUID } = await import('node:crypto')
     const newToken = randomUUID()
+    const newHash = createHash('sha256').update(newToken).digest('hex')
     await db().transaction(async (tx) => {
-      await tx.delete(sessions).where(eq(sessions.token, oldToken))
-      await tx.insert(sessions).values({ token: newToken, createdAt: Date.now() })
+      await tx.delete(sessions).where(eq(sessions.token, oldHash))
+      await tx.insert(sessions).values({ token: newHash, createdAt: Date.now() })
     })
     return newToken
   },

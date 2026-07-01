@@ -172,11 +172,13 @@ export const clearLoginFailures = async (ip: string) => {
 // ========== CAPTCHA Verification ==========
 
 export const verifyCaptcha = async (token: string, cfg: TakoioConfig): Promise<void> => {
-  if (!cfg.ENABLE_CAPTCHA || !cfg.CAPTCHA_PROVIDER) return
+  if (!cfg.ENABLE_CAPTCHA) return
+  // 配置错误必须显式失败，不能静默放行（防止 ENABLE_CAPTCHA=true 但 PROVIDER 为空时绕过）
+  if (!cfg.CAPTCHA_PROVIDER) throw new AppError('INVALID_CAPTCHA', 'CAPTCHA_PROVIDER 未配置', 500)
 
   const provider = cfg.CAPTCHA_PROVIDER
   const secret = cfg.CAPTCHA_SECRET_KEY
-  if (!secret) throw new Error('CAPTCHA 密钥未配置 (CAPTCHA_SECRET_KEY)')
+  if (!secret) throw new AppError('INVALID_CAPTCHA', 'CAPTCHA 密钥未配置 (CAPTCHA_SECRET_KEY)', 500)
 
   try {
     if (provider === 'turnstile') {
@@ -212,10 +214,14 @@ export const verifyCaptcha = async (token: string, cfg: TakoioConfig): Promise<v
       })
       const json: any = await res.json()
       if (json.status !== 'success') throw new Error('极验验证失败: ' + (json.msg || ''))
+    } else {
+      // 未知 provider 必须显式失败，不能静默放行
+      throw new AppError('INVALID_CAPTCHA', `不支持的 CAPTCHA_PROVIDER: ${provider}`, 500)
     }
   } catch (e: any) {
     logger.warn({ error: e.message }, 'CAPTCHA verification failed')
-    throw new Error('人机验证失败，请重试')
+    if (e instanceof AppError) throw e
+    throw new AppError('INVALID_CAPTCHA', '人机验证失败，请重试', 400)
   }
 }
 
@@ -232,8 +238,15 @@ export const adminEvents = new Set([
 ])
 
 export const requireAdmin = async (data: any): Promise<void> => {
-  const token = data.token
+  // 兼容 _token（评论提交 schema 字段名）与 token（标准字段名）
+  const token = data?.token ?? data?._token
   if (!token || !await sessionStore.validateToken(token)) {
     throw new AppError('NEED_LOGIN', '需要管理员权限，请先登录', 401)
+  }
+  // 纵深防御：AUTH_HASH 不存在（如 configReset 后）时拒绝所有 admin 操作，
+  // 防止残留 session token 绕过（配合 handleConfigReset 的 removeAllTokens 双保险）
+  const existingHash = await getAuthHash()
+  if (!existingHash) {
+    throw new AppError('NEED_LOGIN', '管理员密码未初始化，请先完成首次设置', 401)
   }
 }
