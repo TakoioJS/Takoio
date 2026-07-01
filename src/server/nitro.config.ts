@@ -43,6 +43,7 @@ export default defineNitroConfig({
         from: 'nitro',
         imports: [
           'defineHandler',
+          'defineEventHandler',
           'defineMiddleware',
           'definePlugin',
           'defineErrorHandler',

@@ -1,44 +1,5 @@
 <template>
   <div class="summary-page">
-    <!-- Redis 状态 -->
-    <div class="section-card">
-      <div class="section-header">
-        <n-icon
-          size="18"
-          class="section-icon"
-        >
-          <ServerOutline />
-        </n-icon>
-        <span class="section-title">Redis 状态</span>
-      </div>
-      <div class="section-body">
-        <div class="redis-status-row">
-          <n-tag
-            v-if="isDev"
-            type="warning"
-            size="small"
-            round
-          >
-            热开发
-          </n-tag>
-          <n-tag
-            v-else
-            :type="redisAvailable ? 'success' : 'error'"
-            size="small"
-            round
-          >
-            {{ redisAvailable ? '已连接' : '未连接' }}
-          </n-tag>
-          <span
-            v-if="!isDev && !redisAvailable"
-            class="redis-hint"
-          >
-            请设置环境变量 REDIS_URL（摘要功能需要 Redis）
-          </span>
-        </div>
-      </div>
-    </div>
-
     <!-- 摘要测试 -->
     <div class="section-card">
       <div class="section-header">
@@ -273,7 +234,7 @@ import {
   useMessage, useDialog,
 } from 'naive-ui'
 import {
-  ServerOutline, DocumentTextOutline, ListOutline,
+  DocumentTextOutline, ListOutline,
   FlashOutline, TrashOutline, CreateOutline,
 } from '@vicons/ionicons5'
 import { api } from '../../api/client'
@@ -281,8 +242,6 @@ import { api } from '../../api/client'
 const message = useMessage()
 const dialog = useDialog()
 
-const redisAvailable = ref(false)
-const isDev = ref(false)
 const testing = ref(false)
 const loadingList = ref(false)
 const testResult = ref<any>(null)
@@ -349,9 +308,7 @@ const onSaveEdit = async () => {
 const loadSummaries = async () => {
   loadingList.value = true
   try {
-    const r = await api.get<{ success: boolean; summaries: SummaryItem[]; redisAvailable: boolean; dev: boolean }>('/api/ai/summary/list')
-    isDev.value = !!r.dev
-    redisAvailable.value = r.redisAvailable
+    const r = await api.get<{ success: boolean; summaries: SummaryItem[] }>('/api/ai/summary/list')
     summaries.value = r.summaries || []
   } catch (e: any) {
     message.error('加载列表失败: ' + (e.message || ''))
@@ -451,9 +408,6 @@ onMounted(() => {
   color: var(--ink);
   margin-bottom: 6px;
 }
-
-.redis-status-row { display: flex; align-items: center; gap: 10px; }
-.redis-hint { font-size: 12px; color: var(--ink-3); }
 
 .empty-hint {
   text-align: center;
