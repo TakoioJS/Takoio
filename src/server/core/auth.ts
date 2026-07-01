@@ -78,11 +78,12 @@ async function getRedisLoginAttempt (ip: string): Promise<LoginAttempt | null> {
   const mem = loginAttempts.get(ip)
   if (mem) return mem
   try {
-    const { getRedisClient } = await import('./store/redis')
-    const client = await getRedisClient()
-    if (!client) return null
-    const raw = await client.get(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`)
-    if (raw) return JSON.parse(raw) as LoginAttempt
+    const { withRedis } = await import('./store/redis')
+    const hit = await withRedis(async (c) => {
+      const raw = await c.get(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`)
+      return raw ? JSON.parse(raw) as LoginAttempt : null
+    })
+    if (hit) return hit
   } catch { /* fall through */ }
   return null
 }
@@ -90,43 +91,43 @@ async function getRedisLoginAttempt (ip: string): Promise<LoginAttempt | null> {
 async function setRedisLoginAttempt (ip: string, attempt: LoginAttempt): Promise<void> {
   loginAttempts.set(ip, attempt)
   try {
-    const { getRedisClient } = await import('./store/redis')
-    const client = await getRedisClient()
-    if (client) await client.set(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`, JSON.stringify(attempt), 'PX', LOGIN_LOCKOUT_MS)
+    const { withRedis } = await import('./store/redis')
+    await withRedis(async (c) => {
+      await c.set(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`, JSON.stringify(attempt), 'PX', LOGIN_LOCKOUT_MS)
+      return true
+    })
   } catch { /* best effort */ }
 }
 
 async function delRedisLoginAttempt (ip: string): Promise<void> {
   try {
-    const { getRedisClient } = await import('./store/redis')
-    const client = await getRedisClient()
-    if (client) await client.del(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`)
+    const { withRedis } = await import('./store/redis')
+    await withRedis(async (c) => { await c.del(`${REDIS_LOGIN_ATTEMPTS_PREFIX}${ip}`); return true })
   } catch { /* best effort */ }
 }
 
 async function isRedisLockedOut (ip: string): Promise<boolean> {
   try {
-    const { getRedisClient } = await import('./store/redis')
-    const client = await getRedisClient()
-    if (!client) return false
-    const locked = await client.get(`${REDIS_LOCKOUT_PREFIX}${ip}`)
+    const { withRedis } = await import('./store/redis')
+    const locked = await withRedis(async (c) => await c.get(`${REDIS_LOCKOUT_PREFIX}${ip}`))
     return locked === '1'
   } catch { return false }
 }
 
 async function setRedisLockout (ip: string): Promise<void> {
   try {
-    const { getRedisClient } = await import('./store/redis')
-    const client = await getRedisClient()
-    if (client) await client.set(`${REDIS_LOCKOUT_PREFIX}${ip}`, '1', 'PX', LOGIN_LOCKOUT_MS)
+    const { withRedis } = await import('./store/redis')
+    await withRedis(async (c) => {
+      await c.set(`${REDIS_LOCKOUT_PREFIX}${ip}`, '1', 'PX', LOGIN_LOCKOUT_MS)
+      return true
+    })
   } catch { /* best effort */ }
 }
 
 async function clearRedisLockout (ip: string): Promise<void> {
   try {
-    const { getRedisClient } = await import('./store/redis')
-    const client = await getRedisClient()
-    if (client) await client.del(`${REDIS_LOCKOUT_PREFIX}${ip}`)
+    const { withRedis } = await import('./store/redis')
+    await withRedis(async (c) => { await c.del(`${REDIS_LOCKOUT_PREFIX}${ip}`); return true })
   } catch { /* best effort */ }
 }
 

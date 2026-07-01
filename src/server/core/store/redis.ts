@@ -1,75 +1,42 @@
 /**
- * Redis client singleton — AI summary caching and rate limiting
+ * Redis — per-invocation connection model for serverless.
  *
- * Uses ioredis with config from REDIS_URL environment variable.
- * Falls back gracefully when Redis is unavailable.
+ * 云函数哲学：每次调用独立、无状态。不再维护模块级单例连接，
+ * 而是通过 withRedis() 在每次操作时建连、用完即弃。这彻底避免了
+ * Vercel 等平台冻结实例后 TCP 连接被杀导致的"死连接"问题。
+ *
+ * Redis 不可用时所有功能自动降级到内存兜底。
  */
 
 import Redis from 'ioredis'
 import { logger } from '../utils/logger'
+import { createHash } from 'node:crypto'
 
-let _client: Redis | null = null
-let _connectPromise: Promise<Redis | null> | null = null
-let _lastConnectError: string | null = null
+const CONNECT_TIMEOUT = 5_000
 
 /**
- * Get or create a Redis client singleton.
- * Returns null if Redis is not configured or connection fails.
+ * Per-invocation Redis 执行器。
+ * 建立 → 执行 fn → 关闭，全程无状态。
  *
- * 不依赖 isDev() 判断：云函数平台(腾讯SCF/CloudBase 等)可能注入 NODE_ENV=development，
- * 导致 import.meta.dev 在运行时 polyfill 为 true，误判为 dev 模式而跳过 Redis 连接。
- * 改为直接检查 REDIS_URL：设置了就连接，没设置就走内存兜底。
+ * @returns fn 的返回值；未配置 REDIS_URL 时返回 null。
+ * @throws 连接失败或 fn 抛出时 throw（调用方用 try/catch 走兜底）。
  */
-export async function getRedisClient (): Promise<Redis | null> {
-  if (_client?.status === 'ready') return _client
+export async function withRedis<T> (fn: (client: Redis) => Promise<T>): Promise<T | null> {
+  const url = process.env.REDIS_URL
+  if (!url) return null
 
-  if (_connectPromise) return _connectPromise
-
-  _connectPromise = (async () => {
-    try {
-      const url = process.env.REDIS_URL
-      if (!url) {
-        // 未配置 REDIS_URL，走内存兜底
-        return null
-      }
-
-      _client = new Redis(url, {
-        maxRetriesPerRequest: 3,
-        retryStrategy (times) {
-          if (times > 3) {
-            logger.warn('[redis] Max retry attempts reached, giving up')
-            return null // stop retrying
-          }
-          return Math.min(times * 500, 3000)
-        },
-        lazyConnect: true,
-        connectTimeout: 5000,
-      })
-
-      _client.on('error', (err) => {
-        const detail = formatError(err)
-        _lastConnectError = detail
-        logger.warn('[redis] Connection error:', detail)
-      })
-
-      _client.on('ready', () => {
-        _lastConnectError = null
-        logger.info('[redis] Connected successfully')
-      })
-
-      await _client.connect()
-      return _client
-    } catch (e: any) {
-      const detail = formatError(e)
-      _lastConnectError = detail
-      logger.warn('[redis] Failed to connect:', detail)
-      _client = null
-      _connectPromise = null
-      return null
-    }
-  })()
-
-  return _connectPromise
+  const client = new Redis(url, {
+    connectTimeout: CONNECT_TIMEOUT,
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false,
+    lazyConnect: true,
+  })
+  try {
+    await client.connect()
+    return await fn(client)
+  } finally {
+    client.disconnect()
+  }
 }
 
 function formatError (e: any): string {
@@ -84,51 +51,38 @@ function formatError (e: any): string {
   return parts.join(' ') || String(e)
 }
 
-/**
- * Expose the last connection error for diagnostics (e.g. /api/health).
- */
-export function getLastRedisError (): string | null {
-  return _lastConnectError
+// ========== Diagnostics ==========
+
+export interface RedisDiagnostics {
+  urlConfigured: boolean
+  status: 'connected' | 'error'
+  error?: string
 }
 
-/**
- * Check if Redis is available (cached 30s to avoid ping on every call)
- */
-let _redisAvailCache: { ok: boolean; expire: number } | null = null
-const REDIS_AVAIL_CACHE_TTL = 30_000 // 30 秒
-
-export async function isRedisAvailable (): Promise<boolean> {
-  if (_redisAvailCache && _redisAvailCache.expire > Date.now()) return _redisAvailCache.ok
+/** 供 /api/health 使用：真实建连 + ping，返回详细状态。 */
+export async function getRedisDiagnostics (): Promise<RedisDiagnostics> {
+  const url = process.env.REDIS_URL
+  if (!url) return { urlConfigured: false, status: 'error', error: 'REDIS_URL not set' }
   try {
-    const client = await getRedisClient()
-    if (!client) {
-      _redisAvailCache = { ok: false, expire: Date.now() + REDIS_AVAIL_CACHE_TTL }
-      return false
-    }
-    await client.ping()
-    _redisAvailCache = { ok: true, expire: Date.now() + REDIS_AVAIL_CACHE_TTL }
-    return true
+    const ok = await withRedis(async (c) => (await c.ping()) === 'PONG')
+    if (ok === true) return { urlConfigured: true, status: 'connected' }
+    return { urlConfigured: true, status: 'error', error: 'unexpected ping response' }
+  } catch (e: any) {
+    return { urlConfigured: true, status: 'error', error: formatError(e) }
+  }
+}
+
+/** Redis 是否可用（每次真实检测，无缓存——符合无状态原则）。 */
+export async function isRedisAvailable (): Promise<boolean> {
+  try {
+    const ok = await withRedis(async (c) => (await c.ping()) === 'PONG')
+    return ok === true
   } catch {
-    // 失败时立即标记不可用，但短 TTL 以便恢复后快速重试
-    _redisAvailCache = { ok: false, expire: Date.now() + 5_000 }
     return false
   }
 }
 
-/**
- * Close Redis connection gracefully
- */
-export async function closeRedis (): Promise<void> {
-  if (_client) {
-    await _client.quit().catch(() => _client?.disconnect())
-    _client = null
-    _connectPromise = null
-  }
-}
-
 // ========== Summary cache ==========
-
-import { createHash } from 'node:crypto'
 
 interface SummaryCacheData {
   url: string
@@ -153,11 +107,11 @@ setInterval(() => {
 export async function getSummaryCache (url: string, content: string): Promise<SummaryCacheData | null> {
   const key = summaryCacheKey(url, content)
   try {
-    const client = await getRedisClient()
-    if (client) {
-      const raw = await client.get(key)
-      if (raw) return JSON.parse(raw) as SummaryCacheData
-    }
+    const hit = await withRedis(async (c) => {
+      const raw = await c.get(key)
+      return raw ? JSON.parse(raw) as SummaryCacheData : null
+    })
+    if (hit) return hit
   } catch { /* fall through to memory */ }
   const mem = _memCache.get(key)
   if (mem && mem.expire > Date.now()) return mem.data
@@ -168,11 +122,8 @@ export async function setSummaryCache (url: string, content: string, data: Summa
   const key = summaryCacheKey(url, content)
   const payload = JSON.stringify(data)
   try {
-    const client = await getRedisClient()
-    if (client) {
-      await client.set(key, payload, 'EX', SUMMARY_TTL)
-      return
-    }
+    const done = await withRedis(async (c) => { await c.set(key, payload, 'EX', SUMMARY_TTL); return true })
+    if (done) return
   } catch { /* fall through to memory */ }
   _memCache.set(key, { data, expire: Date.now() + SUMMARY_TTL * 1000 })
 }
@@ -190,14 +141,12 @@ export async function redisRateLimit (
 ): Promise<boolean> {
   const key = `takoio:rate:${identifier}`
   try {
-    const client = await getRedisClient()
-    if (client) {
-      const count = await client.incr(key)
-      if (count === 1) {
-        await client.pexpire(key, windowMs)
-      }
-      return count <= max
-    }
+    const result = await withRedis(async (c) => {
+      const count = await c.incr(key)
+      if (count === 1) await c.pexpire(key, windowMs)
+      return count
+    })
+    if (result !== null) return result <= max
   } catch { /* fall through to memory */ }
   // Memory fallback
   const now = Date.now()
@@ -209,10 +158,6 @@ export async function redisRateLimit (
   bucket.count++
   return bucket.count <= max
 }
-
-// ========== Summary cache management ==========
-
-const SUMMARY_KEY_PREFIX = 'takoio:summary:'
 
 // ========== Comment list cache ==========
 // 高频读操作（访客打开文章页）缓存，降低 DB 压力。Redis 不可用时走内存 LRU 兜底。
@@ -241,11 +186,11 @@ setInterval(() => {
 export async function getCommentListCache (url: string, page: number, pageSize: number, sort: string): Promise<any | null> {
   const key = commentListCacheKey(url, page, pageSize, sort)
   try {
-    const client = await getRedisClient()
-    if (client) {
-      const raw = await client.get(key)
-      if (raw) return JSON.parse(raw)
-    }
+    const hit = await withRedis(async (c) => {
+      const raw = await c.get(key)
+      return raw ? JSON.parse(raw) : null
+    })
+    if (hit) return hit
   } catch { /* fall through to memory */ }
   const mem = _memCommentCache.get(key)
   if (mem && mem.expire > Date.now()) return mem.data
@@ -255,11 +200,8 @@ export async function getCommentListCache (url: string, page: number, pageSize: 
 export async function setCommentListCache (url: string, page: number, pageSize: number, sort: string, data: any): Promise<void> {
   const key = commentListCacheKey(url, page, pageSize, sort)
   try {
-    const client = await getRedisClient()
-    if (client) {
-      await client.set(key, JSON.stringify(data), 'EX', COMMENT_LIST_TTL)
-      return
-    }
+    const done = await withRedis(async (c) => { await c.set(key, JSON.stringify(data), 'EX', COMMENT_LIST_TTL); return true })
+    if (done) return
   } catch { /* fall through to memory */ }
   _memCommentCache.set(key, { data, expire: Date.now() + COMMENT_LIST_TTL * 1000 })
   if (!_memCommentUrlIndex.has(url)) _memCommentUrlIndex.set(url, new Set())
@@ -270,19 +212,19 @@ export async function setCommentListCache (url: string, page: number, pageSize: 
 export async function invalidateCommentListCache (url: string): Promise<void> {
   // Redis: SCAN + DEL
   try {
-    const client = await getRedisClient()
-    if (client) {
+    await withRedis(async (c) => {
       const urlHash = createHash('sha256').update(url).digest('hex').slice(0, 16)
       const pattern = `${COMMENT_LIST_KEY_PREFIX}${urlHash}:*`
       const keys: string[] = []
       let cursor = '0'
       do {
-        const [next, batch] = await client.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
+        const [next, batch] = await c.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
         cursor = next
         keys.push(...batch)
       } while (cursor !== '0')
-      if (keys.length > 0) await client.del(...keys)
-    }
+      if (keys.length > 0) await c.del(...keys)
+      return true
+    })
   } catch { /* ignore */ }
   // 内存兜底：通过反向索引精确删除
   const keys = _memCommentUrlIndex.get(url)
@@ -291,6 +233,10 @@ export async function invalidateCommentListCache (url: string): Promise<void> {
     _memCommentUrlIndex.delete(url)
   }
 }
+
+// ========== Summary cache management ==========
+
+const SUMMARY_KEY_PREFIX = 'takoio:summary:'
 
 interface SummaryCacheEntry {
   key: string
@@ -302,103 +248,95 @@ interface SummaryCacheEntry {
 }
 
 export async function listSummaryCaches (): Promise<SummaryCacheEntry[]> {
-  const client = await getRedisClient()
-  if (!client) {
-    // Memory fallback
-    const items: any[] = []
-    const now = Date.now()
-    for (const [k, v] of _memCache) {
-      if (k.startsWith(SUMMARY_KEY_PREFIX) && v.expire > now) {
-        items.push({ key: k, ...v.data })
-      }
-    }
-    return items.sort((a, b) => b.created - a.created)
-  }
-
   try {
-    const keys: string[] = []
-    let cursor = '0'
-    do {
-      const [next, batch] = await client.scan(cursor, 'MATCH', `${SUMMARY_KEY_PREFIX}*`, 'COUNT', 100)
-      cursor = next
-      keys.push(...batch)
-    } while (cursor !== '0')
-
-    if (keys.length === 0) return []
-
-    const values = await client.mget(...keys)
-    const items: any[] = []
-    for (let i = 0; i < keys.length; i++) {
-      if (values[i]) {
-        try {
-          const data = JSON.parse(values[i]!) as SummaryCacheData
-          items.push({ key: keys[i], ...data })
-        } catch { /* skip malformed */ }
+    const result = await withRedis(async (c) => {
+      const keys: string[] = []
+      let cursor = '0'
+      do {
+        const [next, batch] = await c.scan(cursor, 'MATCH', `${SUMMARY_KEY_PREFIX}*`, 'COUNT', 100)
+        cursor = next
+        keys.push(...batch)
+      } while (cursor !== '0')
+      if (keys.length === 0) return [] as SummaryCacheEntry[]
+      const values = await c.mget(...keys)
+      const items: SummaryCacheEntry[] = []
+      for (let i = 0; i < keys.length; i++) {
+        if (values[i]) {
+          try {
+            const data = JSON.parse(values[i]!) as SummaryCacheData
+            items.push({ key: keys[i], ...data })
+          } catch { /* skip malformed */ }
+        }
       }
-    }
-    return items.sort((a, b) => b.created - a.created)
+      return items.sort((a, b) => b.created - a.created)
+    })
+    if (result) return result
   } catch (e: any) {
     logger.warn('[redis] listSummaryCaches failed:', e.message)
-    return []
   }
+  // Memory fallback
+  const items: SummaryCacheEntry[] = []
+  const now = Date.now()
+  for (const [k, v] of _memCache) {
+    if (k.startsWith(SUMMARY_KEY_PREFIX) && v.expire > now) {
+      items.push({ key: k, ...v.data })
+    }
+  }
+  return items.sort((a, b) => b.created - a.created)
 }
 
 export async function deleteSummaryCacheByUrl (url: string): Promise<number> {
   const urlHash = createHash('sha256').update(url).digest('hex').slice(0, 16)
   const pattern = `${SUMMARY_KEY_PREFIX}${urlHash}:*`
-  const client = await getRedisClient()
-  if (!client) {
-    let count = 0
-    for (const k of _memCache.keys()) {
-      if (k.startsWith(`${SUMMARY_KEY_PREFIX}${urlHash}:`)) { _memCache.delete(k); count++ }
-    }
-    return count
-  }
-
   try {
-    const keys: string[] = []
-    let cursor = '0'
-    do {
-      const [next, batch] = await client.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
-      cursor = next
-      keys.push(...batch)
-    } while (cursor !== '0')
-
-    if (keys.length === 0) return 0
-    await client.del(...keys)
-    return keys.length
+    const result = await withRedis(async (c) => {
+      const keys: string[] = []
+      let cursor = '0'
+      do {
+        const [next, batch] = await c.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
+        cursor = next
+        keys.push(...batch)
+      } while (cursor !== '0')
+      if (keys.length === 0) return 0
+      await c.del(...keys)
+      return keys.length
+    })
+    if (result !== null) return result
   } catch (e: any) {
     logger.warn('[redis] deleteSummaryCacheByUrl failed:', e.message)
-    return 0
   }
+  // Memory fallback
+  let count = 0
+  for (const k of _memCache.keys()) {
+    if (k.startsWith(`${SUMMARY_KEY_PREFIX}${urlHash}:`)) { _memCache.delete(k); count++ }
+  }
+  return count
 }
 
 export async function clearAllSummaryCaches (): Promise<number> {
-  const client = await getRedisClient()
-  if (!client) {
-    let count = 0
-    for (const k of _memCache.keys()) {
-      if (k.startsWith(SUMMARY_KEY_PREFIX)) { _memCache.delete(k); count++ }
-    }
-    return count
-  }
-
   try {
-    const keys: string[] = []
-    let cursor = '0'
-    do {
-      const [next, batch] = await client.scan(cursor, 'MATCH', `${SUMMARY_KEY_PREFIX}*`, 'COUNT', 100)
-      cursor = next
-      keys.push(...batch)
-    } while (cursor !== '0')
-
-    if (keys.length === 0) return 0
-    await client.del(...keys)
-    return keys.length
+    const result = await withRedis(async (c) => {
+      const keys: string[] = []
+      let cursor = '0'
+      do {
+        const [next, batch] = await c.scan(cursor, 'MATCH', `${SUMMARY_KEY_PREFIX}*`, 'COUNT', 100)
+        cursor = next
+        keys.push(...batch)
+      } while (cursor !== '0')
+      if (keys.length === 0) return 0
+      await c.del(...keys)
+      return keys.length
+    })
+    if (result !== null) return result
   } catch (e: any) {
     logger.warn('[redis] clearAllSummaryCaches failed:', e.message)
-    return 0
   }
+  // Memory fallback
+  let count = 0
+  for (const k of _memCache.keys()) {
+    if (k.startsWith(SUMMARY_KEY_PREFIX)) { _memCache.delete(k); count++ }
+  }
+  return count
 }
 
 /**
@@ -413,35 +351,34 @@ export async function updateSummaryCache (
   // 防 key 越权：必须为摘要缓存 key，且符合严格格式
   if (!key || !/^takoio:summary:[a-f0-9]{32}:[a-f0-9]{16}$/.test(key)) return false
 
-  const client = await getRedisClient()
-  if (!client) {
-    // 内存分支：保留原 expire
-    const existing = _memCache.get(key)
-    if (!existing || existing.expire <= Date.now()) return false
-    const merged: SummaryCacheData = {
-      ...existing.data,
-      ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
-      ...(patch.keywords !== undefined ? { keywords: patch.keywords } : {}),
-      ...(patch.title !== undefined ? { title: patch.title } : {}),
-    }
-    _memCache.set(key, { data: merged, expire: existing.expire })
-    return true
-  }
-
   try {
-    const raw = await client.get(key)
-    if (!raw) return false
-    const existing = JSON.parse(raw) as SummaryCacheData
-    const merged: SummaryCacheData = {
-      ...existing,
-      ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
-      ...(patch.keywords !== undefined ? { keywords: patch.keywords } : {}),
-      ...(patch.title !== undefined ? { title: patch.title } : {}),
-    }
-    await client.set(key, JSON.stringify(merged), 'EX', SUMMARY_TTL)
-    return true
+    const result = await withRedis(async (c) => {
+      const raw = await c.get(key)
+      if (!raw) return false
+      const existing = JSON.parse(raw) as SummaryCacheData
+      const merged: SummaryCacheData = {
+        ...existing,
+        ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
+        ...(patch.keywords !== undefined ? { keywords: patch.keywords } : {}),
+        ...(patch.title !== undefined ? { title: patch.title } : {}),
+      }
+      await c.set(key, JSON.stringify(merged), 'EX', SUMMARY_TTL)
+      return true
+    })
+    if (result !== null) return result
   } catch (e: any) {
     logger.warn('[redis] updateSummaryCache failed:', e.message)
     return false
   }
+  // 内存分支：保留原 expire
+  const existing = _memCache.get(key)
+  if (!existing || existing.expire <= Date.now()) return false
+  const merged: SummaryCacheData = {
+    ...existing.data,
+    ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
+    ...(patch.keywords !== undefined ? { keywords: patch.keywords } : {}),
+    ...(patch.title !== undefined ? { title: patch.title } : {}),
+  }
+  _memCache.set(key, { data: merged, expire: existing.expire })
+  return true
 }

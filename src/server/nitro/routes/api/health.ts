@@ -6,7 +6,7 @@
  * diagnostics require admin auth to avoid leaking internal state.
  */
 
-import { getRedisClient, getLastRedisError } from '#core/store/redis'
+import { getRedisDiagnostics } from '#core/store/redis'
 import { requireAdmin } from '#core/auth'
 // getToken — auto-imported from nitro/utils/ by Nitro
 
@@ -20,7 +20,7 @@ export default defineHandler(async (event) => {
   let redisDiagnostics: Record<string, unknown> | null = null
   try {
     await requireAdmin({ token: getToken(event) })
-    redisDiagnostics = await collectRedisDiagnostics()
+    redisDiagnostics = await getRedisDiagnostics()
   } catch {
     // Not authenticated — return minimal public status only
   }
@@ -30,39 +30,3 @@ export default defineHandler(async (event) => {
     ...(redisDiagnostics ? { redis: redisDiagnostics } : {}),
   }
 })
-
-async function collectRedisDiagnostics (): Promise<Record<string, unknown>> {
-  const redisUrl = process.env.REDIS_URL
-
-  let redisStatus: 'connected' | 'disconnected' | 'error' = 'disconnected'
-  let redisError: string | undefined
-  let redisClientStatus: string | undefined
-
-  if (!redisUrl) {
-    redisStatus = 'error'
-    redisError = 'REDIS_URL environment variable is not set'
-  } else {
-    try {
-      const client = await getRedisClient()
-      if (client) {
-        redisClientStatus = client.status
-        const pong = await client.ping()
-        redisStatus = pong === 'PONG' ? 'connected' : 'error'
-        if (redisStatus === 'error') redisError = `Unexpected ping response: ${pong}`
-      } else {
-        redisStatus = 'error'
-        redisError = getLastRedisError() || 'getRedisClient() returned null (no error captured)'
-      }
-    } catch (e: any) {
-      redisStatus = 'error'
-      redisError = e?.message || String(e)
-    }
-  }
-
-  return {
-    urlConfigured: !!redisUrl,
-    status: redisStatus,
-    clientStatus: redisClientStatus,
-    error: redisError,
-  }
-}

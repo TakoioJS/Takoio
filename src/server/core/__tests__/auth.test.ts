@@ -7,7 +7,7 @@ import {
 
 // Mock Redis to return null (no Redis available in tests)
 vi.mock('../store/redis', () => ({
-  getRedisClient: vi.fn().mockResolvedValue(null),
+  withRedis: vi.fn().mockResolvedValue(null),
 }))
 
 describe('Login brute-force protection', () => {
