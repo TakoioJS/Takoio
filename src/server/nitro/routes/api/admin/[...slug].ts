@@ -159,16 +159,14 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'system' && method === 'GET') {
     await requireAdmin({ token: getToken(event) })
     const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
-    if (isDev()) {
-      return { dev: true, dbType, redisSkipped: true, redisAvailable: false, summaryCount: 0 }
-    }
+    // 始终检查实际 Redis 连通性，不依赖 isDev()（云函数平台 import.meta.dev 可能误判）
     const redisOk = await isRedisAvailable()
     let summaryCount = 0
     if (redisOk) {
       try { summaryCount = (await listSummaryCaches()).length } catch { summaryCount = 0 }
     }
     return {
-      dev: false,
+      dev: isDev(),
       dbType,
       redisAvailable: redisOk,
       summaryCount,

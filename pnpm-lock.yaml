@@ -60,6 +60,9 @@ importers:
       '@vue/test-utils':
         specifier: ^2.4.11
         version: 2.4.11(@vue/compiler-dom@3.5.39)(@vue/server-renderer@3.5.39(vue@3.5.39(typescript@6.0.3)))(vue@3.5.39(typescript@6.0.3))
+      '@vueuse/core':
+        specifier: 14.3.0
+        version: 14.3.0(vue@3.5.39(typescript@6.0.3))
       eslint:
         specifier: ^10.6.0
         version: 10.6.0(jiti@2.7.0)
@@ -6724,7 +6727,6 @@ snapshots:
       '@vueuse/metadata': 14.3.0
       '@vueuse/shared': 14.3.0(vue@3.5.39(typescript@6.0.3))
       vue: 3.5.39(typescript@6.0.3)
-    optional: true
 
   '@vueuse/metadata@14.3.0': {}
 
@@ -6735,7 +6737,6 @@ snapshots:
   '@vueuse/shared@14.3.0(vue@3.5.39(typescript@6.0.3))':
     dependencies:
       vue: 3.5.39(typescript@6.0.3)
-    optional: true
 
   '@workflow/serde@4.1.0': {}
 

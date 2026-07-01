@@ -275,16 +275,13 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
   border-radius:var(--tk-r-card);
   transition:background .22s cubic-bezier(.22,.61,.36,1);}
 @media(hover:hover){.tk-comment:hover{background:var(--tk-bg-subtle);}}
-.tk-comment-reply { margin-top: 6px; margin-left: 24px; padding-left: 12px; border-left: 1px solid var(--tk-border); border-radius: 0; position: relative; }
-.tk-comment-reply::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 1px; background: var(--tk-border-soft); }
+.tk-comment-reply { margin-top: 6px; margin-left: 0; padding-left: 0; border-radius: 0; }
 .tk-comment-reply{background:transparent!important;border:none!important;box-shadow:none!important;}
-.tk-replies .tk-comment-reply { margin-left: 16px; padding-left: 8px; }
-.tk-replies .tk-replies .tk-comment-reply { margin-left: 12px; padding-left: 6px; }
 .tk-replies .tk-replies .tk-comment:hover { background: var(--tk-bg-subtle); }
 .tk-replies .tk-replies .tk-comment-reply .tk-comment-body { font-size: 13px; opacity: 0.92; }
-.tk-comment-flat { margin-left: 0 !important; padding-left: 0 !important; border-left: none !important; }
-.tk-comment-flat::before { display: none !important; }
-.tk-collapse-btn { display: block; margin: 8px 0 4px 24px; padding: 4px 12px; background: none; border: none; color: var(--tk-brand); font-size: 13px; cursor: pointer; font-family: inherit; opacity: .7; }
+.tk-comment-flat { margin-left: 0 !important; padding-left: 0 !important; }
+.tk-comment-flat .tk-replies::before { display: none !important; }
+.tk-collapse-btn { display: block; margin: 8px 0 4px 0; padding: 4px 12px; background: none; border: none; color: var(--tk-brand); font-size: 13px; cursor: pointer; font-family: inherit; opacity: .7; }
 .tk-collapse-btn:hover { opacity: 1; text-decoration: underline; }
 .tk-comment-body { flex: 1; min-width: 0; }
 .tk-comment-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
@@ -323,7 +320,8 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-comment-reactions { margin-top: 6px; }
 .tk-comment-meta { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--tk-border-soft); display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--tk-text-3); line-height: 1; }
 .tk-meta-item { display: inline-flex; align-items: center; gap: 3px; }
-.tk-replies { margin-top: 8px; }
+.tk-replies { margin-top: 8px; margin-left: -34px; padding-left: 60px; position: relative; }
+.tk-replies::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--tk-border-soft); }
 @media (max-width: 640px) {
   .tk-comment { padding: 10px 8px; gap: 6px; }
   /* 移动端缩小头像，为正文/信息区腾出横向空间 */
@@ -338,10 +336,8 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
   .tk-time { font-size: 11px; }
   .tk-time-sep { margin: 0 2px; }
   .tk-btn-icon { padding: 2px 4px; }
-  /* 嵌套回复缩进进一步压缩，避免深层评论宽度被吃 */
-  .tk-comment-reply { margin-left: 8px; padding-left: 6px; }
-  .tk-replies .tk-comment-reply { margin-left: 6px; padding-left: 4px; }
-  .tk-replies .tk-replies .tk-comment-reply { margin-left: 4px; padding-left: 3px; }
+  /* 移动端嵌套回复缩进：竖线对齐缩小后头像中心(24px) */
+  .tk-replies { margin-left: -22px; padding-left: 32px; }
   /* 元信息区（IP + UA）允许换行，纵向堆叠避免挤压 */
   .tk-comment-meta { flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; padding-top: 6px; font-size: 10px; }
   .tk-meta-item { gap: 2px; }

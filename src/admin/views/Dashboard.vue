@@ -29,6 +29,37 @@
       </div>
     </div>
 
+    <!-- 系统状态 -->
+    <div class="system-status">
+      <n-tag
+        size="small"
+        :type="sysStatus.dev ? 'warning' : 'success'"
+        round
+      >
+        <template #icon>
+          <n-icon><component :is="sysStatus.dev ? FlameOutline : CheckmarkCircleOutline" /></n-icon>
+        </template>
+        {{ sysStatus.dev ? '热开发环境' : '生产环境' }}
+      </n-tag>
+      <n-tag
+        size="small"
+        :type="redisTagType"
+        round
+      >
+        <template #icon>
+          <n-icon><component :is="redisTagIcon" /></n-icon>
+        </template>
+        {{ redisTagLabel }}
+      </n-tag>
+      <n-tag
+        size="small"
+        type="info"
+        round
+      >
+        {{ sysStatus.dbType }}
+      </n-tag>
+    </div>
+
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <component
@@ -236,8 +267,10 @@ import {
   ChatbubblesOutline, EyeOffOutline, ShieldOutline,
   ArrowForwardOutline, RefreshOutline, LinkOutline, AlertCircleOutline,
   ChevronForwardOutline,
+  FlameOutline, CheckmarkCircleOutline, ServerOutline, CloudOfflineOutline,
 } from '@vicons/ionicons5'
 import { commentsApi, type DashboardStats } from '../api/comments'
+import { api } from '../api/client'
 import { renderMarkdown } from '@shared/utils/marked'
 import type { Comment } from '@shared/types'
 
@@ -409,8 +442,39 @@ const loadAll = async (force = false) => {
 
 const onRefresh = () => loadAll(true)
 
+// ===== 系统状态 =====
+interface SystemStatus {
+  dev: boolean
+  dbType: string
+  redisAvailable: boolean
+  summaryCount: number
+}
+
+const sysStatus = ref<SystemStatus>({ dev: false, dbType: 'sqlite', redisAvailable: false, summaryCount: 0 })
+
+const redisTagType = computed<'success' | 'error' | 'default'>(() => {
+  if (sysStatus.value.dev) return 'default'
+  return sysStatus.value.redisAvailable ? 'success' : 'error'
+})
+const redisTagLabel = computed(() => {
+  return sysStatus.value.redisAvailable ? 'Redis 已连接' : 'Redis 未连接'
+})
+const redisTagIcon = computed(() => {
+  return sysStatus.value.redisAvailable ? ServerOutline : CloudOfflineOutline
+})
+
+const loadSystemStatus = async () => {
+  try {
+    const r = await api.get<SystemStatus>('/api/admin/system')
+    sysStatus.value = r
+  } catch {
+    // 静默失败，保持默认值
+  }
+}
+
 onMounted(() => {
   loadAll(false)
+  loadSystemStatus()
 })
 
 </script>
@@ -418,6 +482,14 @@ onMounted(() => {
 <style scoped>
 .dashboard {
   max-width: 1200px;
+}
+
+/* ===== 系统状态 ===== */
+.system-status {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 /* ===== 页面头部 ===== */

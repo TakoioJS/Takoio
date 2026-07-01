@@ -25,7 +25,7 @@ describe('TkUa component', () => {
     const wrapper = mount(TkUa, { props: { ua } })
     expect(wrapper.text()).toContain('macOS')
     expect(wrapper.text()).toContain('Safari')
-    expect(wrapper.find('.i-simple-icons-macos').exists()).toBe(true)
+    expect(wrapper.find('.i-simple-icons-apple').exists()).toBe(true)
     expect(wrapper.find('.i-simple-icons-safari').exists()).toBe(true)
   })
 

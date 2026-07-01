@@ -3,7 +3,7 @@ import { defineConfig, presetUno, presetIcons } from 'unocss'
 // UA 图标类名运行时动态拼接，UnoCSS 静态扫描无法识别，需在 safelist 中显式声明
 const UA_ICON_SLUGS = [
   // OS
-  'windows', 'macos', 'apple', 'android', 'linux',
+  'windows', 'apple', 'android', 'linux',
   'ubuntu', 'debian', 'fedora', 'archlinux', 'linuxmint',
   'manjaro', 'opensuse', 'gentoo', 'centos', 'kalilinux', 'redhat',
   // Browser

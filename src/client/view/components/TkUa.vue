@@ -39,7 +39,7 @@ const props = defineProps<{ ua?: string }>()
 // OS：按数组顺序匹配，命中即取 slug。通用 Linux 兜底放最后。
 const OS_ICON_PREFIXES: Array<{ match: (os: string) => boolean, slug: string }> = [
   { match: os => os.startsWith('Windows'), slug: 'windows' },
-  { match: os => os === 'macOS' || os.startsWith('macOS '), slug: 'macos' },
+  { match: os => os === 'macOS' || os.startsWith('macOS '), slug: 'apple' },
   { match: os => os.startsWith('iOS'), slug: 'apple' },
   { match: os => os.startsWith('iPadOS'), slug: 'apple' },
   { match: os => os.startsWith('Android'), slug: 'android' },

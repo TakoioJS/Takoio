@@ -78,15 +78,6 @@
 
         <!-- 右侧 操作按钮 -->
         <div class="header-actions">
-          <n-tag
-            v-if="isDev"
-            size="tiny"
-            type="warning"
-            round
-            class="dev-badge"
-          >
-            热开发环境
-          </n-tag>
           <n-button
             quaternary
             circle
@@ -208,9 +199,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import {
-  NIcon, NButton, NModal, NForm, NFormItem, NInput, NTag,
+  NIcon, NButton, NModal, NForm, NFormItem, NInput,
   useMessage, useDialog,
 } from 'naive-ui'
 import {
@@ -218,7 +209,7 @@ import {
   SunnyOutline, MoonOutline, LogOutOutline, KeyOutline, CubeOutline,
   ChevronDownOutline, LogoGithub,
 } from '@vicons/ionicons5'
-import { setUnauthorizedHandler, api } from '../api/client'
+import { setUnauthorizedHandler } from '../api/client'
 
 const iconUrl = import.meta.env.BASE_URL + 'icon/icon_108x108.png'
 
@@ -230,7 +221,6 @@ const message = useMessage()
 const dialog = useDialog()
 
 const aiMenuOpen = ref(route.path.startsWith('/ai'))
-const isDev = ref(false)
 
 const toggleAiMenu = () => {
   aiMenuOpen.value = !aiMenuOpen.value
@@ -293,13 +283,6 @@ const onChangePassword = async () => {
     changingPassword.value = false
   }
 }
-
-onMounted(async () => {
-  try {
-    const r = await api.get<{ dev: boolean }>('/api/admin/system')
-    isDev.value = r.dev
-  } catch { /* ignore — default to false */ }
-})
 </script>
 <style scoped>
 .admin-layout {
@@ -364,7 +347,6 @@ html.dark .admin-header {
   color: var(--ink);
   white-space: nowrap;
 }
-.dev-badge { margin-right: 2px; flex-shrink: 0; }
 
 /* 中间导航 */
 .header-nav {

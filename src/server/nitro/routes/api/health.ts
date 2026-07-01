@@ -6,7 +6,6 @@
  * diagnostics require admin auth to avoid leaking internal state.
  */
 
-import { isDev } from '#core/utils/env'
 import { getRedisClient } from '#core/store/redis'
 import { requireAdmin } from '#core/auth'
 // getToken — auto-imported from nitro/utils/ by Nitro
@@ -34,15 +33,12 @@ export default defineEventHandler(async (event) => {
 
 async function collectRedisDiagnostics (): Promise<Record<string, unknown>> {
   const redisUrl = process.env.REDIS_URL
-  const nodeEnv = process.env.NODE_ENV
 
-  let redisStatus: 'connected' | 'disconnected' | 'error' | 'skipped' = 'disconnected'
+  let redisStatus: 'connected' | 'disconnected' | 'error' = 'disconnected'
   let redisError: string | undefined
   let redisClientStatus: string | undefined
 
-  if (isDev()) {
-    redisStatus = 'skipped'
-  } else if (!redisUrl) {
+  if (!redisUrl) {
     redisStatus = 'error'
     redisError = 'REDIS_URL environment variable is not set'
   } else {
