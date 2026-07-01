@@ -10,7 +10,7 @@ import { getRedisClient } from '#core/store/redis'
 import { requireAdmin } from '#core/auth'
 // getToken — auto-imported from nitro/utils/ by Nitro
 
-export default defineEventHandler(async (event) => {
+export default defineHandler(async (event) => {
   // Public: minimal liveness probe only
   if (event.method !== 'GET') {
     throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })

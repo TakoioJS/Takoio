@@ -56,7 +56,10 @@
         type="info"
         round
       >
-        {{ sysStatus.dbType }}
+        <template #icon>
+          <n-icon><component :is="dbTagIcon" /></n-icon>
+        </template>
+        {{ dbTagLabel }}
       </n-tag>
     </div>
 
@@ -268,6 +271,7 @@ import {
   ArrowForwardOutline, RefreshOutline, LinkOutline, AlertCircleOutline,
   ChevronForwardOutline,
   FlameOutline, CheckmarkCircleOutline, ServerOutline, CloudOfflineOutline,
+  ServerSharp, LeafOutline, CloudCircleOutline, HardwareChipOutline,
 } from '@vicons/ionicons5'
 import { commentsApi, type DashboardStats } from '../api/comments'
 import { api } from '../api/client'
@@ -461,6 +465,24 @@ const redisTagLabel = computed(() => {
 })
 const redisTagIcon = computed(() => {
   return sysStatus.value.redisAvailable ? ServerOutline : CloudOfflineOutline
+})
+
+const dbTagLabel = computed(() => {
+  const map: Record<string, string> = {
+    sqlite: 'SQLite',
+    postgres: 'PostgreSQL',
+    postgresql: 'PostgreSQL',
+    pg: 'PostgreSQL',
+    mongodb: 'MongoDB',
+  }
+  return map[sysStatus.value.dbType.toLowerCase()] || sysStatus.value.dbType.toUpperCase()
+})
+const dbTagIcon = computed(() => {
+  const t = sysStatus.value.dbType.toLowerCase()
+  if (t === 'mongodb') return LeafOutline
+  if (t === 'postgres' || t === 'postgresql' || t === 'pg') return ServerSharp
+  if (t === 'sqlite') return HardwareChipOutline
+  return CloudCircleOutline
 })
 
 const loadSystemStatus = async () => {
