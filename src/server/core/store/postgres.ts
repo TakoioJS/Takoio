@@ -26,39 +26,7 @@ import type {
   SessionStore,
   ReactionStore,
 } from './index'
-
-export const COMMENT_STATE = {
-  VISIBLE: 'visible', HIDDEN: 'hidden', SPAM: 'spam', PENDING: 'pending',
-} as const
-
-const relTime = (ts: number, locale?: string): string => {
-  const diff = Date.now() - ts
-  const isZh = !locale || locale.startsWith('zh')
-  if (diff < 60000) return isZh ? '刚刚' : 'just now'
-  if (diff < 3600000) return isZh ? `${Math.floor(diff / 60000)} 分钟前` : `${Math.floor(diff / 60000)} min ago`
-  if (diff < 86400000) return isZh ? `${Math.floor(diff / 3600000)} 小时前` : `${Math.floor(diff / 3600000)} hr ago`
-  if (diff < 604800000) return isZh ? `${Math.floor(diff / 86400000)} 天前` : `${Math.floor(diff / 86400000)} days ago`
-  return new Date(ts).toLocaleDateString(isZh ? 'zh-CN' : 'en-US')
-}
-
-/** 移除隐私字段（ip/mail）并附加 relativeTime */
-const stripPrivate = (r: Comment | null): Omit<Comment, 'ip' | 'mail'> & { relativeTime: string } | null => {
-  if (!r) return r
-  const { ip: _ip, mail: _mail, ...rest } = r
-  return { ...rest, relativeTime: relTime(rest.created) }
-}
-
-/** PG 行已是原生 boolean，无需转换；仅补默认值 */
-const fromRow = (r: any): Comment => r
-  ? {
-      ...r,
-      like: r.like ?? 0,
-      dislike: r.dislike ?? 0,
-      isSpam: r.isSpam ?? false,
-      isTop: r.isTop ?? false,
-      isPinned: r.isPinned ?? false,
-    }
-  : r
+import { COMMENT_STATE, relTime, stripPrivate, fromRowPg, commentToPgRow, BATCH_SIZE_PG } from './utils'
 
 const db = () => getDb()
 
@@ -66,7 +34,7 @@ export const commentStore: CommentStore = {
   async addComment (data: CommentInput): Promise<Comment> {
     const row = { ...data, like: data.like ?? 0, dislike: data.dislike ?? 0 }
     await db().insert(comments).values(row)
-    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
+    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as Comment
   },
 
   async addComments (data: CommentInput[]): Promise<number> {

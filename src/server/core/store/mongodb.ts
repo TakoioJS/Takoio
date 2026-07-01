@@ -121,7 +121,7 @@ export const commentStore: CommentStore = {
   async addComment (data: CommentInput): Promise<Comment> {
     const db = await getDb()
     await col(db, 'comments').insertOne(commentToDoc(data))
-    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
+    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as Comment
   },
 
   async addComments (data: CommentInput[]): Promise<number> {

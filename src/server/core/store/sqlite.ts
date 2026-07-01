@@ -26,63 +26,23 @@ import type {
   SessionStore,
   ReactionStore,
 } from './index'
-
-export const COMMENT_STATE = {
-  VISIBLE: 'visible', HIDDEN: 'hidden', SPAM: 'spam', PENDING: 'pending',
-} as const
-
-const relTime = (ts: number, locale?: string): string => {
-  const diff = Date.now() - ts
-  const isZh = !locale || locale.startsWith('zh')
-  if (diff < 60000) return isZh ? '刚刚' : 'just now'
-  if (diff < 3600000) return isZh ? `${Math.floor(diff / 60000)} 分钟前` : `${Math.floor(diff / 60000)} min ago`
-  if (diff < 86400000) return isZh ? `${Math.floor(diff / 3600000)} 小时前` : `${Math.floor(diff / 3600000)} hr ago`
-  if (diff < 604800000) return isZh ? `${Math.floor(diff / 86400000)} 天前` : `${Math.floor(diff / 86400000)} days ago`
-  return new Date(ts).toLocaleDateString(isZh ? 'zh-CN' : 'en-US')
-}
-
-/** 移除隐私字段（ip/mail）并附加 relativeTime */
-const stripPrivate = (r: Comment | null): Omit<Comment, 'ip' | 'mail'> & { relativeTime: string } | null => {
-  if (!r) return r
-  const { ip: _ip, mail: _mail, ...rest } = r
-  return { ...rest, relativeTime: relTime(rest.created) }
-}
-
-/** 数据库行 → 归一化 Comment（布尔字段转换） */
-const fromRow = (r: any): Comment => r
-  ? {
-      ...r,
-      like: r.like ?? 0,
-      dislike: r.dislike ?? 0,
-      isSpam: !!r.isSpam,
-      isTop: !!r.isTop,
-      isPinned: !!r.isPinned,
-    }
-  : r
+import { COMMENT_STATE, relTime, stripPrivate, fromRow, commentToSqliteRow, BATCH_SIZE_SQLITE } from './utils'
 
 const db = () => getDb()
 
 export const commentStore: CommentStore = {
   async addComment (data: CommentInput): Promise<Comment> {
-    const row = { ...data, like: data.like ?? 0, dislike: data.dislike ?? 0, isSpam: data.isSpam ? 1 : 0, isTop: data.isTop ? 1 : 0, isPinned: data.isPinned ? 1 : 0 }
+    const row = commentToSqliteRow(data)
     await db().insert(comments).values(row).run()
-    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
+    return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as Comment
   },
 
   async addComments (data: CommentInput[]): Promise<number> {
     if (data.length === 0) return 0
     // 批量插入：分批避免 SQLite 参数上限，每批多行 INSERT 比 N 次单行快一个数量级
-    const BATCH = 50
-    const rows = data.map(d => ({
-      ...d,
-      like: d.like ?? 0,
-      dislike: d.dislike ?? 0,
-      isSpam: d.isSpam ? 1 : 0,
-      isTop: d.isTop ? 1 : 0,
-      isPinned: d.isPinned ? 1 : 0,
-    }))
-    for (let i = 0; i < rows.length; i += BATCH) {
-      await db().insert(comments).values(rows.slice(i, i + BATCH)).run()
+    const rows = data.map(commentToSqliteRow)
+    for (let i = 0; i < rows.length; i += BATCH_SIZE_SQLITE) {
+      await db().insert(comments).values(rows.slice(i, i + BATCH_SIZE_SQLITE)).run()
     }
     return rows.length
   },

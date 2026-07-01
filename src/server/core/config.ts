@@ -176,7 +176,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   IP_REGION_ENABLED: true,
   IP_PROXY_HEADER: '',
   TRUSTED_PROXIES: '',
-  SHOW_IP_REGION: 'all' as any,
+  SHOW_IP_REGION: 'all' as unknown as boolean,
   SHOW_UA_INFO: true,
   ENABLE_LIKE: true,
   ENABLE_DISLIKE: true,
