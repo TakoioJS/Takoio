@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, getUrl, getHref, getUserAgent } from '../../utils'
 import { submitComment } from '../../utils/api'
 import { renderMarkdown } from '../../utils/marked'
-import { toast } from '../../utils'
+import { toast, renderTex } from '../../utils'
 import type { TakoioConfig, Comment } from '../../types'
 
 // Composables
@@ -29,6 +29,7 @@ const errorMsg = ref('')
 const submitting = ref(false)
 const showPreview = ref(false)
 const previewHtml = ref('')
+const previewRef = ref<HTMLElement>()
 const form = reactive({ nick: '', mail: '', link: '', comment: '' })
 const defaultEmojis = ['👍', '👎', '❤️', '😂', '🤯', '🎉']
 
@@ -58,7 +59,12 @@ const reactionsApi = useReactions({ options: props.options, toast })
 const { reactions, myReactions, fetchReactions, toggleReaction } = reactionsApi
 
 // --- Markdown preview ---
-const updatePreview = async (): Promise<void> => { if (showPreview.value) previewHtml.value = await renderMarkdown(form.comment) }
+const updatePreview = async (): Promise<void> => {
+  if (!showPreview.value) return
+  previewHtml.value = await renderMarkdown(form.comment)
+  await nextTick()
+  if (previewRef.value) await renderTex(previewRef.value, props.options.texRenderer)
+}
 watch(() => form.comment, updatePreview)
 watch(showPreview, (v) => { if (v) updatePreview() })
 
@@ -346,6 +352,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   </form>
 
   <div
+    ref="previewRef"
     v-show="showPreview"
     class="tk-preview"
     v-html="previewHtml"

@@ -36,6 +36,8 @@ export interface Comment {
   renderedComment?: string
 }
 
+export type TexRenderer = (blockMode: boolean, tex: string) => string | Promise<string>
+
 /** 评论提交参数 */
 export interface CommentSubmit {
   url: string
@@ -149,11 +151,8 @@ export interface TakoioConfig {
   customCSS?: string
   /** 品牌色（如 '#10b981'），覆盖默认的蓝色主题 */
   brandColor?: string
-  /** KaTeX 选项 */
-  katex?: {
-    delimiters?: Array<{ left: string; right: string; display: boolean }>
-    throwOnError?: boolean
-  }
+  /** 外部 TeX renderer；默认不内置数学公式渲染能力 */
+  texRenderer?: TexRenderer
   /** 嵌套深度上限，超过后评论平铺显示（默认 2） */
   maxNestDepth?: number
   /** 折叠阈值，子评论超过此数量时显示"展开全部"按钮（默认 3） */

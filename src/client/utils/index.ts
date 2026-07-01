@@ -84,37 +84,6 @@ export const renderLinks = (el: Element | Element[] | null): void => {
   }
 }
 
-/** KaTeX 渲染（运行时检测） */
-let _katexCssLoaded = false
-const loadKatexCss = (): void => {
-  if (_katexCssLoaded || typeof document === 'undefined') return
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css'
-  link.crossOrigin = 'anonymous'
-  document.head.appendChild(link)
-  _katexCssLoaded = true
-}
-
-export const renderMath = async (el: HTMLElement, options?: any): Promise<void> => {
-  if (typeof window === 'undefined') return
-  const defaultOptions = {
-    delimiters: [
-      { left: '$$', right: '$$', display: true },
-      { left: '$', right: '$', display: false },
-      { left: '\\(', right: '\\)', display: false },
-      { left: '\\[', right: '\\]', display: true }
-    ],
-    throwOnError: false
-  }
-  try {
-    loadKatexCss()
-    const { default: renderMathInElement } = await import('katex/contrib/auto-render')
-    renderMathInElement(el, options || defaultOptions)
-  } catch (e) {
-    logger.warn('KaTeX not available', e)
-  }
-}
 
 /** 获取 URL（兼容魔法路径） */
 export const getUrl = (path?: string): string => {
@@ -230,5 +199,6 @@ export const toast = (msg: string, type: 'success' | 'error' | 'info' = 'success
 
 export { setLanguage, t } from './i18n'
 export { timeago } from './timeago'
+export { renderTex } from './tex'
 
 export const version = String(pkg.version)

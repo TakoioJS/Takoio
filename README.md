@@ -12,11 +12,11 @@
 
 ## 特性
 
-- **轻量嵌入** — 客户端 UMD 包约 167 kB (gzip)，Vue 外部化，CDN 两行引入
+- **轻量嵌入** — 客户端 UMD 包约 84 kB (gzip)，Vue 外部化，CDN 两行引入
 - **多数据库** — SQLite（自托管）/ MongoDB（Serverless），Store 注册模式按需加载
 - **AI 集成** — 文章摘要生成、AI 评论审核，支持 OpenAI / Anthropic / Gemini
 - **管理面板** — 独立 Vue 3 SPA（Naive UI），评论管理、配置、数据导入导出
-- **丰富功能** — Markdown、代码高亮 (Shiki)、KaTeX 数学公式、表情反应、图片上传、验证码、IP 归属地、邮件通知
+- **丰富功能** — Markdown、代码高亮 (Shiki)、外部 TeX 渲染器、表情反应、图片上传、验证码、IP 归属地、邮件通知
 - **多平台部署** — Node.js 自托管、Vercel、Netlify，Nitro preset 一行切换
 
 ## 快速开始
@@ -165,6 +165,26 @@ server {
 | `paginationMode` | `string` | `pagination`（分页）/ `infinite`（无限滚动） |
 | `customCSS` | `string` | 自定义 CSS |
 | `placeholder` | `string` | 评论框占位符 |
+| `texRenderer` | `(blockMode, tex) => string \| Promise<string>` | 外部数学公式渲染器 |
+
+### 数学公式
+
+Takoio 默认不内置 KaTeX。需要公式渲染时，由宿主页面引入 renderer：
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css">
+<script type="module">
+  import katex from 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.mjs'
+
+  takoio.init({
+    envId: 'https://your-server.com',
+    texRenderer: (blockMode, tex) => katex.renderToString(tex, {
+      displayMode: blockMode,
+      throwOnError: false,
+    }),
+  })
+</script>
+```
 
 ## 开发
 
@@ -200,7 +220,7 @@ Takoio/
 
 ### 技术栈
 
-客户端：Vue 3.5、Vite 8、UnoCSS、Pinia、Marked、Shiki、KaTeX、DOMPurify
+客户端：Vue 3.5、Vite 8、UnoCSS、Pinia、Marked、Shiki、DOMPurify
 
 服务端：Nitro 3、h3、Drizzle ORM、LibSQL/MongoDB、Vercel AI SDK、Zod、Nodemailer
 

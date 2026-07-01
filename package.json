@@ -60,7 +60,6 @@
   "dependencies": {
     "dompurify": "^3.4.11",
     "highlight.js": "^11.11.1",
-    "katex": "^0.17.0",
     "marked": "^18.0.5",
     "shiki": "^4.3.0"
   },
@@ -69,7 +68,6 @@
     "@iconify-json/lucide": "^1.2.115",
     "@iconify-json/simple-icons": "^1.2.88",
     "@playwright/test": "^1.61.1",
-    "@types/katex": "^0.16.8",
     "@types/node": "^26.0.1",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
     "@typescript-eslint/parser": "^8.62.1",

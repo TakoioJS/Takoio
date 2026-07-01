@@ -191,7 +191,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { timeago, t, sanitizeUrl } from '../../utils'
 import { renderMarkdown } from '../../utils/marked'
-import { renderLinks, renderMath } from '../../utils'
+import { renderLinks, renderTex } from '../../utils'
 import type { Comment, TakoioConfig } from '../../types'
 import TkAvatar from './TkAvatar.vue'
 import TkUa from './TkUa.vue'
@@ -249,7 +249,7 @@ const renderContent = async (): Promise<void> => {
   await nextTick()
   if (contentRef.value) {
     renderLinks(contentRef.value)
-    await renderMath(contentRef.value, props.options.katex)
+    await renderTex(contentRef.value, props.options.texRenderer)
   }
 }
 const formatDate = (ts: number): string => {

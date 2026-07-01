@@ -12,11 +12,11 @@ Rewritten from [Twikoo](https://github.com/twikoojs/twikoo).
 
 ## Features
 
-- **Lightweight** — Client UMD bundle ~167 kB (gzip), Vue externalized, two-line CDN setup
+- **Lightweight** — Client UMD bundle ~84 kB (gzip), Vue externalized, two-line CDN setup
 - **Multi-database** — SQLite (self-hosted) / MongoDB (serverless), lazy-loaded via store registry
 - **AI-powered** — Article summarization and AI comment moderation (OpenAI / Anthropic / Gemini)
 - **Admin Panel** — Standalone Vue 3 SPA (Naive UI) for comment management, configuration, and data import/export
-- **Rich features** — Markdown, code highlighting (Shiki), KaTeX math, emoji reactions, image upload, captcha, IP geolocation, email notifications
+- **Rich features** — Markdown, code highlighting (Shiki), external TeX renderer, emoji reactions, image upload, captcha, IP geolocation, email notifications
 - **Flexible deployment** — Node.js self-hosted, Vercel, Netlify — one-line Nitro preset switch
 
 ## Quick Start
@@ -165,6 +165,26 @@ Common options for `init()`. Full type definitions in [types.ts](./src/client/ty
 | `paginationMode` | `string` | `pagination` / `infinite` (infinite scroll) |
 | `customCSS` | `string` | Custom CSS injection |
 | `placeholder` | `string` | Comment box placeholder text |
+| `texRenderer` | `(blockMode, tex) => string \| Promise<string>` | External math renderer |
+
+### Math Rendering
+
+Takoio does not bundle KaTeX by default. Load a renderer on the host page when math support is needed:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css">
+<script type="module">
+  import katex from 'https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.mjs'
+
+  takoio.init({
+    envId: 'https://your-server.com',
+    texRenderer: (blockMode, tex) => katex.renderToString(tex, {
+      displayMode: blockMode,
+      throwOnError: false,
+    }),
+  })
+</script>
+```
 
 ## Development
 
@@ -200,7 +220,7 @@ Takoio/
 
 ### Tech Stack
 
-Client: Vue 3.5, Vite 8, UnoCSS, Pinia, Marked, Shiki, KaTeX, DOMPurify
+Client: Vue 3.5, Vite 8, UnoCSS, Pinia, Marked, Shiki, DOMPurify
 
 Server: Nitro 3, h3, Drizzle ORM, LibSQL/MongoDB, Vercel AI SDK, Zod, Nodemailer
 
