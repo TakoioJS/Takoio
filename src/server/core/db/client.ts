@@ -2,6 +2,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { resolve } from 'node:path'
 import * as schema from './schema'
+import { LIBSQL_URL, LIBSQL_AUTH_TOKEN, LIBSQL_DATA_DIR } from '../env'
 
 export type DbClient = ReturnType<typeof drizzle<typeof schema>>
 export type RawClient = ReturnType<typeof createClient>
@@ -11,17 +12,16 @@ let _raw: RawClient | null = null
 
 /** Resolve the SQLite DB path relative to src/server/ (project root for the server) */
 function getDefaultDbPath (): string {
-  // LIBSQL_DATA_DIR overrides the default directory (useful for production builds)
-  const dataDir = process.env.LIBSQL_DATA_DIR || resolve(process.cwd(), 'data')
+  const dataDir = LIBSQL_DATA_DIR || resolve(process.cwd(), 'data')
   return `file:${resolve(dataDir, 'takoio.db')}`
 }
 
 function getUrl () {
-  return process.env.LIBSQL_URL || process.env.TURSO_DB_URL || getDefaultDbPath()
+  return LIBSQL_URL || getDefaultDbPath()
 }
 
 function getAuthToken () {
-  return process.env.LIBSQL_AUTH_TOKEN || process.env.TURSO_DB_TOKEN
+  return LIBSQL_AUTH_TOKEN
 }
 
 export function getDb (): DbClient {

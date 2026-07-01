@@ -350,7 +350,7 @@ const PROVIDER_UPLOADERS: Record<string, (buffer: Buffer, filename: string, mime
 
 // ========== Upload Image ==========
 
-export const handleUploadImage = async (data: any) => {
+export const handleUploadImage = async (data: { image: string }) => {
   const validation = safeValidate(UploadImageSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', '无图片数据', 400)
   // Decode base64 and check actual buffer size

@@ -7,18 +7,14 @@
 
 import { rateLimitStore } from '#core/store/index'
 import { getClientIp } from '#core/utils/ip'
+import { isServerless, TAKOIO_THROTTLE_MS } from '#core/env'
 
 // 默认 0：rate-limit 中间件已用精确的滑动窗口限流，无需额外人为延迟。
 // 如需防爬可显式设置 TAKOIO_THROTTLE=250（毫秒）。
-const THROTTLE_MS = parseInt(process.env.TAKOIO_THROTTLE || '0', 10)
+const THROTTLE_MS = TAKOIO_THROTTLE_MS
 
 // Skip artificial throttle delay on serverless — it wastes billed execution time
-function isServerlessPreset (): boolean {
-  const preset = (process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || '').toLowerCase()
-  return preset === 'vercel' || preset === 'netlify' || preset === 'cloudflare'
-}
-
-const skipThrottle = isServerlessPreset()
+const skipThrottle = isServerless()
 
 export default defineMiddleware(async (event) => {
   const ip = await getClientIp(event)

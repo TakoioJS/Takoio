@@ -1,10 +1,16 @@
 /**
- * Config management — defaults, retrieval, caching, masking
+ * Config management — defaults, retrieval, caching, masking, and change subscriptions.
+ *
+ * 设计原则：
+ * 1. 单一来源：DEFAULT_CONFIG 是配置的唯一真实来源
+ * 2. 自动同步：ALLOWED_CONFIG_KEYS 从 DEFAULT_CONFIG 自动生成，永不同步
+ * 3. 分层暴露：公开配置 → 掩码配置 → 完整配置，逐级增加权限
+ * 4. 变更订阅：配置更新自动触发缓存失效，无需手动调用 invalidateConfig
  */
 
-/**
- * Application error types — structured errors with codes and HTTP status
- */
+import { configStore } from './store/index'
+
+// ========== Error Types ==========
 
 export class AppError extends Error {
   constructor (
@@ -26,12 +32,37 @@ export const ERR = {
   INTERNAL: new AppError('INTERNAL', '服务器内部错误', 500),
 }
 
-import { configStore } from './store/index'
-import { ALLOWED_CONFIG_KEYS } from './schemas'
-
 // ========== Constants ==========
 
 export const MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+
+// ========== AI Provider Config (Structured) ==========
+
+export interface AIProviderConfig {
+  name: string
+  endpoint: string
+  key: string
+  format: 'openai' | 'anthropic' | 'google'
+  models: string[]
+}
+
+/** 将 AI Provider 配置序列化为 JSON 字符串（存储用） */
+export function serializeAIProviders(providers: AIProviderConfig[]): string {
+  return JSON.stringify(providers)
+}
+
+/** 将 JSON 字符串反序列化为 AI Provider 配置数组 */
+export function deserializeAIProviders(json: string): AIProviderConfig[] {
+  try {
+    const parsed = JSON.parse(json)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((p): p is AIProviderConfig =>
+      p && typeof p.name === 'string' && typeof p.endpoint === 'string'
+    )
+  } catch {
+    return []
+  }
+}
 
 // ========== Config Interface ==========
 
@@ -115,7 +146,6 @@ export interface TakoioConfig {
   AI_SUMMARY_ENABLED: boolean
   AI_SUMMARY_PROVIDER: string
   AI_SUMMARY_MODEL: string
-  /** 是否在评论区展示文章摘要（后台开关，与宿主 enableSummary option 双控；任一为 false 则不显示） */
   ENABLE_SUMMARY?: boolean
   AKISMET_KEY?: string
   ENABLE_ANTI_SPAM?: boolean
@@ -223,11 +253,67 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   PUSHOO_CHANNELS: '',
 }
 
-// ========== Config Retrieval + Cache ==========
+// ========== Auto-Generated Allowed Keys ==========
+
+/**
+ * 从 DEFAULT_CONFIG 的 keys 自动生成允许修改的配置键白名单。
+ * 确保新增配置项时自动包含，无需手动同步。
+ */
+export const ALLOWED_CONFIG_KEYS = Object.keys(DEFAULT_CONFIG) as (keyof TakoioConfig)[]
+
+// ========== Config Classification ==========
+
+/**
+ * 配置敏感级别分类：
+ * - hidden: 完全不出现在任何 API 响应中
+ * - masked: 出现在 admin API 中但值被掩码
+ * - public: 可出现在公开 API 中
+ */
+
+const HIDDEN_KEYS = new Set([
+  'AI_PROVIDERS', 'AKISMET_KEY', 'AUTO_AUDIT_AI_PROMPT', 'MASTER',
+  'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_FROM', 'SMTP_TO', 'SMTP_TLS',
+  'SMTP_PASS', 'PUSHOO_CHANNELS',
+  'SENDER_EMAIL', 'IMAGE_HOSTING_ENDPOINT', 'IMAGE_HOSTING_BUCKET', 'IMAGE_HOSTING_REGION',
+  'IMAGE_HOSTING_CDN_DOMAIN', 'NSFW_ENDPOINT', 'NSFW_THRESHOLD', 'NSFW_SERVICE',
+  'CORS_ORIGINS', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES',
+  'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL',
+  'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL', 'BLOCKED_KEYWORDS',
+])
+
+const MASKED_KEYS = new Set([
+  'SMTP_PASS', 'IMAGE_HOSTING_TOKEN', 'IMAGE_HOSTING_ACCESS_KEY', 'IMAGE_HOSTING_SECRET_KEY',
+  'CAPTCHA_SECRET_KEY', 'NSFW_API_KEY', 'PUSHOO_CHANNELS',
+])
+
+/** 敏感配置键集合（用于掩码处理） */
+export const SENSITIVE_CONFIG_KEYS = MASKED_KEYS
+
+/** 公开 API 中必须排除的键（完全隐藏） */
+export const PUBLIC_EXCLUDED_KEYS = HIDDEN_KEYS
+
+// ========== Config Retrieval + Cache + Subscriptions ==========
 
 let configCache: TakoioConfig | null = null
 let cacheTimestamp = 0
 const CACHE_TTL = 60_000 // 60 seconds
+
+/** 配置变更订阅回调 */
+const configChangeListeners = new Set<() => void>()
+
+/** 订阅配置变更事件 */
+export function subscribeConfigChange(listener: () => void): () => void {
+  configChangeListeners.add(listener)
+  return () => configChangeListeners.delete(listener)
+}
+
+/** 触发所有配置变更订阅 */
+export function notifyConfigChange(): void {
+  invalidateConfig()
+  for (const listener of configChangeListeners) {
+    try { listener() } catch { /* ignore listener errors */ }
+  }
+}
 
 export const getConfig = async (event?: { context?: Record<string, any> }): Promise<TakoioConfig> => {
   // Request-level cache: avoid repeated DB reads within a single request
@@ -250,55 +336,11 @@ export const invalidateConfig = () => {
 
 // ========== Sensitive Config Masking ==========
 
-export const SENSITIVE_CONFIG_KEYS = new Set([
-  'SMTP_PASS',
-  'IMAGE_HOSTING_TOKEN',
-  'IMAGE_HOSTING_ACCESS_KEY',
-  'IMAGE_HOSTING_SECRET_KEY',
-  'CAPTCHA_SECRET_KEY',
-
-  'NSFW_API_KEY',
-  'PUSHOO_CHANNELS',
-])
-
 /** 对敏感值做掩码处理：仅显示前 3 位和后 4 位，中间用 **** 替代 */
 export const maskSensitiveValue = (value: string): string => {
   if (!value || value.length <= 7) return '****'
   return `${value.slice(0, 3)}****${value.slice(-4)}`
 }
-
-// C2/H3: Keys that must NEVER appear in the public config response.
-// AI_PROVIDERS is a JSON string containing cleartext LLM API keys — masking the whole blob is insufficient.
-// REDIS_URL may contain a password (redis://:secret@host). AKISMET_KEY is a secret token.
-// MASTER is the site owner's email — only needed server-side for markMasterComments hash; never expose to visitors.
-// SMTP_USER/SMTP_FROM/SMTP_TO/SENDER_EMAIL are emails (PII) and not needed client-side.
-// IMAGE_HOSTING_*/NSFW_ENDPOINT are internal endpoints not needed client-side.
-// CAPTCHA_SITE_KEY was wrongly masked — it's public by design (embedded in frontend HTML).
-// These are dropped entirely from the public response; admin panel reads them via the admin-gated endpoints.
-export const PUBLIC_EXCLUDED_KEYS = new Set([
-  'AI_PROVIDERS',
-  'AKISMET_KEY',
-  'AUTO_AUDIT_AI_PROMPT',
-  'MASTER',
-  // SMTP-related (emails + credentials, not needed by visitors)
-  'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'SMTP_TO', 'SMTP_TLS',
-  // Sender email (PII)
-  'SENDER_EMAIL',
-  // Image hosting internals (admin-configured endpoints, not for visitors)
-  'IMAGE_HOSTING_ENDPOINT', 'IMAGE_HOSTING_TOKEN', 'IMAGE_HOSTING_BUCKET', 'IMAGE_HOSTING_REGION',
-  'IMAGE_HOSTING_ACCESS_KEY', 'IMAGE_HOSTING_SECRET_KEY', 'IMAGE_HOSTING_CDN_DOMAIN',
-  // NSFW service internals
-  'NSFW_ENDPOINT', 'NSFW_API_KEY', 'NSFW_THRESHOLD', 'NSFW_SERVICE',
-  // Push channels (contain tokens)
-  'PUSHOO_CHANNELS',
-  // CORS / proxy internals
-  'CORS_ORIGINS', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES',
-  // AI audit internals
-  'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL',
-  'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL',
-  // Blocked keywords (server-side moderation only)
-  'BLOCKED_KEYWORDS',
-])
 
 /**
  * 公开评论接口专用配置子集：仅返回前端展示必需的非敏感键。

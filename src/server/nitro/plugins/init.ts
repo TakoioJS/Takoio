@@ -8,25 +8,17 @@ import { ensureDb, sessionStore, initStore } from '#core/store/index'
 import { initPassword } from '#core/auth'
 import { initIpSearcher } from '#core/ip-region'
 import { logger } from '#core/utils/logger'
+import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN } from '#core/env'
 
 let initialized = false
-
-function getServerlessPreset (): string {
-  return (process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || '').toLowerCase()
-}
-
-function isServerless (): boolean {
-  const preset = getServerlessPreset()
-  return preset === 'vercel' || preset === 'netlify' || preset === 'cloudflare'
-}
 
 export default definePlugin(async () => {
   if (initialized) return
 
   // C1(deploy): Fail fast on serverless if DB_TYPE is sqlite — ephemeral filesystem causes data loss
-  const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
+  const dbType = DB_TYPE
   if (isServerless() && dbType !== 'mongodb') {
-    logger.fatal(`[init] Serverless preset "${getServerlessPreset()}" requires DB_TYPE=mongodb, got "${dbType}". Set MONGODB_URI and DB_TYPE=mongodb in your deployment environment.`)
+    logger.fatal(`[init] Serverless preset "${getPresetName()}" requires DB_TYPE=mongodb, got "${dbType}". Set MONGODB_URI and DB_TYPE=mongodb in your deployment environment.`)
     throw new Error(`Serverless 环境必须使用 MongoDB（DB_TYPE=mongodb），当前为 "${dbType}"。文件系统临时，SQLite 会丢失数据。`)
   }
 
@@ -43,7 +35,6 @@ export default definePlugin(async () => {
   // setup endpoint rejects all attempts — the deployment is effectively broken.
   // Fatal-error at startup so the deployer sees the error immediately in build/deploy logs.
   if (isServerless() && !hasPassword) {
-    const SETUP_TOKEN = process.env.SETUP_TOKEN
     if (!SETUP_TOKEN) {
       logger.fatal('[init] Serverless deployment has no admin password and no SETUP_TOKEN. The admin panel setup will be blocked. Set SETUP_TOKEN in your deployment environment to enable first-time password setup.')
       throw new Error('Serverless 环境首次部署必须设置 SETUP_TOKEN 环境变量以初始化管理员密码。请在部署平台配置 SETUP_TOKEN 后重新部署。')
@@ -54,7 +45,7 @@ export default definePlugin(async () => {
 
   // Self-hosted mode: start session cleanup timer
   // Serverless: relies on MongoDB TTL index / cold-start lifecycle
-  const preset = process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || ''
+  const preset = getPresetName()
   if (preset === 'node-server' || preset === '') {
     setInterval(() => {
       sessionStore.cleanupSessions()

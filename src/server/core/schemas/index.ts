@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod'
+import { ALLOWED_CONFIG_KEYS } from '../config'
 
 // ========== Comment ==========
 
@@ -72,41 +73,10 @@ export const UpdateCommentSchema = z.object({
 
 // ========== Config ==========
 
-/** 允许通过 SET_CONFIG 修改的配置键白名单 */
-export const ALLOWED_CONFIG_KEYS = [
-  'SITE_NAME', 'SITE_URL', 'MASTER', 'MASTER_NAME', 'GLOBAL_COLOR', 'PAGE_SIZE', 'COMMENT_SORT', 'COMMENT_LENGTH_MAX',
-  'REQUIRED_FIELDS', 'COMMENT_NICK_REQUIRED', 'GRAVATAR_URL', 'GRAVATAR_URL_CUSTOM', 'GRAVATAR_DEFAULT',
-  'MASTER_LABEL', 'MASTER_LABEL_COLOR', 'COMMENT_BG_IMAGE',
-  'ENABLE_VISITOR_COUNTER', 'COMMENT_PAGINATION_MODE', 'COMMENT_RATE_LIMIT',
-  'ENABLE_LIKE', 'ENABLE_DISLIKE', 'ENABLE_ARTICLE_REACTION', 'ENABLE_EMOTION', 'ENABLE_LINK_INPUT', 'COMMENT_LINK_REQUIRED',
-  'COMMENT_FEATURES',
-  'ENABLE_CODE_HIGHLIGHT',
-  'CODE_HIGHLIGHT_THEME', 'CODE_SHOW_LANGUAGE', 'CODE_SHOW_COPY',
-  'ENABLE_CAPTCHA', 'ENABLE_IMAGE_UPLOAD',
-  'CAPTCHA_PROVIDER', 'CAPTCHA_TYPE', 'CAPTCHA_SITE_KEY', 'CAPTCHA_SECRET_KEY',
-  'IMAGE_HOSTING_PROVIDER', 'IMAGE_HOSTING_ENDPOINT', 'IMAGE_HOSTING_TOKEN',
-  'IMAGE_HOSTING_BUCKET', 'IMAGE_HOSTING_REGION',
-  'IMAGE_HOSTING_ACCESS_KEY', 'IMAGE_HOSTING_SECRET_KEY', 'IMAGE_HOSTING_CDN_DOMAIN',
-  'ENABLE_NSFW_DETECTION', 'NSFW_SERVICE', 'NSFW_ENDPOINT', 'NSFW_API_KEY', 'NSFW_THRESHOLD',
-  'BLOCKED_KEYWORDS',
-  'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'SMTP_TO', 'SMTP_TLS',
-  'ENABLE_MAIL_NOTIFICATION', 'MAIL_NOTIFY_ENABLED',
-  'SENDER_EMAIL', 'SENDER_NAME', 'MAIL_SUBJECT', 'MAIL_TEMPLATE',
-  'MAIL_SUBJECT_ADMIN', 'MAIL_TEMPLATE_ADMIN',
-  'AKISMET_KEY', 'ENABLE_ANTI_SPAM',
-  'CUSTOM_CSS', 'CDN_PREFIX',
-  'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL', 'AI_PROVIDERS', 'AUTO_AUDIT_AI_PROMPT',
-  'AI_SUMMARY_ENABLED', 'AI_SUMMARY_PROVIDER', 'AI_SUMMARY_MODEL', 'ENABLE_SUMMARY',
-  'CORS_ORIGINS',
-  'PUSHOO_CHANNELS',
-  // IP region & audit — present in DEFAULT_CONFIG and Settings.vue schema.ts
-  // but were missing from the whitelist, causing 400 on config save.
-  'AUDIT_MODE', 'IP_REGION_ENABLED', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES', 'SHOW_IP_REGION',
-
-] as const
+/** 允许通过 SET_CONFIG 修改的配置键白名单 — 从 config.ts 的 DEFAULT_CONFIG 自动生成，永不同步 */
 
 export const SetConfigSchema = z.object({
-  config: z.record(z.enum(ALLOWED_CONFIG_KEYS), z.unknown()).optional(),
+  config: z.record(z.enum(ALLOWED_CONFIG_KEYS as [string, ...string[]]), z.unknown()).optional(),
 })
 
 // ========== Counter ==========
@@ -307,6 +277,8 @@ export type PasswordSetData = z.infer<typeof PasswordSetSchema>
 export type AdminCommentData = z.infer<typeof AdminCommentSchema>
 export type UpdateCommentData = z.infer<typeof UpdateCommentSchema>
 export type CounterGetData = z.infer<typeof CounterGetSchema>
+export type CommentsCountData = z.infer<typeof CommentsCountSchema>
+export type RecentCommentsData = z.infer<typeof RecentCommentsSchema>
 export type CounterUpdateData = z.infer<typeof CounterUpdateSchema>
 export type ImportData = z.infer<typeof ImportSchema>
 export type ExportData = z.infer<typeof ExportSchema>

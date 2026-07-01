@@ -2,8 +2,9 @@
  * Admin / Config / Auth handlers — login, logout, config CRUD, password, notifications, etc.
  */
 
-import { safeValidate, ALLOWED_CONFIG_KEYS, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema } from '../schemas'
+import { safeValidate, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKeyGetSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema } from '../schemas'
 import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData } from '../schemas'
+import { ALLOWED_CONFIG_KEYS } from '../config'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
 import { hashPassword, getAuthHash, updateAuthHashCache, invalidateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
@@ -14,12 +15,11 @@ import { logger } from '../utils/logger'
 import { sendNotification } from '../notify'
 import { sendEmail } from '../email'
 import { AppError } from '../config'
-import { isDev } from '../utils/env'
+import { isDev, SETUP_TOKEN } from '../env'
 
 // ========== Check Setup ==========
 
 // ponytail: SETUP_TOKEN env var gates first-time setup; without it, setup is open (backward compat)
-const SETUP_TOKEN = process.env.SETUP_TOKEN
 
 export const handleCheckSetup = async () => {
   const hash = await getAuthHash()
@@ -83,22 +83,22 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
 
 // ========== Logout ==========
 
-export const handleLogout = async (data: any) => {
+export const handleLogout = async (data: { token?: string }) => {
   if (data.token) await sessionStore.removeToken(data.token)
   return { success: true }
 }
 
 // ========== Get Config ==========
 
-export const handleGetConfig = async (_: any) => ({ data: maskSensitiveConfig(await getConfig()) })
+export const handleGetConfig = async () => ({ data: maskSensitiveConfig(await getConfig()) })
 
 // ========== Set Config ==========
 
-export const handleSetConfig = async (data: any) => {
+export const handleSetConfig = async (data: { _ip?: string; config?: Record<string, unknown> } & Record<string, unknown>) => {
   const { _ip, ...rest } = data
   const payload = rest.config ? rest.config : rest
   const ALLOWED = new Set<string>(ALLOWED_CONFIG_KEYS)
-  const filtered: Record<string, any> = {}
+  const filtered: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(payload)) {
     if (!ALLOWED.has(key)) continue
     // C2: reject masked values — prevents accidental overwrite of secrets with placeholder
@@ -124,7 +124,7 @@ export const handleSetConfig = async (data: any) => {
 
 // ========== Config Reset ==========
 
-export const handleConfigReset = async (_: any) => {
+export const handleConfigReset = async () => {
   await configStore.resetConfig()
   await configStore.setManyConfig(DEFAULT_CONFIG as unknown as Record<string, unknown>)
   // 关键：重置配置后清除所有 session token + 失效密码哈希缓存，
@@ -182,11 +182,11 @@ export const handleTypeSet = async (data: TypeSetData) => {
 
 // ========== IP Region Get ==========
 
-export const handleIpRegionGet = async (data: any) => {
+export const handleIpRegionGet = async (data: { id: string }) => {
   const { id } = data
   const comment = await commentStore.getComment(id)
   if (!comment || !comment.ip) return { ipRegion: '' }
-  const region = await lookupIpRegion(comment.ip as string)
+  const region = await lookupIpRegion(comment.ip)
   if (region && comment.id) {
     await commentStore.setCommentIpRegion(comment.id, region)
   }
@@ -199,7 +199,7 @@ export const handlePrivateKeyGet = async (data: PrivateKeyGetData) => {
   const validation = safeValidate(PrivateKeyGetSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const { key } = validation.data
-  if (!ALLOWED_CONFIG_KEYS.includes(key as any)) return { data: null }
+  if (!ALLOWED_CONFIG_KEYS.includes(key as keyof typeof DEFAULT_CONFIG)) return { data: null }
   const cfg = await getConfig()
   return { data: (cfg as Record<string, any>)[key] || null }
 }
@@ -210,7 +210,7 @@ export const handlePrivateKeySet = async (data: PrivateKeySetData) => {
   const validation = safeValidate(PrivateKeySetSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const { key, value } = validation.data
-  if (!ALLOWED_CONFIG_KEYS.includes(key as any)) throw new AppError('INVALID_INPUT', '不允许的配置键', 400)
+  if (!ALLOWED_CONFIG_KEYS.includes(key as keyof typeof DEFAULT_CONFIG)) throw new AppError('INVALID_INPUT', '不允许的配置键', 400)
   await configStore.setConfig(key, value)
   return { success: true }
 }

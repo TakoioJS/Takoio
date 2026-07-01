@@ -20,7 +20,7 @@ export const getAuthHash = async (): Promise<string | null> => {
   }
   const dbConfig = await configStore.getConfig()
   const hash = dbConfig.AUTH_HASH
-  if (hash) {
+  if (hash && typeof hash === 'string') {
     authHashCache = hash
     authHashCacheTime = Date.now()
     return hash
@@ -47,8 +47,9 @@ export const updateAuthHashCache = (hash: string) => {
 export const initPassword = async (): Promise<{ hasPassword: boolean }> => {
   try {
     const dbConfig = await configStore.getConfig()
-    if (dbConfig.AUTH_HASH) {
-      authHashCache = dbConfig.AUTH_HASH
+    const hash = dbConfig.AUTH_HASH
+    if (hash && typeof hash === 'string') {
+      authHashCache = hash
       authHashCacheTime = Date.now()
       logger.info('Admin password loaded from database')
       return { hasPassword: true }

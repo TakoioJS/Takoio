@@ -1,41 +1,112 @@
 /**
- * Redis — per-invocation connection model for serverless.
+ * Redis — connection reuse with lazy initialization for serverless compatibility.
  *
- * 云函数哲学：每次调用独立、无状态。不再维护模块级单例连接，
- * 而是通过 withRedis() 在每次操作时建连、用完即弃。这彻底避免了
- * Vercel 等平台冻结实例后 TCP 连接被杀导致的"死连接"问题。
+ * 设计演进：
+ * 1. 早期：每次操作新建连接（彻底避免 serverless 死连接）
+ * 2. 现在：lazy connection 单例 + 健康检查（平衡性能与兼容性）
+ * 3. 原理：首次使用时建立连接，后续复用；连接异常时自动重建
  *
- * Redis 不可用时所有功能自动降级到内存兜底。
+ * 云函数注意：实例冻结后连接可能失效，通过健康检查自动处理。
  */
 
 import Redis from 'ioredis'
-import { logger } from '../utils/logger'
 import { createHash } from 'node:crypto'
+import { logger } from '../utils/logger'
+import { REDIS_URL } from '../env'
 
 const CONNECT_TIMEOUT = 5_000
 
-/**
- * Per-invocation Redis 执行器。
- * 建立 → 执行 fn → 关闭，全程无状态。
- *
- * @returns fn 的返回值；未配置 REDIS_URL 时返回 null。
- * @throws 连接失败或 fn 抛出时 throw（调用方用 try/catch 走兜底）。
- */
-export async function withRedis<T> (fn: (client: Redis) => Promise<T>): Promise<T | null> {
-  const url = process.env.REDIS_URL
+// ========== Connection Management ==========
+
+let _redisClient: Redis | null = null
+let _connecting = false
+let _connectPromise: Promise<Redis> | null = null
+
+/** 获取或创建 Redis 连接（lazy + singleton） */
+async function getRedisClient(): Promise<Redis | null> {
+  const url = REDIS_URL
   if (!url) return null
 
-  const client = new Redis(url, {
-    connectTimeout: CONNECT_TIMEOUT,
-    maxRetriesPerRequest: 1,
-    // lazyConnect + 手动 connect() 确保握手完成才执行命令
-    lazyConnect: true,
+  // 检查现有连接是否健康
+  if (_redisClient) {
+    try {
+      await _redisClient.ping()
+      return _redisClient
+    } catch {
+      // 连接已失效，关闭并重建
+      try { _redisClient.disconnect() } catch { /* ignore */ }
+      _redisClient = null
+    }
+  }
+
+  // 防止并发创建多个连接
+  if (_connecting && _connectPromise) {
+    return _connectPromise
+  }
+
+  _connecting = true
+  _connectPromise = new Promise<Redis>((resolve, reject) => {
+    const client = new Redis(url, {
+      connectTimeout: CONNECT_TIMEOUT,
+      maxRetriesPerRequest: 1,
+      lazyConnect: true,
+      retryStrategy: (times) => {
+        if (times > 2) return null // 最多重试 2 次
+        return Math.min(times * 100, 1000)
+      },
+    })
+
+    client.on('error', (err) => {
+      logger.warn('[redis] connection error:', err.message)
+    })
+
+    client.connect()
+      .then(() => {
+        _redisClient = client
+        resolve(client)
+      })
+      .catch((err) => {
+        _connecting = false
+        _connectPromise = null
+        reject(err)
+      })
   })
+
+  return _connectPromise.finally(() => {
+    _connecting = false
+  })
+}
+
+/** 安全关闭 Redis 连接（用于测试或优雅退出） */
+export async function closeRedis(): Promise<void> {
+  if (_redisClient) {
+    try { await _redisClient.quit() } catch { /* ignore */ }
+    _redisClient = null
+  }
+  _connecting = false
+  _connectPromise = null
+}
+
+// ========== withRedis (Connection Reuse) ==========
+
+/**
+ * 在复用连接上执行 Redis 操作。
+ * 连接异常时自动降级到内存兜底。
+ */
+export async function withRedis<T>(fn: (client: Redis) => Promise<T>): Promise<T | null> {
   try {
-    await client.connect()
+    const client = await getRedisClient()
+    if (!client) return null
     return await fn(client)
-  } finally {
-    client.disconnect()
+  } catch (e: any) {
+    // 连接失败时清除缓存，下次会重新连接
+    if (_redisClient) {
+      try { _redisClient.disconnect() } catch { /* ignore */ }
+      _redisClient = null
+    }
+    _connecting = false
+    _connectPromise = null
+    return null
   }
 }
 
@@ -63,7 +134,7 @@ export interface RedisDiagnostics {
 
 /** 供 /api/health 使用：真实建连 + ping，返回详细状态。 */
 export async function getRedisDiagnostics (): Promise<RedisDiagnostics> {
-  const url = process.env.REDIS_URL
+  const url = REDIS_URL
   if (!url) return { urlConfigured: false, status: 'error', error: 'REDIS_URL not set' }
 
   // 解析 URL 协议（rediss:// vs redis://）— 不泄露密码
@@ -119,11 +190,56 @@ const SUMMARY_TTL = 2_592_000 // 30 days
 const summaryCacheKey = (url: string, content: string): string =>
   `takoio:summary:${createHash('sha256').update(url).digest('hex').slice(0, 16)}:${createHash('sha256').update(content).digest('hex').slice(0, 16)}`
 
-// Memory fallback when Redis is unavailable
-const _memCache = new Map<string, { data: SummaryCacheData; expire: number }>()
+// Memory fallback when Redis is unavailable — LRU with max size
+class LRUCache<K, V> {
+  private cache = new Map<K, V>()
+  constructor(private maxSize: number) {}
+
+  get(key: K): V | undefined {
+    const value = this.cache.get(key)
+    if (value) {
+      // 移动到最新
+      this.cache.delete(key)
+      this.cache.set(key, value)
+    }
+    return value
+  }
+
+  set(key: K, value: V): void {
+    if (this.cache.has(key)) {
+      this.cache.delete(key)
+    } else if (this.cache.size >= this.maxSize) {
+      // 淘汰最旧的
+      const firstKey = this.cache.keys().next().value
+      if (firstKey !== undefined) this.cache.delete(firstKey)
+    }
+    this.cache.set(key, value)
+  }
+
+  delete(key: K): boolean {
+    return this.cache.delete(key)
+  }
+
+  has(key: K): boolean {
+    return this.cache.has(key)
+  }
+
+  keys(): IterableIterator<K> {
+    return this.cache.keys()
+  }
+
+  get size(): number {
+    return this.cache.size
+  }
+}
+
+const _memCache = new LRUCache<string, { data: SummaryCacheData; expire: number }>(1000)
 setInterval(() => {
   const now = Date.now()
-  for (const [k, v] of _memCache) if (v.expire < now) _memCache.delete(k)
+  for (const [k, v] of _memCache.keys()) {
+    const entry = _memCache.get(k)
+    if (entry && entry.expire < now) _memCache.delete(k)
+  }
 }, 60_000).unref()
 
 export async function getSummaryCache (url: string, content: string): Promise<SummaryCacheData | null> {
@@ -197,18 +313,22 @@ const commentListCacheKey = (url: string, page: number, pageSize: number, sort: 
   return `${COMMENT_LIST_KEY_PREFIX}${urlHash}:${page}:${pageSize}:${sort}`
 }
 
-// 内存兜底：Map + url 反向索引（用于按 url 失效）
-const _memCommentCache = new Map<string, { data: any; expire: number }>()
+// 内存兜底：LRU + url 反向索引（用于按 url 失效）
+const _memCommentCache = new LRUCache<string, { data: any; expire: number }>(1000)
 const _memCommentUrlIndex = new Map<string, Set<string>>()
-setInterval(() => {
+
+/** 清理过期的内存缓存 */
+function cleanupMemCommentCache(): void {
   const now = Date.now()
-  for (const [k, v] of _memCommentCache) {
-    if (v.expire < now) {
+  for (const k of _memCommentCache.keys()) {
+    const entry = _memCommentCache.get(k)
+    if (entry && entry.expire < now) {
       _memCommentCache.delete(k)
-      // 反向索引项稍后由 invalidate 或下次 set 时自然清理
     }
   }
-}, 60_000).unref()
+}
+
+setInterval(cleanupMemCommentCache, 60_000).unref()
 
 export async function getCommentListCache (url: string, page: number, pageSize: number, sort: string): Promise<any | null> {
   const key = commentListCacheKey(url, page, pageSize, sort)
@@ -342,8 +462,9 @@ export async function listSummaryCaches (): Promise<SummaryCacheEntry[]> {
   // Memory fallback
   const items: SummaryCacheEntry[] = []
   const now = Date.now()
-  for (const [k, v] of _memCache) {
-    if (k.startsWith(SUMMARY_KEY_PREFIX) && v.expire > now) {
+  for (const k of _memCache.keys()) {
+    const v = _memCache.get(k)
+    if (v && k.startsWith(SUMMARY_KEY_PREFIX) && v.expire > now) {
       items.push({ key: k, ...v.data })
     }
   }

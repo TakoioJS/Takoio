@@ -43,7 +43,8 @@ export type {
   CommentSort,
 } from './types'
 
-const DB_TYPE = (process.env.DB_TYPE || 'sqlite').toLowerCase()
+import { DB_TYPE } from '../env'
+import { isServerless } from '../utils/serverless'
 
 // Store interfaces for typing
 // 注意：所有后端实现（sqlite.ts / mongodb.ts / 未来的 postgres.ts）
@@ -116,27 +117,42 @@ export interface StoreBackend {
 }
 
 let _impl: StoreBackend | null = null
+let _initPromise: Promise<StoreBackend> | null = null
+let _initialized = false
 
 async function getImpl (): Promise<StoreBackend> {
   if (_impl) return _impl
-  if (DB_TYPE === 'mongodb') {
-    _impl = await import('./mongodb.js') as StoreBackend
-  } else if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg') {
-    _impl = await import('./postgres.js') as StoreBackend
-  } else {
-    _impl = await import('./sqlite.js') as StoreBackend
-  }
-  return _impl
+  if (_initPromise) return _initPromise
+
+  _initPromise = (async () => {
+    if (DB_TYPE === 'mongodb') {
+      _impl = await import('./mongodb.js') as StoreBackend
+    } else if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg') {
+      _impl = await import('./postgres.js') as StoreBackend
+    } else {
+      _impl = await import('./sqlite.js') as StoreBackend
+    }
+    return _impl
+  })()
+
+  return _initPromise
 }
 
 /** Initialize the store backend — called from Nitro init plugin */
-export async function initStore () {
+export async function initStore (): Promise<void> {
+  if (_initialized) return
   const impl = await getImpl()
   Object.assign(commentStore, impl.commentStore)
   Object.assign(configStore, impl.configStore)
   Object.assign(visitorStore, impl.visitorStore)
   Object.assign(sessionStore, impl.sessionStore)
   Object.assign(reactionStore, impl.reactionStore)
+  _initialized = true
+}
+
+/** 检查 store 是否已初始化 */
+export function isStoreInitialized (): boolean {
+  return _initialized
 }
 
 // Module-level store objects — populated by initStore(), used by all consumers
@@ -158,12 +174,7 @@ export async function ensureDb (): Promise<void> { return (await getImpl()).ensu
 // 性能优化：serverless preset 下直接走内存限流，避免每请求 Redis TLS 握手（100-300ms）。
 // serverless 实例生命周期短，内存限流的"每实例独立计数"在此场景下可接受；
 // 多实例下限流精度略降，但防止刷屏足够。
-function isServerlessPreset (): boolean {
-  const preset = (process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || '').toLowerCase()
-  return preset === 'vercel' || preset === 'netlify' || preset === 'cloudflare'
-}
-
-const _skipRedisRateLimit = isServerlessPreset()
+const _skipRedisRateLimit = isServerless()
 
 export const rateLimitStore = {
   async checkRateLimit (ip: string, maxRequests = 60) {

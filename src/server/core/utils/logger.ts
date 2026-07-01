@@ -12,14 +12,14 @@
  *   - LOG_LEVEL=error：仅 error
  */
 
-import { isDev } from './env'
+import { isDev, LOG_LEVEL } from '../env'
 
 type Level = 'debug' | 'info' | 'warn' | 'error'
 
 const ORDER: Record<Level, number> = { debug: 10, info: 20, warn: 30, error: 40 }
 
 function resolveLevel (): Level {
-  const env = (process.env.LOG_LEVEL || '').toLowerCase() as Level
+  const env = LOG_LEVEL
   if (env && ORDER[env] !== undefined) return env
   return isDev() ? 'debug' : 'info'
 }
