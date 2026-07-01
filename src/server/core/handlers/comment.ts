@@ -41,7 +41,7 @@ import { lookupIpRegion } from '../ip-region'
 import { requireAdmin } from '../auth'
 import { AppError } from '../config'
 import { renderComment } from '../utils/render'
-import { getCommentListCache, setCommentListCache, invalidateCommentListCache } from '../store/redis'
+import { getOrSetCommentListCache, invalidateCommentListCache } from '../store/redis'
 import type { TakoioConfig } from '../config'
 
 // ========== Helpers ==========
@@ -75,12 +75,10 @@ export const handleCommentGet = async (data: GetCommentData) => {
   const { url, page, pageSize, sort } = validation.data
   const targetUrl = url || '/'
 
-  // 评论列表缓存（Redis 优先，内存兜底）— config 不缓存，每次查（config 自身有 60s 缓存）
-  let result = await getCommentListCache(targetUrl, page, pageSize, sort)
-  if (!result) {
-    result = await commentStore.getComments(targetUrl, page, pageSize, sort)
-    await setCommentListCache(targetUrl, page, pageSize, sort, result)
-  }
+  // 评论列表缓存：get-or-set 模式，cache miss 时单次 withRedis 内完成 GET→DB→SET
+  const result = await getOrSetCommentListCache(targetUrl, page, pageSize, sort, () =>
+    commentStore.getComments(targetUrl, page, pageSize, sort)
+  )
 
   const rawCfg = await getConfig()
   markMasterComments(result.data, rawCfg)
@@ -428,6 +426,64 @@ export const handleCommentApprove = async (data: CommentIdData) => {
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.showComment(validation.data.id) }
+}
+
+// ========== Comment Batch (避免 N+1 HTTP/DB/Redis 风暴) ==========
+
+type BatchAction = 'hide' | 'show' | 'delete' | 'spam' | 'approve' | 'unspam'
+
+interface BatchData {
+  ids: string[]
+  action: BatchAction
+}
+
+const VALID_BATCH_ACTIONS: BatchAction[] = ['hide', 'show', 'delete', 'spam', 'approve', 'unspam']
+
+export const handleCommentBatch = async (data: BatchData) => {
+  if (!Array.isArray(data.ids) || data.ids.length === 0) {
+    throw new AppError('INVALID_INPUT', 'ids 不能为空', 400)
+  }
+  if (data.ids.length > 500) {
+    throw new AppError('INVALID_INPUT', '单次批量操作不能超过 500 条', 400)
+  }
+  if (!VALID_BATCH_ACTIONS.includes(data.action)) {
+    throw new AppError('INVALID_INPUT', `不支持的 action: ${data.action}`, 400)
+  }
+
+  const failedIds: string[] = []
+  const urlSet = new Set<string>()
+
+  // 逐条执行（各 store 实现内部用单条 UPDATE），收集 url 用于批量失效缓存
+  for (const id of data.ids) {
+    try {
+      const comment = await commentStore.getComment(id)
+      if (comment?.url) urlSet.add(comment.url)
+      let ok = false
+      switch (data.action) {
+        case 'hide': ok = await commentStore.hideComment(id); break
+        case 'show': ok = await commentStore.showComment(id); break
+        case 'delete': ok = await commentStore.deleteComment(id); break
+        case 'spam': ok = await commentStore.setSpam(id, true); break
+        case 'unspam': ok = await commentStore.setSpam(id, false); break
+        case 'approve': ok = await commentStore.showComment(id); break
+      }
+      if (!ok) failedIds.push(id)
+    } catch {
+      failedIds.push(id)
+    }
+  }
+
+  // 批量失效缓存（一次 per url，不再每个 id 一次）
+  await Promise.all(
+    Array.from(urlSet).map(url => invalidateCommentListCache(url).catch(() => {}))
+  )
+
+  return {
+    success: failedIds.length === 0,
+    total: data.ids.length,
+    failed: failedIds.length,
+    failedIds,
+  }
 }
 
 // ========== Dashboard Stats ==========

@@ -28,7 +28,7 @@ export async function withRedis<T> (fn: (client: Redis) => Promise<T>): Promise<
   const client = new Redis(url, {
     connectTimeout: CONNECT_TIMEOUT,
     maxRetriesPerRequest: 1,
-    enableOfflineQueue: false,
+    // lazyConnect + 手动 connect() 确保握手完成才执行命令
     lazyConnect: true,
   })
   try {
@@ -57,18 +57,40 @@ export interface RedisDiagnostics {
   urlConfigured: boolean
   status: 'connected' | 'error'
   error?: string
+  protocol?: string
+  clientStatus?: string
 }
 
 /** 供 /api/health 使用：真实建连 + ping，返回详细状态。 */
 export async function getRedisDiagnostics (): Promise<RedisDiagnostics> {
   const url = process.env.REDIS_URL
   if (!url) return { urlConfigured: false, status: 'error', error: 'REDIS_URL not set' }
+
+  // 解析 URL 协议（rediss:// vs redis://）— 不泄露密码
+  let protocol = 'unknown'
+  try { protocol = new URL(url).protocol.replace(':', '') } catch { /* invalid url */ }
+
+  // 独立建连以捕获完整诊断
+  const client = new Redis(url, {
+    connectTimeout: CONNECT_TIMEOUT,
+    maxRetriesPerRequest: 1,
+    lazyConnect: true,
+  })
+
+  let clientStatus = 'initial'
+  client.on('error', () => { /* suppress uncaught */ })
+
   try {
-    const ok = await withRedis(async (c) => (await c.ping()) === 'PONG')
-    if (ok === true) return { urlConfigured: true, status: 'connected' }
-    return { urlConfigured: true, status: 'error', error: 'unexpected ping response' }
+    await client.connect()
+    clientStatus = client.status
+    const pong = await client.ping()
+    if (pong === 'PONG') return { urlConfigured: true, status: 'connected', protocol, clientStatus }
+    return { urlConfigured: true, status: 'error', error: `unexpected ping response: ${pong}`, protocol, clientStatus }
   } catch (e: any) {
-    return { urlConfigured: true, status: 'error', error: formatError(e) }
+    clientStatus = client.status
+    return { urlConfigured: true, status: 'error', error: formatError(e), protocol, clientStatus }
+  } finally {
+    client.disconnect()
   }
 }
 
@@ -134,6 +156,19 @@ export async function setSummaryCache (url: string, content: string, data: Summa
 
 const _memRateBuckets = new Map<string, { count: number; reset: number }>()
 
+/** 内存限流（serverless 或 Redis 不可用时使用） */
+export function memoryRateLimit (identifier: string, max: number, windowMs: number): boolean {
+  const key = `takoio:rate:${identifier}`
+  const now = Date.now()
+  const bucket = _memRateBuckets.get(key)
+  if (!bucket || bucket.reset < now) {
+    _memRateBuckets.set(key, { count: 1, reset: now + windowMs })
+    return true
+  }
+  bucket.count++
+  return bucket.count <= max
+}
+
 export async function redisRateLimit (
   identifier: string,
   max: number,
@@ -148,15 +183,7 @@ export async function redisRateLimit (
     })
     if (result !== null) return result <= max
   } catch { /* fall through to memory */ }
-  // Memory fallback
-  const now = Date.now()
-  const bucket = _memRateBuckets.get(key)
-  if (!bucket || bucket.reset < now) {
-    _memRateBuckets.set(key, { count: 1, reset: now + windowMs })
-    return true
-  }
-  bucket.count++
-  return bucket.count <= max
+  return memoryRateLimit(identifier, max, windowMs)
 }
 
 // ========== Comment list cache ==========
@@ -206,6 +233,44 @@ export async function setCommentListCache (url: string, page: number, pageSize: 
   _memCommentCache.set(key, { data, expire: Date.now() + COMMENT_LIST_TTL * 1000 })
   if (!_memCommentUrlIndex.has(url)) _memCommentUrlIndex.set(url, new Set())
   _memCommentUrlIndex.get(url)!.add(key)
+}
+
+/**
+ * Get-or-set 模式：cache miss 时在同一个 withRedis 连接内完成 GET→miss→SET，
+ * 避免 cache miss 路径建两次 Redis 连接。
+ *
+ * @param loader cache miss 时从 DB 加载数据的函数
+ * @returns 缓存或新加载的数据
+ */
+export async function getOrSetCommentListCache (
+  url: string, page: number, pageSize: number, sort: string,
+  loader: () => Promise<any>
+): Promise<any> {
+  const key = commentListCacheKey(url, page, pageSize, sort)
+
+  // 先查内存兜底（快速路径，无 Redis 开销）
+  const mem = _memCommentCache.get(key)
+  if (mem && mem.expire > Date.now()) return mem.data
+
+  // 单次 withRedis 连接内完成 GET → miss → SET
+  try {
+    const result = await withRedis(async (c) => {
+      const raw = await c.get(key)
+      if (raw) return JSON.parse(raw)
+      // cache miss — 加载并写入
+      const data = await loader()
+      await c.set(key, JSON.stringify(data), 'EX', COMMENT_LIST_TTL)
+      return data
+    })
+    if (result !== null) return result
+  } catch { /* fall through to memory */ }
+
+  // Redis 不可用 — 加载并写入内存
+  const data = await loader()
+  _memCommentCache.set(key, { data, expire: Date.now() + COMMENT_LIST_TTL * 1000 })
+  if (!_memCommentUrlIndex.has(url)) _memCommentUrlIndex.set(url, new Set())
+  _memCommentUrlIndex.get(url)!.add(key)
+  return data
 }
 
 /** 按 url 失效该文章的所有评论列表缓存（提交/删除/状态变更时调用） */

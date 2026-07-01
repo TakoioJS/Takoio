@@ -204,6 +204,10 @@ const allComments = ref<Comment[]>([])
 const sentinelRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
+// 无限滚动模式下 DOM 节点累积上限：超过后丢弃最早加载的，仅保留最新批次。
+// 旧评论已滚出视口，移除其 DOM 节点可避免渲染/内存压力；完整历史请用分页模式。
+const MAX_INFINITE_COMMENTS = 200
+
 const infiniteMode = computed(() => mergedOptions.value.paginationMode === 'readmore')
 const hasMore = computed(() => allComments.value.length < total.value)
 
@@ -240,7 +244,12 @@ const loadMore = async (): Promise<void> => {
     const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
     const newComments = result.data || []
     resolveReplyToNick(newComments)
-    allComments.value = [...allComments.value, ...newComments]; comments.value = allComments.value
+    let combined = [...allComments.value, ...newComments]
+    // 超出上限时丢弃最早的，保留最新（已滚出视口的旧评论无需保留在 DOM）
+    if (combined.length > MAX_INFINITE_COMMENTS) {
+      combined = combined.slice(combined.length - MAX_INFINITE_COMMENTS)
+    }
+    allComments.value = combined; comments.value = allComments.value
     if (result.total !== undefined) total.value = result.total
   } catch { page.value -= 1 } finally { loadingMore.value = false }
 }

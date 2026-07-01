@@ -74,16 +74,16 @@ export const commentsApi = {
     api.get<{ ipRegion: string }>(`/api/comments/${id}/ip-region`),
 
   batchHide: (ids: string[], hide: boolean) =>
-    Promise.all(ids.map(id => api.patch(`/api/comments/${id}/hide`, { hide }))),
+    api.post('/api/comments/batch', { ids, action: hide ? 'hide' : 'show' }),
 
   batchDelete: (ids: string[]) =>
-    Promise.all(ids.map(id => api.delete(`/api/comments/${id}`))),
+    api.post('/api/comments/batch', { ids, action: 'delete' }),
 
   batchSpam: (ids: string[], isSpam: boolean) =>
-    Promise.all(ids.map(id => api.patch(`/api/comments/${id}/spam`, { isSpam }))),
+    api.post('/api/comments/batch', { ids, action: isSpam ? 'spam' : 'unspam' }),
 
   batchApprove: (ids: string[]) =>
-    Promise.all(ids.map(id => api.patch(`/api/comments/${id}/approve`, {}))),
+    api.post('/api/comments/batch', { ids, action: 'approve' }),
 
   getDashboard: () =>
     api.get<DashboardStats>('/api/admin/dashboard'),

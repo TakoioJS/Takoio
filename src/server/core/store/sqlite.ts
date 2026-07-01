@@ -69,6 +69,20 @@ export const commentStore: CommentStore = {
     return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
   },
 
+  async addComments (data: CommentInput[]): Promise<number> {
+    if (data.length === 0) return 0
+    // 批量插入：分批避免 SQLite 参数上限，每批多行 INSERT 比 N 次单行快一个数量级
+    const BATCH = 50
+    const rows = data.map(d => ({
+      ...d, like: d.like ?? 0, dislike: d.dislike ?? 0,
+      isSpam: d.isSpam ? 1 : 0, isTop: d.isTop ? 1 : 0, isPinned: d.isPinned ? 1 : 0,
+    }))
+    for (let i = 0; i < rows.length; i += BATCH) {
+      await db().insert(comments).values(rows.slice(i, i + BATCH)).run()
+    }
+    return rows.length
+  },
+
   async getComment (id: string): Promise<Comment | undefined> {
     const row = await db().select().from(comments).where(eq(comments.id, id)).get()
     return row ? fromRow(row) : undefined

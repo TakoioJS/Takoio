@@ -1,33 +1,46 @@
 /**
  * IP region lookup — wraps ip2region-ts with lazy init and graceful degradation
+ *
+ * 动态 import ip2region-ts：避免模块被间接引入时（admin handler → comment.ts →
+ * ip-region.ts）就加载 xdb 二进制与解析逻辑。initIpSearcher 异步执行文件 I/O，
+ * init 插件中 fire-and-forget 不阻塞 server ready；lookupIpRegion 在 searcher
+ * 就绪前返回空串，就绪后自动生效。
  */
 
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { newWithBuffer, loadContentFromFile, defaultDbFile } from 'ip2region-ts'
 import { logger } from './utils/logger'
+
+// ip2region-ts 的 searcher 类型（动态 import 后才可用）
+type IpSearcher = { search: (ip: string) => Promise<{ region: string | null }> }
 
 // Candidate xdb file paths, in priority order:
 //   1. ip2region-ts default (local dev: node_modules/ip2region-ts/data/ip2region.xdb
 //      resolved via __dirname of the package's dist/index.js)
 //   2. CWD-relative node_modules path (Vercel/Netlify after esbuild bundle:
 //      __dirname no longer points into node_modules, so use process.cwd())
-const xdbCandidates = [
-  defaultDbFile,
-  join(process.cwd(), 'node_modules/ip2region-ts/data/ip2region.xdb'),
-]
+function xdbCandidates (defaultDbFile: string): string[] {
+  return [
+    defaultDbFile,
+    join(process.cwd(), 'node_modules/ip2region-ts/data/ip2region.xdb'),
+  ]
+}
 
-let ipSearcher: Awaited<ReturnType<typeof newWithBuffer>> | null = null
+let ipSearcher: IpSearcher | null = null
+let _initStarted = false
 
-export const initIpSearcher = (): void => {
-  const xdbFile = xdbCandidates.find(p => existsSync(p))
-  if (!xdbFile) {
-    logger.warn('ip2region.xdb not found in candidate paths, IP lookup disabled')
-    return
-  }
+export const initIpSearcher = async (): Promise<void> => {
+  if (_initStarted) return
+  _initStarted = true
   try {
+    const { loadContentFromFile, newWithBuffer, defaultDbFile } = await import('ip2region-ts')
+    const xdbFile = xdbCandidates(defaultDbFile).find(p => existsSync(p))
+    if (!xdbFile) {
+      logger.warn('ip2region.xdb not found in candidate paths, IP lookup disabled')
+      return
+    }
     const buffer = loadContentFromFile(xdbFile)
-    ipSearcher = newWithBuffer(buffer)
+    ipSearcher = newWithBuffer(buffer) as IpSearcher
     logger.info('IP region searcher initialized (ip2region)')
   } catch (e: any) {
     logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')

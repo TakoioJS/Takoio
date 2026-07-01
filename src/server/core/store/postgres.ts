@@ -69,6 +69,16 @@ export const commentStore: CommentStore = {
     return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
   },
 
+  async addComments (data: CommentInput[]): Promise<number> {
+    if (data.length === 0) return 0
+    const BATCH = 100
+    const rows = data.map(d => ({ ...d, like: d.like ?? 0, dislike: d.dislike ?? 0 }))
+    for (let i = 0; i < rows.length; i += BATCH) {
+      await db().insert(comments).values(rows.slice(i, i + BATCH))
+    }
+    return rows.length
+  },
+
   async getComment (id: string): Promise<Comment | undefined> {
     const rows = await db().select().from(comments).where(eq(comments.id, id)).limit(1)
     return rows[0] ? fromRow(rows[0]) : undefined

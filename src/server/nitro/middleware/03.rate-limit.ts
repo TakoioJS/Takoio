@@ -8,7 +8,9 @@
 import { rateLimitStore } from '#core/store/index'
 import { getClientIp } from '#core/utils/ip'
 
-const THROTTLE_MS = parseInt(process.env.TAKOIO_THROTTLE || '250', 10)
+// 默认 0：rate-limit 中间件已用精确的滑动窗口限流，无需额外人为延迟。
+// 如需防爬可显式设置 TAKOIO_THROTTLE=250（毫秒）。
+const THROTTLE_MS = parseInt(process.env.TAKOIO_THROTTLE || '0', 10)
 
 // Skip artificial throttle delay on serverless — it wastes billed execution time
 function isServerlessPreset (): boolean {

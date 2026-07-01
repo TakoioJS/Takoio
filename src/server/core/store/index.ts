@@ -51,6 +51,8 @@ const DB_TYPE = (process.env.DB_TYPE || 'sqlite').toLowerCase()
 
 export interface CommentStore {
   addComment (data: CommentInput): Promise<Comment>
+  /** 批量插入评论（导入用），返回插入条数 */
+  addComments (data: CommentInput[]): Promise<number>
   getComment (id: string): Promise<Comment | undefined>
   updateComment (id: string, data: CommentUpdate): Promise<boolean>
   getComments (url: string, page?: number, pageSize?: number, sort?: CommentSort): Promise<PaginatedResult<CommentListItem>>
@@ -152,8 +154,23 @@ export async function ensureDb (): Promise<void> { return (await getImpl()).ensu
 // ponytail: unified rate limiting — Redis when available, in-memory fallback inside redis.ts
 // redisRateLimit 内部已完整处理 Redis 不可用时的内存兜底（_memRateBuckets），
 // 此处无需再维护重复的内存限流逻辑。
+//
+// 性能优化：serverless preset 下直接走内存限流，避免每请求 Redis TLS 握手（100-300ms）。
+// serverless 实例生命周期短，内存限流的"每实例独立计数"在此场景下可接受；
+// 多实例下限流精度略降，但防止刷屏足够。
+function isServerlessPreset (): boolean {
+  const preset = (process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || '').toLowerCase()
+  return preset === 'vercel' || preset === 'netlify' || preset === 'cloudflare'
+}
+
+const _skipRedisRateLimit = isServerlessPreset()
+
 export const rateLimitStore = {
   async checkRateLimit (ip: string, maxRequests = 60) {
+    if (_skipRedisRateLimit) {
+      const { memoryRateLimit } = await import('./redis')
+      return memoryRateLimit(`global:${ip}`, maxRequests, 60_000)
+    }
     const { redisRateLimit } = await import('./redis')
     return redisRateLimit(`global:${ip}`, maxRequests, 60_000)
   },

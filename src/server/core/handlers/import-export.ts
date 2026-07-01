@@ -6,7 +6,7 @@ import * as crypto from 'node:crypto'
 import { safeValidate } from '../schemas'
 import { ImportSchema, ExportSchema } from '../schemas'
 import { commentStore, getStore, importStore } from '../store/index'
-import type { CommentInput, StoreImportData } from '../store/index'
+import type { CommentInput, Comment, StoreImportData } from '../store/index'
 import { AppError } from '../config'
 import { logger } from '../utils/logger'
 
@@ -192,11 +192,9 @@ export const handleImport = async (source: string, data: any) => {
   }
 
   logger.info({ count: parsed.length }, 'Import records')
-  let count = 0
-  for (const item of parsed) {
-    await commentStore.addComment(toComment(item, source) as CommentInput)
-    count++
-  }
+  // 批量插入：一次 addComments 走批量 INSERT/bulkWrite，避免 N 次单行写入
+  const items = parsed.map((item: any) => toComment(item, source) as CommentInput)
+  const count = await commentStore.addComments(items)
   return { count }
 }
 
@@ -211,6 +209,17 @@ export const handleExport = async (data: any) => {
     return { data: rest, total: rest.comments?.length || 0 }
   }
 
-  const { data: comments } = await commentStore.getAllComments(1, 99999)
-  return { data: comments, total: comments.length }
+  // 分页拉取：避免单次 LIMIT 99999 查询拖垮 DB / 触发 serverless 超时。
+  // 每页 500 条，循环到取完为止；安全上限 200 页（10 万条）防止异常死循环。
+  const EXPORT_PAGE_SIZE = 500
+  const MAX_PAGES = 200
+  const all: Comment[] = []
+  let page = 1
+  let total = 0
+  do {
+    const res = await commentStore.getAllComments(page, EXPORT_PAGE_SIZE)
+    all.push(...res.data)
+    total = res.total
+  } while (all.length < total && page++ < MAX_PAGES)
+  return { data: all, total: all.length }
 }

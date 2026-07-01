@@ -30,10 +30,11 @@ export default definePlugin(async () => {
     throw new Error(`Serverless 环境必须使用 MongoDB（DB_TYPE=mongodb），当前为 "${dbType}"。文件系统临时，SQLite 会丢失数据。`)
   }
 
-  // initIpSearcher (file I/O) is independent of DB — start in parallel
+  // initIpSearcher (file I/O + dynamic import) is independent of DB — fire-and-forget
+  // 不阻塞 server ready：lookupIpRegion 在 searcher 就绪前返回空串，就绪后自动生效
   const dbPromise = ensureDb()
   const storePromise = initStore()
-  initIpSearcher()
+  initIpSearcher().catch(() => {})
   await dbPromise
   await storePromise
   const { hasPassword } = await initPassword()

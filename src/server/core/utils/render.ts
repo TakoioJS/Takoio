@@ -1,5 +1,5 @@
 import { Marked } from 'marked'
-import { createHighlighter } from 'shiki'
+import type { Highlighter } from 'shiki'
 import DOMPurify from 'dompurify'
 
 // ponytail: dynamic import for jsdom — the package is externalized in nitro.config.ts
@@ -36,8 +36,8 @@ async function initPurify () {
   }
 }
 
-let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null
-let hlPromise: Promise<Awaited<ReturnType<typeof createHighlighter>>> | null = null
+let highlighter: Highlighter | null = null
+let hlPromise: Promise<Highlighter> | null = null
 
 // 常用语言在 createHighlighter 时预热；罕见语言按需 loadLanguage，减少冷启动时间
 const COMMON_LANGS = [
@@ -54,20 +54,26 @@ const loadedLangs = new Set<string>()
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-async function getHl () {
+// 动态 import shiki：render.ts 被 admin handler 等间接引入时不再触发 shiki 模块加载，
+// 仅在首次 renderComment 调用时才加载，降低冷启动开销。
+async function getHl (): Promise<Highlighter> {
   if (highlighter) return highlighter
   if (hlPromise) return hlPromise
-  hlPromise = createHighlighter({
-    themes: ['github-light', 'github-dark'],
-    langs: COMMON_LANGS,
-  })
-  highlighter = await hlPromise
-  for (const lang of COMMON_LANGS) loadedLangs.add(lang)
-  return highlighter
+  hlPromise = (async () => {
+    const { createHighlighter } = await import('shiki')
+    const hl = await createHighlighter({
+      themes: ['github-light', 'github-dark'],
+      langs: COMMON_LANGS,
+    })
+    highlighter = hl
+    for (const lang of COMMON_LANGS) loadedLangs.add(lang)
+    return hl
+  })()
+  return hlPromise
 }
 
 /** 按需加载未预热的语言 */
-async function ensureLang (hl: Awaited<ReturnType<typeof createHighlighter>>, lang: string): Promise<void> {
+async function ensureLang (hl: Highlighter, lang: string): Promise<void> {
   if (loadedLangs.has(lang) || !ALL_KNOWN_LANGS.has(lang)) return
   try {
     await hl.loadLanguage(lang as any)

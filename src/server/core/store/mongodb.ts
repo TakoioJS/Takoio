@@ -88,37 +88,58 @@ const normalizeDoc = (r: any): Comment | null => {
   return { id: _id, ...rest, like: r.like ?? 0, dislike: r.dislike ?? 0 } as Comment
 }
 
+/** CommentInput → MongoDB 文档（addComment / addComments 共用） */
+const commentToDoc = (data: CommentInput) => ({
+  _id: data.id,
+  url: data.url,
+  href: data.href,
+  nick: data.nick,
+  mail: data.mail,
+  mailMd5: data.mailMd5,
+  link: data.link,
+  comment: data.comment,
+  ua: data.ua,
+  ip: data.ip,
+  state: data.state || 'visible',
+  created: data.created,
+  updated: data.updated,
+  pid: data.pid,
+  rid: data.rid,
+  like: data.like ?? 0,
+  dislike: data.dislike ?? 0,
+  isSpam: !!data.isSpam,
+  isTop: !!data.isTop,
+  isPinned: !!data.isPinned,
+  image: data.image,
+  sticker: data.sticker,
+  ipRegion: data.ipRegion,
+  tags: data.tags,
+  renderedComment: data.renderedComment || null,
+})
+
 export const commentStore: CommentStore = {
   async addComment (data: CommentInput): Promise<Comment> {
     const db = await getDb()
-    await col(db, 'comments').insertOne({
-      _id: data.id,
-      url: data.url,
-      href: data.href,
-      nick: data.nick,
-      mail: data.mail,
-      mailMd5: data.mailMd5,
-      link: data.link,
-      comment: data.comment,
-      ua: data.ua,
-      ip: data.ip,
-      state: data.state || 'visible',
-      created: data.created,
-      updated: data.updated,
-      pid: data.pid,
-      rid: data.rid,
-      like: data.like ?? 0,
-      dislike: data.dislike ?? 0,
-      isSpam: !!data.isSpam,
-      isTop: !!data.isTop,
-      isPinned: !!data.isPinned,
-      image: data.image,
-      sticker: data.sticker,
-      ipRegion: data.ipRegion,
-      tags: data.tags,
-      renderedComment: data.renderedComment || null,
-    })
+    await col(db, 'comments').insertOne(commentToDoc(data))
     return { ...data, relativeTime: relTime(data.created), children: [], replyCount: 0 } as any
+  },
+
+  async addComments (data: CommentInput[]): Promise<number> {
+    if (data.length === 0) return 0
+    const db = await getDb()
+    // bulkWrite 用 replaceOne + upsert 兼容已有 _id 的幂等导入；ordered:false 并行执行更快
+    const ops = data.map(d => ({
+      replaceOne: {
+        filter: { _id: d.id },
+        replacement: commentToDoc(d),
+        upsert: true,
+      },
+    }))
+    const BATCH = 500
+    for (let i = 0; i < ops.length; i += BATCH) {
+      await col(db, 'comments').bulkWrite(ops.slice(i, i + BATCH), { ordered: false })
+    }
+    return data.length
   },
 
   async getComment (id: string): Promise<Comment | undefined> {

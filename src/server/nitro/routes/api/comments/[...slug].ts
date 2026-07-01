@@ -9,7 +9,7 @@ import {
   handleCommentUpdate,
   handleCommentDelete,
   handleCommentHide, handleCommentGetAdmin, handleCommentSetTop,
-  handleCommentSetSpam, handleCommentApprove,
+  handleCommentSetSpam, handleCommentApprove, handleCommentBatch,
   handleCounterGet, handleCounterUpdate,
   handleGetCommentsCount, handleGetRecentComments,
   handleCommentReactionGet, handleCommentReactionSubmit,
@@ -61,6 +61,17 @@ export default defineHandler(async (event) => {
     })
   }
 
+  // POST /api/comments/batch — 批量管理操作（hide/show/delete/spam/approve/unspam）
+  // 单次请求处理多条评论，避免前端 Promise.all 触发 N+1 HTTP/DB/Redis 风暴
+  if (segments[0] === 'batch' && method === 'POST' && segments.length === 1) {
+    await requireAdmin({ token: getToken(event) })
+    const body = await readBody(event).catch(() => null) as { ids?: string[]; action?: string } | null
+    return handleCommentBatch({
+      ids: Array.isArray(body?.ids) ? body!.ids : [],
+      action: (body?.action || '') as any,
+    })
+  }
+
   // GET /api/comments/counter
   if (segments[0] === 'counter' && method === 'GET') {
     const data = validateQuery(event, CounterGetSchema)
@@ -76,7 +87,7 @@ export default defineHandler(async (event) => {
   // ── /:id routes ──────────────────────────────────────
 
   // Guard: skip :id dispatch for known static sub-paths
-  const staticPaths = new Set(['count', 'recent', 'hidden-fields', 'admin', 'counter'])
+  const staticPaths = new Set(['count', 'recent', 'hidden-fields', 'admin', 'counter', 'batch'])
   if (segments.length >= 1 && !staticPaths.has(segments[0])) {
     const id = segments[0]
 
