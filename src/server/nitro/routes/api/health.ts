@@ -6,7 +6,7 @@
  * diagnostics require admin auth to avoid leaking internal state.
  */
 
-import { getRedisClient } from '#core/store/redis'
+import { getRedisClient, getLastRedisError } from '#core/store/redis'
 import { requireAdmin } from '#core/auth'
 // getToken — auto-imported from nitro/utils/ by Nitro
 
@@ -51,7 +51,7 @@ async function collectRedisDiagnostics (): Promise<Record<string, unknown>> {
         if (redisStatus === 'error') redisError = `Unexpected ping response: ${pong}`
       } else {
         redisStatus = 'error'
-        redisError = 'getRedisClient() returned null (connection failed silently)'
+        redisError = getLastRedisError() || 'getRedisClient() returned null (no error captured)'
       }
     } catch (e: any) {
       redisStatus = 'error'

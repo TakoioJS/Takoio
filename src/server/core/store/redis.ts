@@ -10,6 +10,7 @@ import { logger } from '../utils/logger'
 
 let _client: Redis | null = null
 let _connectPromise: Promise<Redis | null> | null = null
+let _lastConnectError: string | null = null
 
 /**
  * Get or create a Redis client singleton.
@@ -46,17 +47,22 @@ export async function getRedisClient (): Promise<Redis | null> {
       })
 
       _client.on('error', (err) => {
-        logger.warn('[redis] Connection error:', err.message)
+        const detail = formatError(err)
+        _lastConnectError = detail
+        logger.warn('[redis] Connection error:', detail)
       })
 
       _client.on('ready', () => {
+        _lastConnectError = null
         logger.info('[redis] Connected successfully')
       })
 
       await _client.connect()
       return _client
     } catch (e: any) {
-      logger.warn('[redis] Failed to connect:', e.message)
+      const detail = formatError(e)
+      _lastConnectError = detail
+      logger.warn('[redis] Failed to connect:', detail)
       _client = null
       _connectPromise = null
       return null
@@ -64,6 +70,25 @@ export async function getRedisClient (): Promise<Redis | null> {
   })()
 
   return _connectPromise
+}
+
+function formatError (e: any): string {
+  if (!e) return 'unknown error'
+  const parts: string[] = []
+  if (e.constructor?.name) parts.push(`[${e.constructor.name}]`)
+  if (e.code) parts.push(`code=${e.code}`)
+  if (e.errno) parts.push(`errno=${e.errno}`)
+  if (e.address) parts.push(`address=${e.address}`)
+  if (e.port) parts.push(`port=${e.port}`)
+  if (e.message) parts.push(`msg=${e.message}`)
+  return parts.join(' ') || String(e)
+}
+
+/**
+ * Expose the last connection error for diagnostics (e.g. /api/health).
+ */
+export function getLastRedisError (): string | null {
+  return _lastConnectError
 }
 
 /**
