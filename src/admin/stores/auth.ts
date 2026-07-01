@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { api } from '../api/client'
 
 const SESSION_KEY = 'takoio-admin-session'
 const OLD_SESSION_KEY = 'twikoo-admin-session'
@@ -20,10 +21,6 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   actions: {
-    getBaseUrl (): string {
-      return window.location.origin.replace(/\/$/, '')
-    },
-
     restoreSession (): boolean {
       const check = (key: string): boolean => {
         const saved = localStorage.getItem(key)
@@ -66,21 +63,15 @@ export const useAuthStore = defineStore('auth', {
     async _refreshSession () {
       if (!this.token) return
       try {
-        const res = await fetch(`${this.getBaseUrl()}/api/admin/refresh`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
-        if (res.ok) {
-          const data = await res.json()
-          if (data.success && data.token) {
-            this.token = data.token
-            const saved = localStorage.getItem(SESSION_KEY)
-            if (saved) {
-              localStorage.setItem(SESSION_KEY, JSON.stringify({
-                token: data.token,
-                expires: Date.now() + SESSION_DURATION,
-              }))
-            }
+        const data = await api.post<{ success: boolean; token?: string }>('/api/admin/refresh')
+        if (data.success && data.token) {
+          this.token = data.token
+          const saved = localStorage.getItem(SESSION_KEY)
+          if (saved) {
+            localStorage.setItem(SESSION_KEY, JSON.stringify({
+              token: data.token,
+              expires: Date.now() + SESSION_DURATION,
+            }))
           }
         }
       } catch { /* silent */ }
@@ -100,8 +91,7 @@ export const useAuthStore = defineStore('auth', {
 
     async checkSetup (): Promise<boolean> {
       try {
-        const res = await fetch(`${this.getBaseUrl()}/api/admin/setup`)
-        const data = await res.json()
+        const data = await api.get<{ needSetup?: boolean; dev?: boolean; setupTokenRequired?: boolean }>('/api/admin/setup')
         this.needSetup = !!data.needSetup
         this.setupDev = !!data.dev
         this.setupTokenRequired = !!data.setupTokenRequired
@@ -113,12 +103,7 @@ export const useAuthStore = defineStore('auth', {
 
     async login (password: string, remember = true, captchaToken?: string): Promise<{ success: boolean; message?: string }> {
       try {
-        const res = await fetch(`${this.getBaseUrl()}/api/admin/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password, captchaToken }),
-        })
-        const data = await res.json()
+        const data = await api.post<{ success: boolean; token?: string; needSetup?: boolean; message?: string }>('/api/admin/login', { password, captchaToken })
         if (data.success) {
           this._saveSession(data.token || '', remember)
           return { success: true }
@@ -127,36 +112,30 @@ export const useAuthStore = defineStore('auth', {
           return { success: false, message: 'needSetup' }
         }
         return { success: false, message: data.message || '登录失败' }
-      } catch (e: any) {
-        return { success: false, message: e?.message || '登录失败' }
+      } catch (e: unknown) {
+        const err = e instanceof Error ? e : new Error(String(e))
+        return { success: false, message: err.message || '登录失败' }
       }
     },
 
     async setup (password: string, setupToken?: string): Promise<{ success: boolean; message?: string }> {
       try {
-        const res = await fetch(`${this.getBaseUrl()}/api/admin/password`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password, ...(setupToken ? { setupToken } : {}) }),
-        })
-        const data = await res.json()
+        const data = await api.put<{ success: boolean; token?: string; message?: string }>('/api/admin/password', { password, ...(setupToken ? { setupToken } : {}) })
         if (data.success) {
           this._saveSession(data.token || '')
           this.needSetup = false
           return { success: true }
         }
         return { success: false, message: data.message || '设置失败' }
-      } catch (e: any) {
-        return { success: false, message: e?.message || '设置失败' }
+      } catch (e: unknown) {
+        const err = e instanceof Error ? e : new Error(String(e))
+        return { success: false, message: err.message || '设置失败' }
       }
     },
 
     async logout () {
       try {
-        await fetch(`${this.getBaseUrl()}/api/admin/logout`, {
-          method: 'POST',
-          headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
-        })
+        await api.post('/api/admin/logout')
       } catch { /* ignore */ }
       this.isAuthenticated = false
       this.token = ''
@@ -166,31 +145,20 @@ export const useAuthStore = defineStore('auth', {
 
     async changePassword (oldPwd: string, newPwd: string): Promise<{ success: boolean; message?: string }> {
       try {
-        const verifyRes = await fetch(`${this.getBaseUrl()}/api/admin/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: oldPwd }),
-        })
-        const verifyData = await verifyRes.json()
+        // Verify old password first
+        const verifyData = await api.post<{ success: boolean }>('/api/admin/login', { password: oldPwd })
         if (!verifyData.success) {
           return { success: false, message: '旧密码验证失败' }
         }
-        const setRes = await fetch(`${this.getBaseUrl()}/api/admin/password`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.token}`,
-          },
-          body: JSON.stringify({ password: newPwd }),
-        })
-        const setData = await setRes.json()
+        const setData = await api.put<{ success: boolean; token?: string; message?: string }>('/api/admin/password', { password: newPwd })
         if (setData.success) {
           if (setData.token) this._saveSession(setData.token)
           return { success: true }
         }
         return { success: false, message: setData.message || '修改失败' }
-      } catch (e: any) {
-        return { success: false, message: e?.message || '修改失败' }
+      } catch (e: unknown) {
+        const err = e instanceof Error ? e : new Error(String(e))
+        return { success: false, message: err.message || '修改失败' }
       }
     },
   },

@@ -359,11 +359,34 @@ import {
 import { HelpCircleOutline, TrashOutline, AddOutline, ChevronDownOutline, ChevronForwardOutline, MailOutline } from '@vicons/ionicons5'
 import { configApi } from '../../api/config'
 import SensitiveInput from '../../components/SensitiveInput.vue'
-import { sections, type ConfigField, type ConfigSection } from './schema'
+import { sections as baseSections, type ConfigField, type ConfigSection } from './schema'
 
 const message = useMessage()
 const dialog = useDialog()
 const contentRef = ref<HTMLElement | null>(null)
+
+// AI Provider 动态选项（本地状态，不修改原始 sections）
+const aiProviderOptions = ref<{ label: string; value: string }[]>([])
+const aiModelOptions = ref<{ label: string; value: string }[]>([])
+
+// 本地 sections 副本，动态注入 options
+const sections = computed<ConfigSection[]>(() => {
+  return baseSections.map(section => {
+    if (section.key !== 'security') return section
+    return {
+      ...section,
+      fields: section.fields.map(field => {
+        if (field.key === 'AUTO_AUDIT_AI_PROVIDER' && aiProviderOptions.value.length > 0) {
+          return { ...field, options: aiProviderOptions.value }
+        }
+        if (field.key === 'AUTO_AUDIT_AI_MODEL' && aiModelOptions.value.length > 0) {
+          return { ...field, options: aiModelOptions.value }
+        }
+        return field
+      }),
+    }
+  })
+})
 
 // Email test state
 const emailTesting = ref(false)
@@ -491,18 +514,10 @@ const updateAiProviderOptions = (rawProviders: any) => {
 
   parsedAiProviders.value = savedProviders
 
-  const options = savedProviders.map((p: any) => ({
+  aiProviderOptions.value = savedProviders.map((p: any) => ({
     label: p.name || p.format || '未命名提供商',
     value: p.name,
   }))
-
-  const securitySection = sections.find(s => s.key === 'security')
-  if (securitySection) {
-    const aiProviderField = securitySection.fields.find(f => f.key === 'AUTO_AUDIT_AI_PROVIDER')
-    if (aiProviderField) {
-      aiProviderField.options = options
-    }
-  }
 
   updateAiModelOptions(config.AUTO_AUDIT_AI_PROVIDER)
 }
@@ -510,15 +525,7 @@ const updateAiProviderOptions = (rawProviders: any) => {
 const updateAiModelOptions = (providerName: string) => {
   const provider = parsedAiProviders.value.find((p: any) => p.name === providerName)
   const models: string[] = provider?.models ?? []
-  const options = models.map((m: string) => ({ label: m, value: m }))
-
-  const securitySection = sections.find(s => s.key === 'security')
-  if (securitySection) {
-    const modelField = securitySection.fields.find(f => f.key === 'AUTO_AUDIT_AI_MODEL')
-    if (modelField) {
-      modelField.options = options
-    }
-  }
+  aiModelOptions.value = models.map((m: string) => ({ label: m, value: m }))
 }
 
 watch(() => config.AUTO_AUDIT_AI_PROVIDER, (val) => {
@@ -603,7 +610,12 @@ const onSave = async () => {
     const payload: Record<string, any> = {}
     for (const section of sections) {
       for (const field of section.fields) {
-        payload[field.key] = config[field.key]
+        let value = config[field.key]
+        // Naive UI n-input-number 清空后返回 null，需转为默认值避免后端类型校验跳过
+        if (field.type === 'number' && (value === null || value === undefined)) {
+          value = field.min ?? 0
+        }
+        payload[field.key] = value
       }
     }
     // Convert CODE_FEATURES array back to boolean fields for server
@@ -611,9 +623,16 @@ const onSave = async () => {
     payload.CODE_SHOW_LANGUAGE = codeFeatures.includes('language')
     payload.CODE_SHOW_COPY = codeFeatures.includes('copy')
     delete payload.CODE_FEATURES
-    await configApi.save(payload)
-    savedConfig.value = JSON.parse(JSON.stringify(payload))
-    message.success('配置保存成功')
+    const result = await configApi.save(payload) as { success: boolean; skipped?: Record<string, string> }
+    // 重新从后端加载配置，确保 savedConfig 与实际存储一致
+    // 避免本地 payload 与后端处理后的值（如掩码跳过、类型转换）不同步
+    await loadConfig()
+    if (result.skipped && Object.keys(result.skipped).length > 0) {
+      const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
+      message.warning(`部分配置项未保存：${details}`)
+    } else {
+      message.success('配置保存成功')
+    }
   } catch (e: any) {
     message.error('保存失败: ' + (e.message || ''))
   } finally {

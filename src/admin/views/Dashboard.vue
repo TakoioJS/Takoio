@@ -241,7 +241,7 @@
                   <!-- 内容 -->
                   <div
                     class="recent-content"
-                    v-html="(c as any)._safeContent || ''"
+                    v-html="c._safeContent || ''"
                   />
                 </div>
                 <n-icon
@@ -337,35 +337,9 @@ const stats = computed(() => {
 })
 
 // ===== 工具函数 =====
-const formatNumber = (n: number): string => n.toLocaleString('zh-CN')
-
-const formatTime = (ts: number): string => {
-  const d = new Date(ts)
-  const now = new Date()
-  const diff = now.getTime() - ts
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-const formatRefreshTime = (ts: number): string => {
-  const d = new Date(ts)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
-}
-
-const getAvatar = (item: Comment): string => {
-  const base = 'https://weavatar.com/avatar/'
-  const hash = item.mailMd5 || encodeURIComponent(item.nick || '?')
-  return `${base}${hash}?d=identicon&s=40`
-}
-
-const avatarColor = (nick: string): string => {
-  const colors = ['#5E8C6A', '#8A7C5E', '#8A5E5E', '#5E6E8A', '#8A5E7C', '#5E8A7C']
-  let hash = 0
-  for (let i = 0; i < (nick || '?').length; i++) hash = (hash * 31 + nick.charCodeAt(i)) | 0
-  return colors[Math.abs(hash) % colors.length]
-}
+import { formatTime as _formatTime, formatRefreshTime, formatNumber } from '../../composables/useFormatTime'
+import { getAvatar, avatarColor } from '../../composables/useAvatar'
+const formatTime = (ts: number): string => _formatTime(ts, 'relative')
 
 const goTo = (to: string) => router.push(to)
 
@@ -407,9 +381,9 @@ const loadComments = async () => {
     const res = await commentsApi.list({ page: 1, pageSize: 6, filter: 'all' })
     const data = res.data || []
     await Promise.all(data.map(async (item: Comment) => {
-      (item as any)._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
+      item._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
     }))
-    recentComments.value = data as any
+    recentComments.value = data
   } catch (e: any) {
     loadError.value = true
     message.error('评论加载失败：' + (e.message || ''))

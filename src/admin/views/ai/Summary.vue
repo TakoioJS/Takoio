@@ -262,10 +262,7 @@ interface SummaryItem {
 
 const summaries = ref<SummaryItem[]>([])
 
-const formatTime = (ts: number): string => {
-  const d = new Date(ts)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+import { formatTime } from '../../composables/useFormatTime'
 
 // ── 编辑摘要 ──
 const showEditModal = ref(false)
@@ -376,45 +373,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import '../../styles/section-card.css';
+
 .summary-page { max-width: 900px; }
-
-.section-card {
-  background: var(--paper);
-  border: 1px solid var(--edge-soft);
-  border-radius: var(--r-card);
-  overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-paper);
-}
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--edge-soft);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.section-icon { color: var(--accent); }
-.section-actions { margin-left: auto; display: flex; gap: 6px; }
-.section-body { padding: 18px; }
-
-.form-field { margin-bottom: 16px; }
-.form-field:last-child { margin-bottom: 0; }
-.form-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: 6px;
-}
-
-.empty-hint {
-  text-align: center;
-  padding: 32px 0;
-  color: var(--ink-3);
-  font-size: 14px;
-}
 
 /* Test result */
 .test-result {

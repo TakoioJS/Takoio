@@ -274,27 +274,6 @@ export const sections: ConfigSection[] = [
     ]
   },
   {
-    key: 'ip',
-    label: 'IP 归属地',
-    icon: BuildOutline,
-    fields: [
-      { key: 'IP_REGION_ENABLED', label: 'IP归属地', type: 'switch' },
-      {
-        key: 'SHOW_IP_REGION',
-        label: '归属地精度',
-        type: 'select',
-        condition: (c) => c.IP_REGION_ENABLED,
-        options: [{ label: '完整', value: 'all' }, { label: '仅省份', value: 'city' }]
-      },
-      {
-        key: 'TRUSTED_PROXIES',
-        label: '可信代理',
-        type: 'input',
-        condition: (c) => c.IP_REGION_ENABLED
-      },
-    ]
-  },
-  {
     key: 'code',
     label: '代码高亮',
     icon: CodeSlashOutline,

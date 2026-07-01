@@ -290,8 +290,8 @@ const exportData = async (format: 'json' | 'csv') => {
   exporting.value = true
   exportLog.value = `开始导出 ${format.toUpperCase()} 格式数据...`
   try {
-    const result = await dataApi.export(format)
-    const data = (result as any).data || result || []
+    const result = await dataApi.export(format) as Record<string, unknown>
+    const data = (result.data || result || []) as unknown[]
     const now = new Date().toISOString().slice(0, 10)
     const ext = format === 'csv' ? 'csv' : 'json'
     const filename = `takoio-export-${now}.${ext}`
@@ -300,7 +300,7 @@ const exportData = async (format: 'json' | 'csv') => {
     } else {
       downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
     }
-    const total = (result as any).total || (Array.isArray(data) ? data.length : Object.keys(data).length)
+    const total = (result.total as number) || (Array.isArray(data) ? data.length : Object.keys(data).length)
     message.success(`导出成功，共 ${total} 条数据`)
     exportLog.value += `\n导出成功！数据量: ${total}`
   } catch (e: any) {
@@ -313,6 +313,8 @@ const exportData = async (format: 'json' | 'csv') => {
 </script>
 
 <style scoped>
+@import '../../styles/section-card.css';
+
 .data-page { max-width: 900px; }
 
 .data-stack {
@@ -330,29 +332,6 @@ const exportData = async (format: 'json' | 'csv') => {
   transition: box-shadow 0.22s cubic-bezier(.22,.61,.36,1);
 }
 .data-section:hover { box-shadow: var(--shadow-lift); }
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--edge-soft);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--paper);
-}
-.section-icon { color: var(--accent); }
-.section-body { padding: 18px; }
-
-.form-field { margin-bottom: 16px; }
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: 6px;
-}
 
 .tip {
   font-size: 13px;

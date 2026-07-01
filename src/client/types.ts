@@ -34,6 +34,8 @@ export interface Comment {
   ipRegion?: string
   replyToNick?: string
   renderedComment?: string
+  /** 渲染后的安全 HTML 内容（由 renderMarkdown 生成，用于 v-html 展示） */
+  _safeContent?: string
 }
 
 export type TexRenderer = (blockMode: boolean, tex: string) => string | Promise<string>

@@ -99,27 +99,41 @@ export const handleSetConfig = async (data: { _ip?: string; config?: Record<stri
   const payload = rest.config ? rest.config : rest
   const ALLOWED = new Set<string>(ALLOWED_CONFIG_KEYS)
   const filtered: Record<string, unknown> = {}
+  const skipped: Record<string, string> = {}
   for (const [key, value] of Object.entries(payload)) {
-    if (!ALLOWED.has(key)) continue
+    if (!ALLOWED.has(key)) {
+      skipped[key] = 'unknown key'
+      continue
+    }
     // C2: reject masked values — prevents accidental overwrite of secrets with placeholder
-    if (SENSITIVE_CONFIG_KEYS.has(key) && typeof value === 'string' && value.includes('****')) continue
+    if (SENSITIVE_CONFIG_KEYS.has(key) && typeof value === 'string' && value.includes('****')) {
+      skipped[key] = 'masked value ignored'
+      continue
+    }
     // Type validation: boolean, number, string
     const defaultValue = DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG]
-    if (typeof defaultValue === 'boolean' && typeof value !== 'boolean') continue
-    if (typeof defaultValue === 'number' && typeof value !== 'number') continue
+    if (typeof defaultValue === 'boolean' && typeof value !== 'boolean') {
+      skipped[key] = `type mismatch: expected boolean, got ${typeof value}`
+      continue
+    }
+    if (typeof defaultValue === 'number' && typeof value !== 'number') {
+      skipped[key] = `type mismatch: expected number, got ${typeof value}`
+      continue
+    }
     if (typeof defaultValue === 'string' && typeof value !== 'string') {
       // AI_PROVIDERS arrives as an array from the frontend — serialize to JSON string
       if (key === 'AI_PROVIDERS' && Array.isArray(value)) {
         filtered[key] = JSON.stringify(value)
         continue
       }
+      skipped[key] = `type mismatch: expected string, got ${typeof value}`
       continue
     }
     filtered[key] = value
   }
   await configStore.setManyConfig(filtered)
   invalidateConfig()
-  return { success: true }
+  return { success: true, ...(Object.keys(skipped).length > 0 ? { skipped } : {}) }
 }
 
 // ========== Config Reset ==========

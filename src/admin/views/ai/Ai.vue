@@ -411,9 +411,15 @@ const onSave = async () => {
     payload.AI_PROVIDERS = aiProviders.map(p => ({
       name: p.name, format: p.format, endpoint: p.endpoint, key: p.key, models: p.models,
     }))
-    await configApi.save(payload)
-    savedConfig.value = JSON.parse(JSON.stringify(payload))
-    message.success('配置保存成功')
+    const result = await configApi.save(payload) as { success: boolean; skipped?: Record<string, string> }
+    // 重新从后端加载配置，确保 savedConfig 与实际存储一致
+    await loadConfig()
+    if (result.skipped && Object.keys(result.skipped).length > 0) {
+      const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
+      message.warning(`部分配置项未保存：${details}`)
+    } else {
+      message.success('配置保存成功')
+    }
   } catch (e: any) {
     message.error('保存失败: ' + (e.message || ''))
   } finally {
@@ -448,43 +454,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import '../../styles/section-card.css';
+
 .ai-page { max-width: 900px; }
 
-.section-card {
-  background: var(--paper);
-  border: 1px solid var(--edge-soft);
-  border-radius: var(--r-card);
-  overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-paper);
-  transition: box-shadow 0.22s cubic-bezier(.22,.61,.36,1);
-}
-.section-card:hover { box-shadow: var(--shadow-lift); }
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--edge-soft);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--paper);
-}
-.section-icon { color: var(--accent); }
-.section-body { padding: 18px; }
-
-.form-field { margin-bottom: 16px; }
-.form-field:last-child { margin-bottom: 0; }
-.form-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: 6px;
-}
 .field-desc {
   margin: 4px 0 0;
   font-size: 12px;
@@ -497,29 +470,6 @@ onMounted(() => {
   justify-content: space-between;
 }
 .switch-field .form-label { margin-bottom: 0; }
-
-.form-hint { font-size: 12px; color: var(--ink-3); margin: -8px 0 12px; line-height: 1.5; }
-
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.slider-row :deep(.n-slider) { flex: 1; }
-.slider-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  min-width: 36px;
-  text-align: right;
-}
-
-.empty-hint {
-  text-align: center;
-  padding: 32px 0;
-  color: var(--ink-3);
-  font-size: 14px;
-}
 
 .ai-provider-card {
   border: 1px solid var(--edge-soft);
@@ -551,24 +501,4 @@ onMounted(() => {
   align-items: flex-start;
 }
 .models-select { flex: 1; }
-
-.save-bar {
-  position: fixed;
-  bottom: 24px;
-  right: 32px;
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--paper);
-  border: 1px solid var(--edge-soft);
-  border-radius: var(--r-card);
-  box-shadow: var(--shadow-lift);
-  z-index: 100;
-}
-@media (max-width: 768px) {
-  .save-bar {
-    right: 16px;
-    bottom: 16px;
-  }
-}
 </style>

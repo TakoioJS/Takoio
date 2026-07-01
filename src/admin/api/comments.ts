@@ -50,10 +50,8 @@ export const commentsApi = {
   update: (id: string, data: CommentUpdateData) =>
     api.put<Comment>(`/api/comments/${id}`, data),
 
-  reply: (data: CommentReplyData) => {
-    const auth = useAuthStore()
-    return api.post<Comment>('/api/comments/', { ...data, _token: auth.token })
-  },
+  reply: (data: CommentReplyData) =>
+    api.post<Comment>('/api/comments/', data),
 
   hide: (id: string, hide: boolean) =>
     api.patch(`/api/comments/${id}/hide`, { hide }),

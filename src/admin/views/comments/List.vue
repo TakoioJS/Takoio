@@ -215,7 +215,7 @@
               <!-- 评论内容 -->
               <div
                 class="comment-content"
-                v-html="(item as any)._safeContent || ''"
+                v-html="item._safeContent || ''"
               />
 
               <!-- 底部信息行 -->
@@ -407,7 +407,7 @@
         </div>
         <div
           class="quote-content"
-          v-html="(replyTarget as any)._safeContent || ''"
+          v-html="replyTarget._safeContent || ''"
         />
       </div>
       <n-form
@@ -506,10 +506,8 @@ const filterOptions = [
   { label: '待审', value: 'pending' },
 ]
 
-const formatTime = (ts: number): string => {
-  const d = new Date(ts)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+import { formatTime } from '../../composables/useFormatTime'
+import { getAvatar } from '../../composables/useAvatar'
 
 const stateClass = (row: Comment): string => {
   if (row.state === 'hidden') return 'dot-hidden'
@@ -523,12 +521,6 @@ const stateLabel = (row: Comment): string => {
   if (row.state === 'hidden') return '已隐藏'
   if (row.state === 'spam' || row.isSpam) return '垃圾'
   return '可见'
-}
-
-const getAvatar = (item: Comment): string => {
-  const base = 'https://weavatar.com/avatar/'
-  const hash = item.mailMd5 || encodeURIComponent(item.nick || '?')
-  return `${base}${hash}?d=identicon&s=40`
 }
 
 const sourceUrl = (item: Comment): string => {
@@ -562,7 +554,7 @@ const loadComments = async () => {
     const r = await commentsApi.list(params)
     const data = r.data || []
     await Promise.all(data.map(async (item: Comment) => {
-      (item as any)._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
+      item._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
     }))
     comments.value = data
     total.value = r.total || 0
