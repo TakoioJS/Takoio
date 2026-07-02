@@ -204,6 +204,16 @@ const allComments = ref<Comment[]>([])
 const sentinelRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
+// 组件级 AbortController：防止快速切换排序/翻页时的竞态请求
+let fetchController: AbortController | null = null
+
+const cancelOngoingFetch = (): void => {
+  if (fetchController) {
+    fetchController.abort()
+    fetchController = null
+  }
+}
+
 // 无限滚动模式下 DOM 节点累积上限：超过后丢弃最早加载的，仅保留最新批次。
 // 旧评论已滚出视口，移除其 DOM 节点可避免渲染/内存压力；完整历史请用分页模式。
 const MAX_INFINITE_COMMENTS = 200
@@ -239,9 +249,13 @@ const resolveReplyToNick = (comments: Comment[]): void => {
 
 const loadMore = async (): Promise<void> => {
   if (loadingMore.value || !hasMore.value) return
+  cancelOngoingFetch()
+  fetchController = new AbortController()
+  const signal = fetchController.signal
+
   loadingMore.value = true; page.value += 1
   try {
-    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
+    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
     const newComments = result.data || []
     resolveReplyToNick(newComments)
     let combined = [...allComments.value, ...newComments]
@@ -251,7 +265,7 @@ const loadMore = async (): Promise<void> => {
     }
     allComments.value = combined; comments.value = allComments.value
     if (result.total !== undefined) total.value = result.total
-  } catch { page.value -= 1 } finally { loadingMore.value = false }
+  } catch { if (signal.aborted) return; page.value -= 1 } finally { loadingMore.value = false }
 }
 
 const countLabel = computed(() => total.value === 0 || total.value > 1 ? t('comment') : t('commentOne'))
@@ -262,9 +276,13 @@ const sortOptions = [
 ]
 
 const fetchComments = async (): Promise<void> => {
+  cancelOngoingFetch()
+  fetchController = new AbortController()
+  const signal = fetchController.signal
+
   loading.value = true; errorMsg.value = ''
   try {
-    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value })
+    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
     const fetched = result.data || []
     resolveReplyToNick(fetched)
     if (infiniteMode.value) allComments.value = fetched
@@ -276,6 +294,8 @@ const fetchComments = async (): Promise<void> => {
     if (comments.value.length === 0) mergedOptions.value.onCommentsEmpty?.()
     else mergedOptions.value.onCommentsLoaded?.(comments.value)
   } catch (e) {
+    // 请求被取消（新的 fetch 已发起），忽略此响应
+    if (e instanceof Error && e.name === 'TakoioCancelledError') return
     loading.value = false; errorMsg.value = e instanceof Error ? e.message : 'Failed to load comments'
     console.warn('[Takoio Dev]', e instanceof Error ? e.message : String(e))
     if (e instanceof Error) mergedOptions.value.onError?.(e)
@@ -346,7 +366,7 @@ const setupInfiniteObserver = (): void => {
 }
 watch(sentinelRef, (el) => { if (el && infiniteMode.value) { observer?.disconnect(); setupInfiniteObserver() } })
 onMounted(() => { fetchComments(); if (infiniteMode.value) setupInfiniteObserver() })
-onBeforeUnmount(() => { observer?.disconnect() })
+onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch() })
 </script>
 
 <style scoped>

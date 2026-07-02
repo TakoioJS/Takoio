@@ -26,7 +26,7 @@ export interface UseConfigEditorOptions {
   isDirtyOverride?: (config: Record<string, unknown>, savedConfig: Record<string, unknown>) => boolean
 }
 
-export function useConfigEditor(options: UseConfigEditorOptions) {
+export function useConfigEditor (options: UseConfigEditorOptions) {
   const message = useMessage()
   const dialog = useDialog()
 

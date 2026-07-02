@@ -110,9 +110,9 @@ const initMarkdown = async (): Promise<void> => {
         image ({ href, title, text }: { href: string; title: string | null; text: string }) {
           const isEmoji = href.includes('twemoji') || href.includes('iconify') || href.includes('emoji') || text.endsWith('图片') || text.endsWith('表情')
           if (isEmoji) {
-            return `<img src="${href}" alt="${text}" title="${title || text}" class="tk-owo-emotion" />`
+            return `<img src="${href}" alt="${text}" title="${title || text}" class="tk-owo-emotion" loading="lazy" decoding="async" />`
           }
-          return `<img src="${href}" alt="${text}" title="${title || ''}" class="tk-comment-inline-image" />`
+          return `<img src="${href}" alt="${text}" title="${title || ''}" class="tk-comment-inline-image" loading="lazy" decoding="async" />`
         }
       }
     })

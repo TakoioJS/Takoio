@@ -9,7 +9,7 @@
 
 export type TimeFormat = 'relative' | 'absolute'
 
-export function formatTime(ts: number, format: TimeFormat = 'absolute'): string {
+export function formatTime (ts: number, format: TimeFormat = 'absolute'): string {
   const d = new Date(ts)
 
   if (format === 'relative') {
@@ -26,12 +26,12 @@ export function formatTime(ts: number, format: TimeFormat = 'absolute'): string 
 }
 
 /** 格式化刷新时间（HH:mm:ss） */
-export function formatRefreshTime(ts: number): string {
+export function formatRefreshTime (ts: number): string {
   const d = new Date(ts)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
 /** 格式化数字（中文本地化） */
-export function formatNumber(n: number): string {
+export function formatNumber (n: number): string {
   return n.toLocaleString('zh-CN')
 }

@@ -11,6 +11,8 @@
       <img
         :src="img"
         :alt="altText"
+        loading="lazy"
+        decoding="async"
       >
       <button
         class="tk-image-remove"

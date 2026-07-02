@@ -7,6 +7,8 @@
       v-if="avatar"
       :src="avatar"
       :alt="user.nick"
+      loading="lazy"
+      decoding="async"
     >
     <span
       v-else

@@ -47,6 +47,7 @@
     "build:serverless": "pnpm build:server && pnpm build:admin",
     "build:all": "pnpm build && pnpm build:admin",
     "build:analyze": "ANALYZE=true vite build --mode umd",
+    "build:check-size": "node scripts/size-check.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 9820",
     "lint": "eslint src/**/*.{ts,vue}",
     "lint:fix": "eslint src/**/*.{ts,vue} --fix",

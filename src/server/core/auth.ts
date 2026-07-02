@@ -254,9 +254,14 @@ export const requireAdmin = async (data: any): Promise<void> => {
 }
 
 /** Validate Origin/Referer header for admin requests to mitigate CSRF.
- *  Checks that the request originates from an allowed domain.
+ *  Only validates state-changing requests (POST/PUT/DELETE/PATCH).
+ *  GET requests are skipped as they are read-only and may not have Origin header.
  */
 export const validateOrigin = (event: any, allowedOrigins: string[]): void => {
+  const method = event.method || 'GET'
+  // Only validate state-changing methods
+  if (method === 'GET' || method === 'HEAD') return
+
   const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer') || ''
   if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)
 

@@ -39,14 +39,26 @@ export function classifyApiError (error: unknown): ApiErrorCategory {
 
 // ========== Core Request ==========
 
-export const request = async <T = any>(url: string, init?: RequestInit): Promise<T> => {
+export const request = async <T = any>(url: string, init?: RequestInit & { externalSignal?: AbortSignal }): Promise<T> => {
   const controller = new AbortController()
+  const externalSignal = init?.externalSignal
+  delete init?.externalSignal
+
+  // 同时支持外部信号（调用方取消）和内部超时信号
+  const onExternalAbort = () => controller.abort()
+  externalSignal?.addEventListener('abort', onExternalAbort, { once: true })
+
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
   let res: Response
   try {
     res = await fetch(url, { ...init, signal: controller.signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
+      if (externalSignal?.aborted) {
+        const e = new Error('请求已取消')
+        e.name = 'TakoioCancelledError'
+        throw e
+      }
       const e = new Error('请求超时，请检查网络后重试')
       e.name = 'TakoioTimeoutError'
       throw e
@@ -54,6 +66,7 @@ export const request = async <T = any>(url: string, init?: RequestInit): Promise
     throw err
   } finally {
     clearTimeout(timeoutId)
+    externalSignal?.removeEventListener('abort', onExternalAbort)
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -65,23 +78,38 @@ export const request = async <T = any>(url: string, init?: RequestInit): Promise
 // ========== Comment API ==========
 
 export const submitComment = (envId: string, data: {
-  url: string; nick: string; comment: string; mail?: string; link?: string
-  pid?: string; rid?: string; ua?: string; image?: string; sticker?: string
-  title?: string; captchaToken?: string; href?: string; token?: string
+  url: string;
+  nick: string;
+  comment: string;
+  mail?: string;
+  link?: string
+  pid?: string;
+  rid?: string;
+  ua?: string;
+  image?: string;
+  sticker?: string
+  title?: string;
+  captchaToken?: string;
+  href?: string;
+  token?: string
 }): Promise<any> =>
   request(`${baseUrl(envId)}/api/comments`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   })
 
 export const getComments = (envId: string, params: {
-  url: string; page?: number; pageSize?: number; sort?: string
+  url: string;
+  page?: number;
+  pageSize?: number;
+  sort?: string
+  signal?: AbortSignal
 }): Promise<any> => {
   const qs = new URLSearchParams()
   if (params.url) qs.set('url', params.url)
   if (params.page) qs.set('page', String(params.page))
   if (params.pageSize) qs.set('pageSize', String(params.pageSize))
   if (params.sort) qs.set('sort', params.sort)
-  return request(`${baseUrl(envId)}/api/comments?${qs}`)
+  return request(`${baseUrl(envId)}/api/comments?${qs}`, { externalSignal: params.signal })
 }
 
 export const getCommentsCountApi = async (options: {

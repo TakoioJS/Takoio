@@ -109,6 +109,8 @@
         <img
           :src="comment.image"
           :alt="t('image')"
+          loading="lazy"
+          decoding="async"
           @error="onImageError($event)"
         >
       </div>
