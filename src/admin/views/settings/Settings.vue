@@ -555,12 +555,30 @@ const loadConfig = async () => {
     if (data.CODE_SHOW_COPY) codeFeatures.push('copy')
     config.CODE_FEATURES = codeFeatures
 
+    // Build COMMENT_FEATURES array from stored JSON string or fallback to boolean fields
+    let commentFeatures: string[] = []
+    if (data.COMMENT_FEATURES && typeof data.COMMENT_FEATURES === 'string') {
+      try {
+        commentFeatures = JSON.parse(data.COMMENT_FEATURES)
+      } catch {
+        commentFeatures = []
+      }
+    }
+    // Fallback: derive from boolean fields for backward compatibility
+    if (commentFeatures.length === 0) {
+      if (data.ENABLE_ARTICLE_REACTION) commentFeatures.push('articleReaction')
+      if (data.ENABLE_LINK_INPUT) commentFeatures.push('linkInput')
+      if (data.SHOW_UA_INFO) commentFeatures.push('uaInfo')
+    }
+    config.COMMENT_FEATURES = commentFeatures
+
     // 动态更新 AI 审核提供商选项
     updateAiProviderOptions(data.AI_PROVIDERS)
 
     savedConfig.value = JSON.parse(JSON.stringify(data)) as Record<string, unknown>
     if (savedConfig.value) {
       savedConfig.value.CODE_FEATURES = [...codeFeatures]
+      savedConfig.value.COMMENT_FEATURES = [...commentFeatures]
     }
   } catch (e: any) {
     message.error('加载配置失败: ' + (e.message || ''))
@@ -625,6 +643,14 @@ const onSave = async () => {
     payload.CODE_SHOW_LANGUAGE = codeFeatures.includes('language')
     payload.CODE_SHOW_COPY = codeFeatures.includes('copy')
     delete payload.CODE_FEATURES
+
+    // Convert COMMENT_FEATURES array to JSON string for server storage
+    // Also update individual boolean fields for backward compatibility
+    const commentFeatures: string[] = config.COMMENT_FEATURES || []
+    payload.COMMENT_FEATURES = JSON.stringify(commentFeatures)
+    payload.ENABLE_ARTICLE_REACTION = commentFeatures.includes('articleReaction')
+    payload.ENABLE_LINK_INPUT = commentFeatures.includes('linkInput')
+    payload.SHOW_UA_INFO = commentFeatures.includes('uaInfo')
     const result = await configApi.save(payload) as { success: boolean; skipped?: Record<string, string> }
     // 重新从后端加载配置，确保 savedConfig 与实际存储一致
     // 避免本地 payload 与后端处理后的值（如掩码跳过、类型转换）不同步

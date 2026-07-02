@@ -81,6 +81,7 @@ export interface TakoioConfig {
   REQUIRED_FIELDS: string[]
   COMMENT_NICK_REQUIRED: boolean
   GRAVATAR_URL: string
+  GRAVATAR_URL_CUSTOM?: string
   GRAVATAR_DEFAULT: string
   ENABLE_VISITOR_COUNTER: boolean
   COMMENT_PAGINATION_MODE: 'pagination' | 'readmore'
@@ -153,6 +154,7 @@ export interface TakoioConfig {
   CUSTOM_CSS?: string
   CDN_PREFIX?: string
   COMMENT_BG_IMAGE?: string
+  COMMENT_FEATURES?: string
   PUSHOO_CHANNELS: string
 }
 
@@ -160,7 +162,11 @@ export interface TakoioConfig {
 
 export const DEFAULT_CONFIG: TakoioConfig = {
   SITE_NAME: 'My Blog',
+  SITE_URL: '',
+  MASTER: '',
   MASTER_NAME: '',
+  MASTER_LABEL: '',
+  MASTER_LABEL_COLOR: '',
   GLOBAL_COLOR: '',
   PAGE_SIZE: 10,
   COMMENT_SORT: 'newest',
@@ -168,6 +174,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   REQUIRED_FIELDS: ['nick'],
   COMMENT_NICK_REQUIRED: true,
   GRAVATAR_URL: 'https://weavatar.com/avatar/',
+  GRAVATAR_URL_CUSTOM: '',
   GRAVATAR_DEFAULT: 'identicon',
   ENABLE_VISITOR_COUNTER: true,
   COMMENT_PAGINATION_MODE: 'pagination',
@@ -250,6 +257,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   <div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">{{ siteName }} · 管理通知</div>
 </div>`,
   CORS_ORIGINS: '',
+  COMMENT_FEATURES: '',
   PUSHOO_CHANNELS: '',
 }
 
