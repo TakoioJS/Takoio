@@ -6,7 +6,7 @@ import { safeValidate, LoginSchema, PasswordSetSchema, TypeSetSchema, PrivateKey
 import type { LoginData, PasswordSetData, TypeSetData, PrivateKeyGetData, PrivateKeySetData, SendNotificationData, EmailTestData } from '../schemas'
 import { ALLOWED_CONFIG_KEYS } from '../config'
 import { configStore, sessionStore } from '../store/index'
-import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig } from '../config'
+import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig, validateConfigBatch } from '../config'
 import { hashPassword, getAuthHash, updateAuthHashCache, invalidateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
 import { verifyPassword, needsRehash } from '../utils/crypto'
 import { lookupIpRegion } from '../ip-region'
@@ -97,40 +97,25 @@ export const handleGetConfig = async () => ({ data: maskSensitiveConfig(await ge
 export const handleSetConfig = async (data: { _ip?: string; config?: Record<string, unknown> } & Record<string, unknown>) => {
   const { _ip, ...rest } = data
   const payload = rest.config ? rest.config : rest
-  const ALLOWED = new Set<string>(ALLOWED_CONFIG_KEYS)
+
+  // Use centralized validation
+  const { valid, skipped } = validateConfigBatch(payload)
   const filtered: Record<string, unknown> = {}
-  const skipped: Record<string, string> = {}
-  for (const [key, value] of Object.entries(payload)) {
-    if (!ALLOWED.has(key)) {
-      skipped[key] = 'unknown key'
-      continue
-    }
-    // C2: reject masked values — prevents accidental overwrite of secrets with placeholder
+
+  for (const [key, value] of Object.entries(valid)) {
+    // C2: reject masked values for sensitive keys
     if (SENSITIVE_CONFIG_KEYS.has(key) && typeof value === 'string' && value.includes('****')) {
       skipped[key] = 'masked value ignored'
       continue
     }
-    // Type validation: boolean, number, string
-    const defaultValue = DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG]
-    if (typeof defaultValue === 'boolean' && typeof value !== 'boolean') {
-      skipped[key] = `type mismatch: expected boolean, got ${typeof value}`
-      continue
-    }
-    if (typeof defaultValue === 'number' && typeof value !== 'number') {
-      skipped[key] = `type mismatch: expected number, got ${typeof value}`
-      continue
-    }
-    if (typeof defaultValue === 'string' && typeof value !== 'string') {
-      // AI_PROVIDERS arrives as an array from the frontend — serialize to JSON string
-      if (key === 'AI_PROVIDERS' && Array.isArray(value)) {
-        filtered[key] = JSON.stringify(value)
-        continue
-      }
-      skipped[key] = `type mismatch: expected string, got ${typeof value}`
+    // AI_PROVIDERS: special case — array from frontend, serialize to JSON
+    if (key === 'AI_PROVIDERS' && Array.isArray(value)) {
+      filtered[key] = JSON.stringify(value)
       continue
     }
     filtered[key] = value
   }
+
   await configStore.setManyConfig(filtered)
   invalidateConfig()
   return { success: true, ...(Object.keys(skipped).length > 0 ? { skipped } : {}) }

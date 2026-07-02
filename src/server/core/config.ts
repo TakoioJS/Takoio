@@ -272,6 +272,60 @@ export const DEFAULT_CONFIG: TakoioConfig = {
  */
 export const ALLOWED_CONFIG_KEYS = Object.keys(DEFAULT_CONFIG) as (keyof TakoioConfig)[]
 
+// ========== Config Validation (Zod) ==========
+
+import { z } from 'zod/v3'
+
+const ConfigValueSchema = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())])
+
+function buildKeySchema (key: string): z.ZodTypeAny {
+  const defVal = DEFAULT_CONFIG[key as keyof TakoioConfig]
+  if (defVal === undefined) return ConfigValueSchema
+  if (typeof defVal === 'number') return z.number()
+  if (typeof defVal === 'boolean') return z.boolean()
+  if (Array.isArray(defVal)) return z.array(z.string())
+  return z.string()
+}
+
+/**
+ * Validate a single config key-value pair.
+ * Returns the parsed value (converted to correct type) or throws.
+ */
+export function validateConfigValue (key: string, value: unknown): unknown {
+  if (!ALLOWED_CONFIG_KEYS.includes(key as keyof TakoioConfig)) {
+    throw new AppError('INVALID_CONFIG', `不允许的配置键: ${key}`, 400)
+  }
+  const schema = buildKeySchema(key)
+  const result = schema.safeParse(value)
+  if (!result.success) {
+    throw new AppError('INVALID_CONFIG', `配置 ${key} 的值类型不正确`, 400)
+  }
+  return result.data
+}
+
+/**
+ * Validate a batch of config key-value pairs.
+ * Returns { valid: Record<string, unknown>, skipped: Record<string, string> }
+ */
+export function validateConfigBatch (
+  updates: Record<string, unknown>
+): { valid: Record<string, unknown>; skipped: Record<string, string> } {
+  const valid: Record<string, unknown> = {}
+  const skipped: Record<string, string> = {}
+  for (const [key, value] of Object.entries(updates)) {
+    if (!ALLOWED_CONFIG_KEYS.includes(key as keyof TakoioConfig)) {
+      skipped[key] = `不允许的配置键: ${key}`
+      continue
+    }
+    try {
+      valid[key] = validateConfigValue(key, value)
+    } catch {
+      skipped[key] = `值类型不正确`
+    }
+  }
+  return { valid, skipped }
+}
+
 // ========== Config Classification ==========
 
 /**
