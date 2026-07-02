@@ -42,13 +42,11 @@ function getSecret (): string {
 }
 
 function base64UrlEncode (buf: Buffer): string {
-  return buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  return buf.toString('base64url')
 }
 
 function base64UrlDecode (str: string): Buffer {
-  str = str.replace(/-/g, '+').replace(/_/g, '/')
-  while (str.length % 4) str += '='
-  return Buffer.from(str, 'base64')
+  return Buffer.from(str, 'base64url')
 }
 
 export function signToken (user: AuthUser): string {
@@ -59,7 +57,7 @@ export function signToken (user: AuthUser): string {
   const payloadB64 = base64UrlEncode(Buffer.from(JSON.stringify(payload)))
   const signature = crypto.createHmac('sha256', getSecret())
     .update(`${headerB64}.${payloadB64}`)
-    .digest('base64')
+    .digest()
   const sigB64 = base64UrlEncode(signature)
 
   return `${headerB64}.${payloadB64}.${sigB64}`

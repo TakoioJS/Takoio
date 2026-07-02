@@ -44,7 +44,7 @@ export type {
 } from './types'
 
 import { DB_TYPE } from '../env'
-import { isServerless } from '../utils/serverless'
+import { isServerless } from '../env'
 
 // Store interfaces for typing
 // 注意：所有后端实现（sqlite.ts / mongodb.ts / 未来的 postgres.ts）

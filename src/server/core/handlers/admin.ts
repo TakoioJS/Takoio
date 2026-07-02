@@ -16,6 +16,7 @@ import { sendNotification } from '../notify'
 import { sendEmail } from '../email'
 import { AppError } from '../config'
 import { isDev, SETUP_TOKEN } from '../env'
+import { escapeHtml } from '@takoio/common'
 
 // ========== Check Setup ==========
 
@@ -231,15 +232,6 @@ export const handleHiddenFieldsGet = async () => {
 }
 
 // ========== Email Test ==========
-
-const escapeHtml = (str: string): string => {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 const renderTemplate = (tpl: string, vars: Record<string, string>) =>
   tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => {

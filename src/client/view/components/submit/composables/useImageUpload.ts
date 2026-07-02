@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import { uploadImage } from '../../../../utils/api'
+import { uploadImage } from '../../../../utils'
 import { toast, t } from '../../../../utils'
 
 interface UseImageUploadOptions {

@@ -4,11 +4,6 @@
 
 import pkg from '../../../package.json'
 
-/** 判断是否未设置 */
-export const isNotSet = (option: any): boolean => {
-  return option === undefined || option === null || option === ''
-}
-
 /** 日志工具 */
 export const logger = {
   log: (message: string, ...args: any[]) => {
@@ -23,48 +18,6 @@ export const logger = {
   error: (message: string, ...args: any[]) => {
     console.error(`Takoio: ${message}`, ...args)
   }
-}
-
-/** 时间戳 */
-export const timestamp = (date: Date = new Date()): number => {
-  return date.getTime()
-}
-
-/** 标准化链接 */
-export const convertLink = (link: string): string => {
-  if (!link) return ''
-  if (link.substring(0, 4) !== 'http') return `http://${link}`
-  return link
-}
-
-/** 判断是否为 URL */
-export const isUrl = (str: string): boolean => {
-  if (!str) return false
-  return /^https?:\/\//.test(str)
-}
-
-/** 读取文本文件 */
-export const readAsText = (file: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.readAsText(file)
-    reader.onloadend = () => {
-      if (reader.error) reject(reader.error)
-      else resolve(reader.result as string)
-    }
-  })
-}
-
-/** Blob 转 DataURL */
-export const blobToDataURL = (blob: Blob): Promise<string> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const base64 = (evt.target?.result as string) || ''
-      resolve(base64)
-    }
-    reader.readAsDataURL(blob)
-  })
 }
 
 /** 渲染链接（新窗口打开） */
@@ -114,12 +67,6 @@ export const getHref = (href?: string): string => {
   return (window as any).TAKOIO_MAGIC_HREF ?? href ?? window.location.href
 }
 
-const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1'])
-export const isLocalhost = (): boolean => {
-  if (typeof window === 'undefined') return false
-  return LOCALHOST_HOSTNAMES.has(window.location.hostname)
-}
-
 /** 获取 User-Agent（兼容 Windows 11 / macOS 11+） */
 export const getUserAgent = async (): Promise<string> => {
   if (typeof window === 'undefined') return ''
@@ -145,35 +92,26 @@ export const getUserAgent = async (): Promise<string> => {
   return ua
 }
 
-/** 标准化邮箱 */
-export const normalizeMail = (mail: string): string => {
-  if (!mail) return ''
-  return mail.trim().toLowerCase()
-}
-
-/** 判断是否为 QQ 号 */
-export const isQQ = (str: string): boolean => {
-  return /^([1-9]\d{4,11})$/.test(str)
-}
-
-/** 获取 QQ 头像 */
-export const getQQAvatar = (qq: string): string => {
-  return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`
-}
-
 export {
   request,
+  submitComment,
+  getComments,
   getCommentsCountApi,
   getRecentCommentsApi,
   getVisitorsCountApi,
   updateVisitorsCount,
-  adminRequest,
-  uploadImage,
-  getComments,
-  submitComment,
   getReactions,
   toggleReaction,
-} from './api'
+  getCommentReactions,
+  toggleCommentReaction,
+  adminRequest,
+  uploadImage,
+  getArticleSummary,
+  classifyApiError,
+  isUrl,
+} from '@takoio/core'
+
+export type { ApiErrorCategory } from '@takoio/core'
 /** 安全 URL 校验：只允许 http/https，防止 javascript: data: 等伪协议 */
 export const sanitizeUrl = (url: string): string => {
   try {

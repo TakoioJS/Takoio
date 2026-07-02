@@ -73,16 +73,3 @@ export const LOG_LEVEL = (process.env.LOG_LEVEL || '').toLowerCase() as 'debug' 
 /** 初始化设置 Token */
 export const SETUP_TOKEN = process.env.SETUP_TOKEN
 
-// ========== 环境信息对象 ==========
-
-/** 完整的环境信息快照（用于诊断和日志） */
-export const envSnapshot = {
-  dbType: DB_TYPE,
-  preset: getPresetName() || 'node-server',
-  isServerless: isServerless(),
-  isDev: isDev(),
-  hasRedis: !!REDIS_URL,
-  hasLibSql: !!LIBSQL_URL,
-  hasMongoDb: !!MONGODB_URI,
-  logLevel: LOG_LEVEL || 'default',
-}

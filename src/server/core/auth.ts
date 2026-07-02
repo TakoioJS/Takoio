@@ -229,16 +229,6 @@ export const verifyCaptcha = async (token: string, cfg: TakoioConfig): Promise<v
 
 // ========== Admin Auth ==========
 
-export const adminEvents = new Set([
-  'COMMENT_DELETE', 'COMMENT_HIDE', 'SET_CONFIG', 'CONFIG_RESET',
-  'COMMENT_EXPORT', 'COMMENT_IMPORT_VALINE', 'COMMENT_IMPORT_ARTALK',
-  'COMMENT_IMPORT_WALINE', 'COMMENT_IMPORT_TWIKOO', 'COMMENT_IMPORT_DISQUS',
-  'COMMENT_GET_ADMIN', 'EMAIL_TEST',
-  'COMMENT_SET_TOP', 'COMMENT_SET_SPAM', 'COMMENT_UPDATE',
-  'TYPE_SET', 'PRIVATE_KEY_SET',
-  'SEND_NOTIFICATION',
-])
-
 export const requireAdmin = async (data: any): Promise<void> => {
   // 兼容 _token（评论提交 schema 字段名）与 token（标准字段名）
   const token = data?.token ?? data?._token

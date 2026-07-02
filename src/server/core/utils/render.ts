@@ -1,6 +1,7 @@
 import { Marked } from 'marked'
 import type { Highlighter } from 'shiki'
 import DOMPurify from 'dompurify'
+import { escapeHtml, MARKDOWN_ALLOWED_TAGS, MARKDOWN_ALLOWED_ATTR, renderMarkdownImage } from '@takoio/common'
 
 // ponytail: dynamic import for jsdom — the package is externalized in nitro.config.ts
 // because it reads default-stylesheet.css via __dirname at module load time,
@@ -51,9 +52,6 @@ const ALL_KNOWN_LANGS = new Set([
 ])
 const loadedLangs = new Set<string>()
 
-const escapeHtml = (text: string): string =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
 // 动态 import shiki：render.ts 被 admin handler 等间接引入时不再触发 shiki 模块加载，
 // 仅在首次 renderComment 调用时才加载，降低冷启动开销。
 async function getHl (): Promise<Highlighter> {
@@ -83,22 +81,11 @@ async function ensureLang (hl: Highlighter, lang: string): Promise<void> {
 
 const PURIFY_CONFIG = {
   ALLOWED_TAGS: [
-    'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ins',
-    'a', 'img', 'code', 'pre', 'blockquote',
-    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-    'hr', 'span', 'div', 'sup', 'sub', 'details', 'summary',
-    'math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'mspace', 'mover', 'munder',
-    'munderover', 'msub', 'msup', 'mfrac', 'msqrt', 'mtable', 'mtr', 'mtd',
-    'annotation',
+    ...MARKDOWN_ALLOWED_TAGS,
     'svg', 'path', 'line', 'rect', 'circle', 'g',
   ],
   ALLOWED_ATTR: [
-    'class', 'id', 'href', 'src', 'alt', 'title', 'target', 'rel',
-    'width', 'height',
-    'colspan', 'rowspan', 'align', 'valign',
-    'aria-hidden', 'role',
-    'xmlns', 'encoding', 'mathvariant', 'displaystyle', 'scriptlevel',
+    ...MARKDOWN_ALLOWED_ATTR,
     'd', 'viewBox', 'fill', 'stroke', 'transform', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
     'rx', 'ry', 'r', 'cx', 'cy',
   ],
@@ -144,14 +131,7 @@ export async function renderComment (text: string): Promise<string> {
         if (!isSafeImageUrl(href)) {
           return `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(text || 'image')}</a>`
         }
-        const safeHref = escapeHtml(href)
-        const safeText = escapeHtml(text)
-        const safeTitle = escapeHtml(title || text || '')
-        const isEmoji = href.includes('twemoji') || href.includes('iconify') || href.includes('emoji') || text.endsWith('图片') || text.endsWith('表情')
-        if (isEmoji) {
-          return `<img src="${safeHref}" alt="${safeText}" title="${safeTitle}" class="tk-owo-emotion" />`
-        }
-        return `<img src="${safeHref}" alt="${safeText}" title="${safeTitle}" class="tk-comment-inline-image" />`
+        return renderMarkdownImage(href, title, text)
       }
     }
   })

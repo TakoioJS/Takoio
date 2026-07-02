@@ -1,6 +1,7 @@
 import type { Marked } from 'marked'
 import type DOMPurify from 'dompurify'
 import type { Config } from 'dompurify'
+import { escapeHtml, MARKDOWN_ALLOWED_TAGS, MARKDOWN_ALLOWED_ATTR, renderMarkdownImage } from '@takoio/common'
 
 // highlight.js is lazy-loaded on first code block render
 type HljsCore = typeof import('highlight.js/lib/core').default
@@ -66,32 +67,9 @@ async function getHljs (): Promise<HljsCore | null> {
 let markdownInstance: Marked | null = null
 let dompurifyInstance: typeof DOMPurify | null = null
 
-const escapeHtml = (text: string): string => {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
 const PURIFY_CONFIG: Config = {
-  ALLOWED_TAGS: [
-    'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ins',
-    'a', 'img', 'code', 'pre', 'blockquote',
-    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-    'hr', 'span', 'div', 'sup', 'sub', 'details', 'summary',
-    'math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'mspace', 'mover', 'munder',
-    'munderover', 'msub', 'msup', 'mfrac', 'msqrt', 'mtable', 'mtr', 'mtd', 'annotation'
-  ],
-  ALLOWED_ATTR: [
-    'class', 'id', 'href', 'src', 'alt', 'title', 'target', 'rel',
-    'width', 'height',
-    'colspan', 'rowspan', 'align', 'valign',
-    'aria-hidden', 'role',
-    'xmlns', 'encoding', 'mathvariant', 'displaystyle', 'scriptlevel'
-  ],
+  ALLOWED_TAGS: MARKDOWN_ALLOWED_TAGS,
+  ALLOWED_ATTR: MARKDOWN_ALLOWED_ATTR,
   ALLOW_DATA_ATTR: false
 }
 
@@ -108,11 +86,7 @@ const initMarkdown = async (): Promise<void> => {
     markdownInstance.use({
       renderer: {
         image ({ href, title, text }: { href: string; title: string | null; text: string }) {
-          const isEmoji = href.includes('twemoji') || href.includes('iconify') || href.includes('emoji') || text.endsWith('图片') || text.endsWith('表情')
-          if (isEmoji) {
-            return `<img src="${href}" alt="${text}" title="${title || text}" class="tk-owo-emotion" loading="lazy" decoding="async" />`
-          }
-          return `<img src="${href}" alt="${text}" title="${title || ''}" class="tk-comment-inline-image" loading="lazy" decoding="async" />`
+          return renderMarkdownImage(href, title, text, { lazy: true })
         }
       }
     })

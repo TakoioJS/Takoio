@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, getUrl, getHref, getUserAgent } from '../../utils'
-import { submitComment } from '../../utils/api'
+import { submitComment } from '../../utils'
 import { getAuthState } from '../../utils/auth'
 import { renderMarkdown } from '../../utils/marked'
 import { toast, renderTex } from '../../utils'

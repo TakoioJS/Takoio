@@ -3,6 +3,7 @@
  */
 
 import * as crypto from 'node:crypto'
+import { escapeHtml } from '@takoio/common'
 import { commentStore } from '../store/index'
 import { invalidateCommentListCache } from '../store/redis'
 
@@ -27,10 +28,6 @@ export function markMasterComments (comments: MarkableComment[], cfg: { MASTER?:
   }
   comments.forEach(mark)
 }
-
-/** HTML 转义辅助 */
-export const escapeHtml = (text: string): string =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /** 获取评论 url 并失效其列表缓存（管理操作后调用） */
 export async function invalidateCommentCacheById (id: string): Promise<void> {

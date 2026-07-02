@@ -1,6 +1,6 @@
 import { ref, Ref } from 'vue'
 import type { TakoioConfig } from '../../../../types.ts'
-import { getReactions, toggleReaction as toggleReactionApi } from '../../../../utils/api'
+import { getReactions, toggleReaction as toggleReactionApi } from '../../../../utils'
 
 export interface ReactionsState {
   reactions: Ref<Record<string, number>>

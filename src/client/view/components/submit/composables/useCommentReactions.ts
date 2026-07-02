@@ -1,5 +1,5 @@
 import { ref, Ref } from 'vue'
-import { getCommentReactions, toggleCommentReaction as toggleCommentReactionApi } from '../../../../utils/api'
+import { getCommentReactions, toggleCommentReaction as toggleCommentReactionApi } from '../../../../utils'
 
 export interface CommentReactionsState {
   reactions: Ref<Record<string, number>>

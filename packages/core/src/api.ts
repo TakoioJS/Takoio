@@ -9,7 +9,7 @@ import { timeago } from './timeago'
 
 // ========== Utility ==========
 
-const isUrl = (str: string): boolean => /^https?:\/\//.test(str)
+export const isUrl = (str: string): boolean => /^https?:\/\//.test(str)
 
 const API_TIMEOUT_MS = 30_000
 

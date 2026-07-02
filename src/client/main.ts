@@ -14,7 +14,7 @@ import {
   getVisitorsCountApi,
   updateVisitorsCount
 } from './utils'
-import { getArticleSummary as getArticleSummaryApi } from './utils/api'
+import { getArticleSummary as getArticleSummaryApi } from './utils'
 import type { TakoioConfig } from './types'
 import { checkAuthCallback } from './utils/auth'
 

@@ -18,7 +18,7 @@ import { AppError } from '#core/config'
 import { requireAdmin, validateOrigin } from '#core/auth'
 import { getClientIp } from '#core/utils/ip'
 import { isRedisAvailable, listSummaryCaches } from '#core/store/redis'
-import { isDev } from '#core/utils/env'
+import { isDev } from '#core/env'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
 import { LoginSchema, PasswordSetSchema, TypeSetSchema, SetConfigSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema, DashboardTrendSchema } from '#core/schemas'
 

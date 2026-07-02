@@ -11,7 +11,7 @@ import { handleArticleSummary } from '#core/handlers/summary'
 import { getConfig } from '#core/config'
 import { getSummaryCache, setSummaryCache, redisRateLimit } from '#core/store/redis'
 import { getClientIp } from '#core/utils/ip'
-import { isDev } from '#core/utils/env'
+import { isDev } from '#core/env'
 import { createError } from 'h3'
 
 const MAX_CONTENT_LEN = 20_000

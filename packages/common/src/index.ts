@@ -1,3 +1,6 @@
 export * from './types'
 export { messages, setLanguage, t, detectLanguageBrowser } from './i18n'
 export type { Lang } from './i18n'
+export { escapeHtml } from './escapeHtml'
+export { MARKDOWN_ALLOWED_TAGS, MARKDOWN_ALLOWED_ATTR, renderMarkdownImage } from './markdownConfig'
+export type { MarkdownImageOptions } from './markdownConfig'

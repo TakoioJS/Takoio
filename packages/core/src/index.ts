@@ -18,6 +18,7 @@ export {
   sendEmailCode,
   verifyEmailCode,
   getAuthUser,
+  isUrl,
 } from './api'
 
 export type { ApiErrorCategory } from './api'

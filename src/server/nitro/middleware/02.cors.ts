@@ -10,7 +10,7 @@
 
 import { getConfig } from '#core/config'
 import { logger } from '#core/utils/logger'
-import { isDev } from '#core/utils/env'
+import { isDev } from '#core/env'
 
 let cachedWarn = false
 

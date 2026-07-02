@@ -107,7 +107,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, inject, type Ref } from 'vue'
-import { getArticleSummary } from '../../utils/api'
+import { getArticleSummary } from '../../utils'
 import { marked } from '../../utils/marked'
 import { t } from '../../utils/i18n'
 import { getUrl } from '../../utils'
