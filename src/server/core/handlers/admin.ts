@@ -232,8 +232,20 @@ export const handleHiddenFieldsGet = async () => {
 
 // ========== Email Test ==========
 
+const escapeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 const renderTemplate = (tpl: string, vars: Record<string, string>) =>
-  tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => vars[k] || `{{ ${k} }}`)
+  tpl.replace(/\{\{ (\w+) \}\}/g, (_, k: string) => {
+    const value = vars[k]
+    return value !== undefined ? escapeHtml(value) : `{{ ${k} }}`
+  })
 
 export const handleEmailTest = async (data: EmailTestData) => {
   const validation = safeValidate(EmailTestSchema, data)

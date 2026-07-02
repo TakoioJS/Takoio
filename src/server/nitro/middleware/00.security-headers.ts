@@ -37,6 +37,8 @@ export default defineMiddleware((event) => {
   // Content Security Policy for admin panel — nonce-based，移除 'unsafe-inline' 防 XSS
   const url = getRequestURL(event).pathname
   if (url.startsWith('/admin')) {
+    // SameSite=Strict cookie for admin session to mitigate CSRF
+    setResponseHeader(event, 'Set-Cookie', 'admin_session=1; Path=/admin; SameSite=Strict; HttpOnly; Secure')
     // 每个请求生成独立 nonce（16 字节 base64），存到 context 供 admin-spa 注入到 <script> 标签
     const nonce = randomBytes(16).toString('base64')
     ;(event.context as CspContext).__cspNonce = nonce

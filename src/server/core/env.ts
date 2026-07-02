@@ -50,6 +50,9 @@ export const LIBSQL_DATA_DIR = process.env.LIBSQL_DATA_DIR
 /** MongoDB 连接 URI */
 export const MONGODB_URI = process.env.MONGODB_URI
 
+/** MongoDB 数据库名称 */
+export const MONGODB_DB = process.env.MONGODB_DB
+
 // ========== Redis 配置 ==========
 
 /** Redis 连接 URL */

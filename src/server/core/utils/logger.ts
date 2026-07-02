@@ -34,9 +34,9 @@ function formatDev (level: Level, args: any[]): string {
   const timestamp = new Date().toISOString()
   const levelTag = `[${level.toUpperCase()}]`.padEnd(7)
   if (args.length >= 2 && typeof args[1] === 'string') {
-    // (meta, msg) form
-    const meta = args[1]
-    const msg = args[0]
+    // (meta, msg) form: logger.info(meta, msg)
+    const meta = args[0]
+    const msg = args[1]
     try {
       return `${timestamp} ${levelTag} ${msg} ${JSON.stringify(meta)}`
     } catch {

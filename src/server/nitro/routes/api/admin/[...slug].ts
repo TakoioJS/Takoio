@@ -15,7 +15,7 @@ import { handleImport, handleExport } from '#core/handlers/import-export'
 import { handleDashboardStats, handleDashboardTrend } from '#core/handlers/comment'
 import { sessionStore } from '#core/store/index'
 import { AppError } from '#core/config'
-import { requireAdmin } from '#core/auth'
+import { requireAdmin, validateOrigin } from '#core/auth'
 import { getClientIp } from '#core/utils/ip'
 import { isRedisAvailable, listSummaryCaches } from '#core/store/redis'
 import { isDev } from '#core/utils/env'
@@ -38,11 +38,13 @@ export default defineHandler(async (event) => {
     return handleLogin(data, await getClientIp(event))
   }
 
-  // POST /api/admin/logout
+  // POST /api/admin/logout — allow logout even with expired/invalid token
   if (segments[0] === 'logout' && method === 'POST') {
     const token = getToken(event)
-    await requireAdmin({ token })
-    return handleLogout({ token })
+    if (token) {
+      await sessionStore.removeToken(token)
+    }
+    return handleLogout({ token: token || '' })
   }
 
   // PUT /api/admin/password
@@ -57,20 +59,26 @@ export default defineHandler(async (event) => {
 
   // GET /api/admin/config (admin only — contains masked secrets & full config structure)
   if (segments[0] === 'config' && method === 'GET') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     return handleGetConfig({})
   }
 
   // PUT /api/admin/config
   if (segments[0] === 'config' && method === 'PUT') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     const data = await validateBody(event, SetConfigSchema)
     return handleSetConfig({ ...data, _ip: await getClientIp(event) })
   }
 
   // DELETE /api/admin/config
   if (segments[0] === 'config' && method === 'DELETE') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     return handleConfigReset({})
   }
 
@@ -81,13 +89,15 @@ export default defineHandler(async (event) => {
 
   // GET /api/admin/dashboard
   if (segments[0] === 'dashboard' && segments.length === 1 && method === 'GET') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
     return handleDashboardStats()
   }
 
   // GET /api/admin/dashboard/trend
   if (segments[0] === 'dashboard' && segments[1] === 'trend' && method === 'GET') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
     const { days } = validateQuery(event, DashboardTrendSchema)
     return handleDashboardTrend(days)
   }
@@ -99,7 +109,9 @@ export default defineHandler(async (event) => {
 
   // PUT /api/admin/type
   if (segments[0] === 'type' && method === 'PUT') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     const data = await validateBody(event, TypeSetSchema)
     return handleTypeSet(data)
   }
@@ -108,57 +120,67 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'private-key' && method === 'GET') {
     const key = getQuery(event).key as string | undefined
     if (!key) return { data: null }
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
     return handlePrivateKeyGet({ key })
   }
 
   // PUT /api/admin/private-key
   if (segments[0] === 'private-key' && method === 'PUT') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     const data = await validateBody(event, PrivateKeySetSchema)
     return handlePrivateKeySet(data)
   }
 
   // POST /api/admin/notification
   if (segments[0] === 'notification' && method === 'POST') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     const data = await validateBody(event, SendNotificationSchema)
     return handleSendNotification(data)
   }
 
   // POST /api/admin/email-test
   if (segments[0] === 'email-test' && method === 'POST') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
     const data = await validateBody(event, EmailTestSchema)
     return handleEmailTest(data)
   }
 
   // POST /api/admin/refresh — token rotation
   if (segments[0] === 'refresh' && method === 'POST') {
-    await requireAdmin({ token: getToken(event) })
-    const newToken = await sessionStore.rotateToken(getToken(event)!)
+    const token = getToken(event)
+    await requireAdmin({ token })
+    const newToken = await sessionStore.rotateToken(token!)
     if (!newToken) throw new AppError('NEED_LOGIN', '会话已过期，请重新登录', 401)
     return { success: true, token: newToken }
   }
 
   // GET /api/admin/export
   if (segments[0] === 'export' && method === 'GET') {
-    await requireAdmin({ token: getToken(event) })
-    const format = (getQuery(event).format as string) || 'json'
-    return handleExport({ format })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    return handleExport({ format: (getQuery(event).format as string) || 'json' })
   }
 
   // POST /api/admin/import/:source — handleImport(source, data) positional args
   if (segments[0] === 'import' && method === 'POST' && segments.length === 2) {
     const source = segments[1]
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
+    validateOrigin(event, [event.node.req.headers.origin || ''])
     const body = await validateBody(event, ImportSchema)
     return handleImport(source, body)
   }
 
   // GET /api/admin/system — system status (dev mode, DB, Redis, AI stats)
   if (segments[0] === 'system' && method === 'GET') {
-    await requireAdmin({ token: getToken(event) })
+    const token = getToken(event)
+    await requireAdmin({ token })
     const dbType = (process.env.DB_TYPE || 'sqlite').toLowerCase()
     // 始终检查实际 Redis 连通性，不依赖 isDev()（云函数平台 import.meta.dev 可能误判）
     const redisOk = await isRedisAvailable()

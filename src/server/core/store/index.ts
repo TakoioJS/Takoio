@@ -138,10 +138,32 @@ async function getImpl (): Promise<StoreBackend> {
   return _initPromise
 }
 
+/** Runtime validation: ensure backend implements all required methods */
+function validateBackend (impl: StoreBackend, backendName: string): void {
+  const requiredStores: { name: string; methods: string[] }[] = [
+    { name: 'commentStore', methods: ['addComment', 'getComment', 'updateComment', 'getComments', 'deleteComment'] },
+    { name: 'configStore', methods: ['getConfig', 'setConfig'] },
+    { name: 'sessionStore', methods: ['createToken', 'validateToken'] },
+  ]
+
+  for (const store of requiredStores) {
+    const implStore = (impl as any)[store.name]
+    if (!implStore) {
+      throw new Error(`Backend "${backendName}" missing store: ${store.name}`)
+    }
+    for (const method of store.methods) {
+      if (typeof implStore[method] !== 'function') {
+        throw new Error(`Backend "${backendName}" store "${store.name}" missing method: ${method}()`)
+      }
+    }
+  }
+}
+
 /** Initialize the store backend — called from Nitro init plugin */
 export async function initStore (): Promise<void> {
   if (_initialized) return
   const impl = await getImpl()
+  validateBackend(impl, DB_TYPE)
   Object.assign(commentStore, impl.commentStore)
   Object.assign(configStore, impl.configStore)
   Object.assign(visitorStore, impl.visitorStore)
@@ -173,9 +195,12 @@ export async function ensureDb (): Promise<void> { return (await getImpl()).ensu
 // serverless 环境下 Redis TLS 握手开销大（100-300ms），直接走 DB 持久化限流，
 // 解决多实例独立计数的问题。内存限流作为兜底保留。
 
-const _skipRedisRateLimit = (() => {
+/** Check if Redis rate limiting should be skipped (serverless or Redis unavailable).
+ *  Evaluated at runtime, not module-load time, to handle env var timing issues.
+ */
+async function shouldSkipRedisRateLimit (): Promise<boolean> {
   try { return isServerless() } catch { return false }
-})()
+}
 
 /** DB-based rate limit with sliding window.
  *  Uses the underlying Drizzle DB directly for cross-instance persistence.
@@ -207,7 +232,7 @@ async function _dbRateLimit (key: string, maxRequests: number, windowMs: number)
 
 export const rateLimitStore = {
   async checkRateLimit (ip: string, maxRequests = 60) {
-    if (_skipRedisRateLimit) {
+    if (await shouldSkipRedisRateLimit()) {
       return _dbRateLimit(`global:${ip}`, maxRequests, 60_000)
     }
     const { redisRateLimit } = await import('./redis')

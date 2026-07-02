@@ -34,7 +34,11 @@ interface JwtPayload extends AuthUser {
 }
 
 function getSecret (): string {
-  return process.env.AUTH_JWT_SECRET || 'takoio-auth-dev-secret'
+  const secret = process.env.AUTH_JWT_SECRET
+  if (!secret) {
+    throw new Error('AUTH_JWT_SECRET environment variable is required for social auth. Please set it before starting the server.')
+  }
+  return secret
 }
 
 function base64UrlEncode (buf: Buffer): string {

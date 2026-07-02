@@ -37,8 +37,10 @@ export const COMMENT_STATE = {
 let _client: MongoClient | null = null
 let _db: Db | null = null
 
-const connUri = () => process.env.MONGODB_URI || 'mongodb://localhost:27017'
-const dbName = () => process.env.MONGODB_DB || 'takoio'
+import { MONGODB_URI, MONGODB_DB } from '../env'
+
+const connUri = () => MONGODB_URI || 'mongodb://localhost:27017'
+const dbName = () => MONGODB_DB || 'takoio'
 
 let _connectPromise: Promise<Db> | null = null
 

@@ -257,7 +257,7 @@ export const PUBLIC_EXCLUDED_KEYS = HIDDEN_KEYS
 
 let configCache: TakoioConfig | null = null
 let cacheTimestamp = 0
-const CACHE_TTL = 60_000 // 60 seconds
+const CACHE_TTL = 15_000 // 15 seconds — shorter TTL reduces stale config in multi-instance deployments
 
 /** 配置变更订阅回调 */
 const configChangeListeners = new Set<() => void>()

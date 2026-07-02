@@ -6,6 +6,7 @@ import { logger } from './utils/logger'
 import { configStore, sessionStore } from './store/index'
 import { type TakoioConfig } from './config'
 import { AppError } from './config'
+import { getRequestHeader } from 'h3'
 
 // ========== Password Hash Cache ==========
 
@@ -249,5 +250,27 @@ export const requireAdmin = async (data: any): Promise<void> => {
   const existingHash = await getAuthHash()
   if (!existingHash) {
     throw new AppError('NEED_LOGIN', '管理员密码未初始化，请先完成首次设置', 401)
+  }
+}
+
+/** Validate Origin/Referer header for admin requests to mitigate CSRF.
+ *  Checks that the request originates from an allowed domain.
+ */
+export const validateOrigin = (event: any, allowedOrigins: string[]): void => {
+  const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer') || ''
+  if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)
+
+  const originHost = new URL(origin).hostname
+  const isAllowed = allowedOrigins.some((allowed) => {
+    if (allowed === '*') return true
+    try {
+      return new URL(allowed).hostname === originHost
+    } catch {
+      return allowed === originHost
+    }
+  })
+
+  if (!isAllowed) {
+    throw new AppError('INVALID_ORIGIN', '请求来源不合法', 403)
   }
 }
