@@ -10,6 +10,7 @@ declare global {
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
+  const avatarColor: typeof import('./composables/useAvatar').avatarColor
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
   const computedEager: typeof import('@vueuse/core').computedEager
@@ -38,7 +39,11 @@ declare global {
   const eagerComputed: typeof import('@vueuse/core').eagerComputed
   const effectScope: typeof import('vue').effectScope
   const extendRef: typeof import('@vueuse/core').extendRef
+  const formatNumber: typeof import('./composables/useFormatTime').formatNumber
+  const formatRefreshTime: typeof import('./composables/useFormatTime').formatRefreshTime
+  const formatTime: typeof import('./composables/useFormatTime').formatTime
   const getActivePinia: typeof import('pinia').getActivePinia
+  const getAvatar: typeof import('./composables/useAvatar').getAvatar
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
@@ -154,6 +159,7 @@ declare global {
   const useClipboardItems: typeof import('@vueuse/core').useClipboardItems
   const useCloned: typeof import('@vueuse/core').useCloned
   const useColorMode: typeof import('@vueuse/core').useColorMode
+  const useConfigEditor: typeof import('./composables/useConfigEditor').useConfigEditor
   const useConfirmDialog: typeof import('@vueuse/core').useConfirmDialog
   const useCountdown: typeof import('@vueuse/core').useCountdown
   const useCounter: typeof import('@vueuse/core').useCounter
@@ -317,4 +323,10 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { UseConfigEditorOptions } from './composables/useConfigEditor'
+  import('./composables/useConfigEditor')
+  // @ts-ignore
+  export type { TimeFormat } from './composables/useFormatTime'
+  import('./composables/useFormatTime')
 }

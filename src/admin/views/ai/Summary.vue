@@ -262,7 +262,10 @@ interface SummaryItem {
 
 const summaries = ref<SummaryItem[]>([])
 
-import { formatTime } from '../../composables/useFormatTime'
+const formatTime = (ts: number): string => {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 
 // ── 编辑摘要 ──
 const showEditModal = ref(false)

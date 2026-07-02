@@ -506,8 +506,16 @@ const filterOptions = [
   { label: '待审', value: 'pending' },
 ]
 
-import { formatTime } from '../../composables/useFormatTime'
-import { getAvatar } from '../../composables/useAvatar'
+const formatTime = (ts: number): string => {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const getAvatar = (item: Comment): string => {
+  const base = 'https://weavatar.com/avatar/'
+  const hash = item.mailMd5 || encodeURIComponent(item.nick || '?')
+  return `${base}${hash}?d=identicon&s=40`
+}
 
 const stateClass = (row: Comment): string => {
   if (row.state === 'hidden') return 'dot-hidden'

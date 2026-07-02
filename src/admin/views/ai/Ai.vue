@@ -324,10 +324,10 @@ const onFetchModels = async (idx: number) => {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`)
     const json = await resp.json()
     // 响应解析：统一尝试 OpenAI/Anthropic 兼容格式 json.data[].id 与 Gemini 格式 json.models[].name（去 models/ 前缀）
-    const fromData = (json.data ?? []).map((m: any) => m.id).filter(Boolean)
-    const fromModels = (json.models ?? []).map((m: any) => String(m.name).replace(/^models\//, '')).filter(Boolean)
+    const fromData = (json.data ?? []).map((m: { id?: string }) => m.id).filter(Boolean) as string[]
+    const fromModels = (json.models ?? []).map((m: { name?: string }) => String(m.name).replace(/^models\//, '')).filter(Boolean) as string[]
     const models = (fromData.length ? fromData : fromModels).sort()
-    p.modelOptions = models.map(m => ({ label: m, value: m }))
+    p.modelOptions = models.map((m: string) => ({ label: m, value: m }))
     message.success(`拉取成功：${models.length} 个模型`)
   } catch (e: any) {
     message.error(`拉取失败：${e.message || e}`)

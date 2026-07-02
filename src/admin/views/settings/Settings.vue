@@ -441,7 +441,7 @@ const isCollapsed = (key: string) => {
 const activePushKeys = ref<string[]>([])
 const selectedPushKeyToAdd = ref<string | null>(null)
 
-const pushFields = computed(() => sections.find(s => s.key === 'push')?.fields || [])
+const pushFields = computed(() => sections.value.find(s => s.key === 'push')?.fields || [])
 
 const availablePushOptions = computed(() => {
   return pushFields.value
@@ -491,7 +491,7 @@ const isLastVisible = (section: ConfigSection, idx: number) => {
 
 const isDirty = computed(() => {
   if (!savedConfig.value) return false
-  for (const section of sections) {
+  for (const section of sections.value) {
     for (const field of section.fields) {
       const cur = config[field.key]
       const orig = savedConfig.value[field.key]
@@ -539,7 +539,7 @@ const loadConfig = async () => {
     Object.keys(config).forEach(k => delete config[k])
 
     const activeKeys: string[] = []
-    for (const section of sections) {
+    for (const section of sections.value) {
       for (const field of section.fields) {
         config[field.key] = data[field.key] ?? getDefaultValue(field)
         if (section.key === 'push' && data[field.key] !== undefined && data[field.key] !== null && data[field.key] !== '') {
@@ -558,8 +558,10 @@ const loadConfig = async () => {
     // 动态更新 AI 审核提供商选项
     updateAiProviderOptions(data.AI_PROVIDERS)
 
-    savedConfig.value = JSON.parse(JSON.stringify(data))
-    savedConfig.value.CODE_FEATURES = [...codeFeatures]
+    savedConfig.value = JSON.parse(JSON.stringify(data)) as Record<string, unknown>
+    if (savedConfig.value) {
+      savedConfig.value.CODE_FEATURES = [...codeFeatures]
+    }
   } catch (e: any) {
     message.error('加载配置失败: ' + (e.message || ''))
   } finally {
@@ -608,7 +610,7 @@ const onSave = async () => {
   saving.value = true
   try {
     const payload: Record<string, any> = {}
-    for (const section of sections) {
+    for (const section of sections.value) {
       for (const field of section.fields) {
         let value = config[field.key]
         // Naive UI n-input-number 清空后返回 null，需转为默认值避免后端类型校验跳过

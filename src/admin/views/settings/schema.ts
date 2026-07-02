@@ -8,7 +8,7 @@ export interface ConfigField {
   key: string
   label: string
   type: 'input' | 'switch' | 'select' | 'tag-select' | 'number' | 'textarea' | 'color' | 'slider' | 'checkbox-group' | 'sensitive'
-  options?: { label: string; value: unknown }[]
+  options?: { label: string; value: string }[]
   placeholder?: string
   hint?: string
   description?: string
@@ -64,7 +64,7 @@ export const sections: ConfigSection[] = [
         key: 'GRAVATAR_URL_CUSTOM',
         label: '自定义头像服务 URL',
         type: 'input',
-        condition: (c) => c.GRAVATAR_URL === '__custom__'
+        condition: (c) => !!c.GRAVATAR_URL && c.GRAVATAR_URL === '__custom__'
       },
       {
         key: 'GRAVATAR_DEFAULT',
@@ -155,14 +155,14 @@ export const sections: ConfigSection[] = [
         key: 'SHOW_IP_REGION',
         label: '归属地精度',
         type: 'select',
-        condition: (c) => c.IP_REGION_ENABLED,
+        condition: (c) => !!c.IP_REGION_ENABLED,
         options: [{ label: '完整', value: 'all' }, { label: '仅省份', value: 'city' }]
       },
       {
         key: 'TRUSTED_PROXIES',
         label: '可信代理',
         type: 'input',
-        condition: (c) => c.IP_REGION_ENABLED
+        condition: (c) => !!c.IP_REGION_ENABLED,
       },
       { key: 'AUDIT_MODE', label: '先审后发', type: 'switch' },
       {
@@ -180,14 +180,14 @@ export const sections: ConfigSection[] = [
         key: 'AKISMET_KEY',
         label: 'Akismet Key',
         type: 'sensitive',
-        condition: (c) => c.AUTO_AUDIT_METHOD === 'akismet'
+        condition: (c) => !!c.AUTO_AUDIT_METHOD && c.AUTO_AUDIT_METHOD === 'akismet'
       },
       {
         key: 'AUTO_AUDIT_AI_PROVIDER',
         label: 'AI 审核提供商',
         type: 'select',
         options: [],
-        condition: (c) => c.AUTO_AUDIT_METHOD === 'ai'
+        condition: (c) => !!c.AUTO_AUDIT_METHOD && c.AUTO_AUDIT_METHOD === 'ai'
       },
       {
         key: 'AUTO_AUDIT_AI_MODEL',
@@ -195,7 +195,7 @@ export const sections: ConfigSection[] = [
         type: 'select',
         options: [],
         filterable: true,
-        condition: (c) => c.AUTO_AUDIT_METHOD === 'ai'
+        condition: (c) => !!c.AUTO_AUDIT_METHOD && c.AUTO_AUDIT_METHOD === 'ai'
       },
       {
         key: 'AUTO_AUDIT_AI_PROMPT',
@@ -203,21 +203,21 @@ export const sections: ConfigSection[] = [
         type: 'textarea',
         rows: 4,
         full: true,
-        condition: (c) => c.AUTO_AUDIT_METHOD === 'ai'
+        condition: (c) => !!c.AUTO_AUDIT_METHOD && c.AUTO_AUDIT_METHOD === 'ai'
       },
       {
         key: 'BLOCKED_KEYWORDS',
         label: '屏蔽关键词',
         type: 'textarea',
         rows: 3,
-        condition: (c) => c.AUTO_AUDIT_METHOD === 'traditional'
+        condition: (c) => !!c.AUTO_AUDIT_METHOD && c.AUTO_AUDIT_METHOD === 'traditional'
       },
       { key: 'ENABLE_CAPTCHA', label: '人机验证', type: 'switch' },
       {
         key: 'CAPTCHA_PROVIDER',
         label: '验证服务商',
         type: 'select',
-        condition: (c) => c.ENABLE_CAPTCHA,
+        condition: (c) => !!c.ENABLE_CAPTCHA,
         options: [
           { label: 'Cloudflare Turnstile', value: 'turnstile' },
           { label: 'Google reCAPTCHA', value: 'recaptcha' },
@@ -229,20 +229,20 @@ export const sections: ConfigSection[] = [
         key: 'CAPTCHA_TYPE',
         label: '验证类型',
         type: 'select',
-        condition: (c) => c.ENABLE_CAPTCHA && c.CAPTCHA_PROVIDER === 'recaptcha',
+        condition: (c) => !!c.ENABLE_CAPTCHA && c.CAPTCHA_PROVIDER === 'recaptcha',
         options: [{ label: 'Checkbox', value: 'checkbox' }, { label: 'Invisible', value: 'invisible' }]
       },
       {
         key: 'CAPTCHA_SITE_KEY',
         label: 'Site Key',
         type: 'input',
-        condition: (c) => c.ENABLE_CAPTCHA
+        condition: (c) => !!c.ENABLE_CAPTCHA,
       },
       {
         key: 'CAPTCHA_SECRET_KEY',
         label: 'Secret Key',
         type: 'sensitive',
-        condition: (c) => c.ENABLE_CAPTCHA
+        condition: (c) => !!c.ENABLE_CAPTCHA,
       },
     ]
   },
@@ -283,7 +283,7 @@ export const sections: ConfigSection[] = [
         key: 'CODE_HIGHLIGHT_THEME',
         label: '高亮主题',
         type: 'select',
-        condition: (c) => c.ENABLE_CODE_HIGHLIGHT,
+        condition: (c) => !!c.ENABLE_CODE_HIGHLIGHT,
         options: [
           { label: 'One Dark Pro', value: 'one-dark-pro' },
           { label: 'GitHub', value: 'github' },
@@ -305,7 +305,7 @@ export const sections: ConfigSection[] = [
         label: '功能',
         type: 'checkbox-group',
         full: true,
-        condition: (c) => c.ENABLE_CODE_HIGHLIGHT,
+        condition: (c) => !!c.ENABLE_CODE_HIGHLIGHT,
         options: [
           { label: '语言标签', value: 'language' },
           { label: '复制按钮', value: 'copy' },
@@ -324,7 +324,7 @@ export const sections: ConfigSection[] = [
         label: '图床服务商',
         type: 'select',
         clearable: true,
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD,
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD,
         options: [
           { label: 's.e.e', value: 'see' },
           { label: '兰空 Lsky Pro', value: 'lskypro' },
@@ -341,43 +341,43 @@ export const sections: ConfigSection[] = [
         key: 'IMAGE_HOSTING_TOKEN',
         label: 'API Token',
         type: 'sensitive',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && isTokenProvider(c.IMAGE_HOSTING_PROVIDER)
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && isTokenProvider(String(c.IMAGE_HOSTING_PROVIDER))
       },
       {
         key: 'IMAGE_HOSTING_ENDPOINT',
         label: 'Endpoint',
         type: 'input',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER)
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && isS3Provider(String(c.IMAGE_HOSTING_PROVIDER))
       },
       {
         key: 'IMAGE_HOSTING_BUCKET',
         label: 'Bucket',
         type: 'input',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER)
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && isS3Provider(String(c.IMAGE_HOSTING_PROVIDER))
       },
       {
         key: 'IMAGE_HOSTING_REGION',
         label: 'Region',
         type: 'input',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER)
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && isS3Provider(String(c.IMAGE_HOSTING_PROVIDER))
       },
       {
         key: 'IMAGE_HOSTING_ACCESS_KEY',
         label: 'Access Key',
         type: 'sensitive',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER)
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && isS3Provider(String(c.IMAGE_HOSTING_PROVIDER))
       },
       {
         key: 'IMAGE_HOSTING_SECRET_KEY',
         label: 'Secret Key',
         type: 'sensitive',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && isS3Provider(c.IMAGE_HOSTING_PROVIDER)
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && isS3Provider(String(c.IMAGE_HOSTING_PROVIDER))
       },
       {
         key: 'IMAGE_HOSTING_CDN_DOMAIN',
         label: 'CDN域名',
         type: 'input',
-        condition: (c) => c.ENABLE_IMAGE_UPLOAD && !!c.IMAGE_HOSTING_PROVIDER
+        condition: (c) => !!c.ENABLE_IMAGE_UPLOAD && !!c.IMAGE_HOSTING_PROVIDER
       },
     ]
   },
