@@ -274,6 +274,7 @@ import {
   ServerSharp, LeafOutline, CloudCircleOutline, HardwareChipOutline,
 } from '@vicons/ionicons5'
 import { commentsApi, type DashboardStats } from '../api/comments'
+import { t } from '@shared/utils/i18n'
 import { api } from '../api/client'
 import { renderMarkdown } from '@shared/utils/marked'
 import type { Comment } from '@shared/types'
@@ -395,7 +396,7 @@ const loadStats = async () => {
   try {
     statsData.value = await commentsApi.getDashboard()
   } catch (e: any) {
-    message.error('统计加载失败：' + (e.message || ''))
+    message.error(t('statsLoadFailed') + '：' + (e.message || ''))
   } finally {
     statsLoading.value = false
   }
@@ -412,7 +413,7 @@ const loadComments = async () => {
     recentComments.value = data
   } catch (e: any) {
     loadError.value = true
-    message.error('评论加载失败：' + (e.message || ''))
+    message.error(t('commentsLoadFailed') + '：' + (e.message || ''))
   } finally {
     commentsLoading.value = false
   }
@@ -550,7 +551,7 @@ onMounted(() => {
 /* ===== 统计卡片 ===== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
   gap: 12px;
   margin-bottom: 12px;
 }

@@ -56,6 +56,7 @@
           <button
             class="tk-btn-icon"
             :title="t('reply')"
+            :aria-label="t('reply')"
             @click="$emit('reply', comment)"
           >
             <svg

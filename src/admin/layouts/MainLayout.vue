@@ -210,6 +210,7 @@ import {
   ChevronDownOutline, LogoGithub,
 } from '@vicons/ionicons5'
 import { setUnauthorizedHandler } from '../api/client'
+import { t } from '@shared/utils/i18n'
 
 const iconUrl = import.meta.env.BASE_URL + 'icon/icon_108x108.png'
 
@@ -261,23 +262,23 @@ const onLogout = () => {
     onPositiveClick: async () => {
       await auth.logout()
       router.push('/login')
-      message.success('已退出登录')
+      message.success(t('loggedOut'))
     },
   })
 }
 
 const onChangePassword = async () => {
-  if (!pwdOld.value) { message.warning('请输入旧密码'); return }
-  if (!pwdNew.value || pwdNew.value.length < 8) { message.warning('新密码至少8位'); return }
-  if (pwdNew.value !== pwdConfirm.value) { message.error('两次密码不一致'); return }
+  if (!pwdOld.value) { message.warning(t('enterOldPassword')); return }
+  if (!pwdNew.value || pwdNew.value.length < 8) { message.warning(t('passwordMinLength8')); return }
+  if (pwdNew.value !== pwdConfirm.value) { message.error(t('pwMismatch')); return }
   changingPassword.value = true
   try {
     const result = await auth.changePassword(pwdOld.value, pwdNew.value)
     if (result.success) {
       showPasswordDialog.value = false
-      message.success('密码修改成功')
+      message.success(t('changePasswordSuccess'))
     } else {
-      message.error(result.message || '修改失败')
+      message.error(result.message || t('operationFailed'))
     }
   } finally {
     changingPassword.value = false
@@ -342,7 +343,7 @@ html.dark .admin-header {
   object-fit: contain;
 }
 .brand-text {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink);
   white-space: nowrap;

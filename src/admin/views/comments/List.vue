@@ -266,60 +266,60 @@
 
               <!-- 操作栏 -->
               <div class="comment-actions">
-                <n-button
-                  v-if="item.state === 'pending'"
-                  size="tiny"
-                  type="success"
-                  secondary
-                  @click="approveOne(item)"
+                <!-- 桌面端：高频操作直接露出 -->
+                <span class="action-primary">
+                  <n-button
+                    v-if="item.state === 'pending'"
+                    size="tiny"
+                    type="success"
+                    secondary
+                    @click="approveOne(item)"
+                  >
+                    通过
+                  </n-button>
+                  <n-button
+                    size="tiny"
+                    type="primary"
+                    secondary
+                    @click="openReply(item)"
+                  >
+                    回复
+                  </n-button>
+                  <n-button
+                    size="tiny"
+                    secondary
+                    @click="openEdit(item)"
+                  >
+                    编辑
+                  </n-button>
+                  <n-button
+                    size="tiny"
+                    type="error"
+                    secondary
+                    @click="onDeleteOne(item)"
+                  >
+                    删除
+                  </n-button>
+                </span>
+                <!-- 更多操作下拉 -->
+                <n-dropdown
+                  trigger="click"
+                  :options="moreActionOptions(item)"
+                  size="small"
+                  @select="(key: string) => handleMoreAction(item, key)"
                 >
-                  通过
-                </n-button>
-                <n-button
-                  size="tiny"
-                  type="primary"
-                  secondary
-                  @click="openReply(item)"
-                >
-                  回复
-                </n-button>
-                <n-button
-                  size="tiny"
-                  secondary
-                  @click="openEdit(item)"
-                >
-                  编辑
-                </n-button>
-                <n-button
-                  size="tiny"
-                  secondary
-                  @click="toggleTop(item)"
-                >
-                  {{ item.isTop ? '取消置顶' : '置顶' }}
-                </n-button>
-                <n-button
-                  size="tiny"
-                  secondary
-                  @click="toggleHide(item)"
-                >
-                  {{ item.state === 'hidden' ? '显示' : '隐藏' }}
-                </n-button>
-                <n-button
-                  size="tiny"
-                  :type="item.isSpam ? 'warning' : 'error'"
-                  secondary
-                  @click="toggleSpam(item)"
-                >
-                  {{ item.isSpam ? '取消垃圾' : '标垃圾' }}
-                </n-button>
-                <n-button
-                  size="tiny"
-                  type="error"
-                  secondary
-                  @click="onDeleteOne(item)"
-                >
-                  删除
-                </n-button>
+                  <n-button
+                    size="tiny"
+                    quaternary
+                    title="更多操作"
+                  >
+                    <template #icon>
+                      <n-icon size="16">
+                        <EllipsisHorizontal />
+                      </n-icon>
+                    </template>
+                  </n-button>
+                </n-dropdown>
               </div>
             </div>
           </div>
@@ -460,16 +460,17 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import {
-  NSelect, NInput, NButton, NIcon, NCheckbox, NTag, NSpin,
+  NSelect, NInput, NButton, NIcon, NCheckbox, NTag, NSpin, NDropdown,
   NPagination, NModal, NForm, NFormItem, useMessage, useDialog,
 } from 'naive-ui'
 import {
   RefreshOutline, RefreshCircleOutline, SearchOutline, ChatbubblesOutline,
-  LinkOutline, DocumentTextOutline, MailOutline,
+  LinkOutline, DocumentTextOutline, MailOutline, EllipsisHorizontal,
 } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import { commentsApi } from '../../api/comments'
 import { renderMarkdown } from '@shared/utils/marked'
+import { t } from '@shared/utils/i18n'
 import type { Comment } from '@shared/types'
 import TkUa from '@shared/view/components/TkUa.vue'
 
@@ -567,7 +568,7 @@ const loadComments = async () => {
     comments.value = data
     total.value = r.total || 0
   } catch (e: any) {
-    message.error('加载失败: ' + (e.message || ''))
+    message.error(t('loadFailed') + ': ' + (e.message || ''))
   } finally {
     loading.value = false
   }
@@ -589,9 +590,9 @@ const toggleHide = async (row: Comment) => {
     const hide = row.state !== 'hidden'
     await commentsApi.hide(row.id, hide)
     row.state = hide ? 'hidden' : 'visible'
-    message.success('操作成功')
+    message.success(t('operationSuccess'))
   } catch (e: any) {
-    message.error('操作失败: ' + (e.message || ''))
+    message.error(t('operationFailed') + ': ' + (e.message || ''))
   }
 }
 
@@ -601,9 +602,9 @@ const toggleSpam = async (row: Comment) => {
     await commentsApi.setSpam(row.id, isSpam)
     row.isSpam = isSpam
     row.state = isSpam ? 'spam' : 'visible'
-    message.success('操作成功')
+    message.success(t('operationSuccess'))
   } catch (e: any) {
-    message.error('操作失败: ' + (e.message || ''))
+    message.error(t('operationFailed') + ': ' + (e.message || ''))
   }
 }
 
@@ -611,9 +612,9 @@ const approveOne = async (row: Comment) => {
   try {
     await commentsApi.approve(row.id)
     row.state = 'visible'
-    message.success('已通过审核')
+    message.success(t('approved'))
   } catch (e: any) {
-    message.error('操作失败: ' + (e.message || ''))
+    message.error(t('operationFailed') + ': ' + (e.message || ''))
   }
 }
 
@@ -626,10 +627,10 @@ const onDeleteOne = (row: Comment) => {
     onPositiveClick: async () => {
       try {
         await commentsApi.delete(row.id)
-        message.success('已删除')
+        message.success(t('deleteSuccess'))
         loadComments()
       } catch (e: any) {
-        message.error('删除失败: ' + (e.message || ''))
+        message.error(t('deleteFailed') + ': ' + (e.message || ''))
       }
     },
   })
@@ -640,8 +641,8 @@ const batchHide = async () => {
     await commentsApi.batchHide(selectedIds.value, true)
     selectedIds.value = []
     loadComments()
-    message.success('操作成功')
-  } catch (e: any) { message.error('操作失败: ' + (e.message || '')) }
+    message.success(t('operationSuccess'))
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const batchShow = async () => {
@@ -649,8 +650,8 @@ const batchShow = async () => {
     await commentsApi.batchHide(selectedIds.value, false)
     selectedIds.value = []
     loadComments()
-    message.success('操作成功')
-  } catch (e: any) { message.error('操作失败: ' + (e.message || '')) }
+    message.success(t('operationSuccess'))
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const batchSpam = async () => {
@@ -658,8 +659,8 @@ const batchSpam = async () => {
     await commentsApi.batchSpam(selectedIds.value, true)
     selectedIds.value = []
     loadComments()
-    message.success('已标记为垃圾')
-  } catch (e: any) { message.error('操作失败: ' + (e.message || '')) }
+    message.success(t('markedAsSpam'))
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const batchApprove = async () => {
@@ -667,8 +668,8 @@ const batchApprove = async () => {
     await commentsApi.batchApprove(selectedIds.value)
     selectedIds.value = []
     loadComments()
-    message.success('已通过审核')
-  } catch (e: any) { message.error('操作失败: ' + (e.message || '')) }
+    message.success(t('approved'))
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const batchDelete = () => {
@@ -681,13 +682,30 @@ const batchDelete = () => {
       try {
         await commentsApi.batchDelete(selectedIds.value)
         selectedIds.value = []
-        message.success('删除成功')
+        message.success(t('deleteSuccess'))
         loadComments()
       } catch (e: any) {
-        message.error('删除失败: ' + (e.message || ''))
+        message.error(t('deleteFailed') + ': ' + (e.message || ''))
       }
     },
   })
+}
+
+// 更多操作下拉
+const moreActionOptions = (item: Comment) => {
+  const opts: { label: string; key: string }[] = []
+  if (item.state === 'pending') opts.push({ label: '通过', key: 'approve' })
+  opts.push({ label: item.isTop ? '取消置顶' : '置顶', key: 'top' })
+  opts.push({ label: item.state === 'hidden' ? '显示' : '隐藏', key: 'hide' })
+  opts.push({ label: item.isSpam ? '取消垃圾' : '标垃圾', key: 'spam' })
+  return opts
+}
+
+const handleMoreAction = async (item: Comment, key: string) => {
+  if (key === 'approve') await approveOne(item)
+  else if (key === 'top') await toggleTop(item)
+  else if (key === 'hide') await toggleHide(item)
+  else if (key === 'spam') await toggleSpam(item)
 }
 
 const onFilterChange = () => {
@@ -711,11 +729,11 @@ const saveEdit = async () => {
   editSaving.value = true
   try {
     await commentsApi.update(editForm.value.id, editForm.value)
-    message.success('保存成功')
+    message.success(t('saveSuccess'))
     editVisible.value = false
     loadComments()
   } catch (e: any) {
-    message.error('保存失败: ' + (e.message || ''))
+    message.error(t('saveFailed') + ': ' + (e.message || ''))
   } finally {
     editSaving.value = false
   }
@@ -735,8 +753,8 @@ const openReply = (item: Comment) => {
 
 const saveReply = async () => {
   if (!replyTarget.value) return
-  if (!replyForm.value.comment.trim()) { message.warning('请输入回复内容'); return }
-  if (!replyForm.value.nick.trim()) { message.warning('请输入昵称'); return }
+  if (!replyForm.value.comment.trim()) { message.warning(t('enterContent')); return }
+  if (!replyForm.value.nick.trim()) { message.warning(t('enterNickname')); return }
   replySaving.value = true
   try {
     const target = replyTarget.value
@@ -751,11 +769,11 @@ const saveReply = async () => {
       ua: navigator.userAgent,
       title: '',
     })
-    message.success('回复成功')
+    message.success(t('replySuccess'))
     replyVisible.value = false
     loadComments()
   } catch (e: any) {
-    message.error('回复失败: ' + (e.message || ''))
+    message.error(t('replyFailed') + ': ' + (e.message || ''))
   } finally {
     replySaving.value = false
   }
@@ -765,9 +783,9 @@ const toggleTop = async (row: Comment) => {
   try {
     await commentsApi.toggleTop(row.id, !row.isTop)
     row.isTop = !row.isTop
-    message.success('操作成功')
+    message.success(t('operationSuccess'))
   } catch (e: any) {
-    message.error('操作失败: ' + (e.message || ''))
+    message.error(t('operationFailed') + ': ' + (e.message || ''))
   }
 }
 
@@ -776,12 +794,12 @@ const refreshRegion = async (row: Comment) => {
     const r = await commentsApi.refreshIpRegion(row.id)
     if (r.ipRegion) {
       row.ipRegion = r.ipRegion
-      message.success('解析成功')
+      message.success(t('regionResolved'))
     } else {
-      message.info('无法解析')
+      message.info(t('regionUnresolved'))
     }
   } catch (e: any) {
-    message.error('操作失败: ' + (e.message || ''))
+    message.error(t('operationFailed') + ': ' + (e.message || ''))
   }
 }
 
@@ -925,7 +943,7 @@ watch(() => route.query.filter, (q) => {
 }
 .comment-name {
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--ink);
 }
 .status-tags {
@@ -952,7 +970,7 @@ watch(() => route.query.filter, (q) => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--ink-3);
   min-width: 0;
 }
@@ -973,12 +991,12 @@ watch(() => route.query.filter, (q) => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--ink-3);
   margin-bottom: 6px;
 }
 .source-link {
-  color: #2080f0;
+  color: var(--accent);
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1026,9 +1044,16 @@ watch(() => route.query.filter, (q) => {
 .comment-actions {
   display: flex;
   gap: 6px;
+  align-items: center;
   flex-wrap: wrap;
   padding-top: 8px;
   border-top: 1px dashed var(--edge-soft);
+}
+.action-primary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* ---- 分页 ---- */
@@ -1126,8 +1151,9 @@ watch(() => route.query.filter, (q) => {
   .comment-actions {
     gap: 4px;
   }
-  .comment-actions :deep(.n-button) {
+  .action-primary :deep(.n-button) {
     padding: 0 8px;
+    font-size: 12px;
   }
 
   .pagination-bar {
@@ -1151,7 +1177,7 @@ watch(() => route.query.filter, (q) => {
     height: 30px;
   }
   .comment-content {
-    font-size: 12.5px;
+    font-size: var(--fs-base);
   }
   .comment-actions {
     gap: 4px;

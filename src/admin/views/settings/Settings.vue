@@ -16,7 +16,12 @@
             <!-- section 可折叠标题栏 -->
             <div
               class="section-header"
+              role="button"
+              tabindex="0"
+              :aria-expanded="!isCollapsed(section.key)"
               @click="toggleSection(section.key)"
+              @keydown.enter="toggleSection(section.key)"
+              @keydown.space.prevent="toggleSection(section.key)"
             >
               <h2 class="section-title">
                 {{ section.label }}
@@ -374,8 +379,11 @@
           </div>
         </n-spin>
 
-        <!-- 浮动操作按钮栏 -->
-        <div class="save-bar">
+        <!-- 浮动操作按钮栏，仅配置有改动时显示 -->
+        <div
+          v-if="isDirty"
+          class="save-bar"
+        >
           <n-button
             size="small"
             :disabled="loading"
@@ -409,6 +417,7 @@ import { HelpCircleOutline, TrashOutline, AddOutline, ChevronDownOutline, Chevro
 import { configApi } from '../../api/config'
 import SensitiveInput from '../../components/SensitiveInput.vue'
 import { sections as baseSections, type ConfigField, type ConfigSection } from './schema'
+import { t } from '@shared/utils/i18n'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -460,7 +469,7 @@ const onTestEmail = async () => {
     }
   } catch (e: any) {
     emailTestLog.value = `错误: ${e.message || '请求失败'}`
-    message.error('邮件测试失败')
+    message.error(t('emailTestFailed'))
   } finally {
     emailTesting.value = false
   }
@@ -471,7 +480,7 @@ const saving = ref(false)
 const config = reactive<Record<string, any>>({})
 const savedConfig = ref<Record<string, any> | null>(null)
 
-const colorSwatches = ['#18a058', '#2080f0', '#d03050', '#f0a020', '#8a2be2', '#ff6b6b', '#00bcd4', '#ff9800', '#795548', '#607d8b', '#333333', '#000000']
+const colorSwatches = ['#5E8C6A', '#8A7C5E', '#8A5E5E', '#5E6E8A', '#B98A4B', '#B0524F', '#5E8A7C', '#8A5E7C', '#6B655A', '#8A8478', '#2B2825', '#1A1815']
 
 // 卡片折叠状态管理 (默认均折叠)
 const collapsedSections = ref<Record<string, boolean>>({})
@@ -519,7 +528,7 @@ const removePushChannel = (key: string) => {
     onPositiveClick: () => {
       activePushKeys.value = activePushKeys.value.filter(k => k !== key)
       config[key] = ''
-      message.info('通道已停用，保存后生效')
+      message.info(t('channelDisabledHint'))
     },
   })
 }
@@ -553,7 +562,7 @@ const removeAuthProvider = (provider: string) => {
     onPositiveClick: () => {
       activeAuthProviders.value = activeAuthProviders.value.filter(p => p !== provider)
       config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = false
-      message.info('已停用，保存后生效')
+      message.info(t('channelDisabledHint'))
     },
   })
 }
@@ -672,7 +681,7 @@ const loadConfig = async () => {
       savedConfig.value.COMMENT_FEATURES = [...commentFeatures]
     }
   } catch (e: any) {
-    message.error('加载配置失败: ' + (e.message || ''))
+    message.error(t('loadConfigFailed') + ': ' + (e.message || ''))
   } finally {
     loading.value = false
   }
@@ -692,26 +701,26 @@ const onSave = async () => {
   // 客户端表单格式校验
   if (config.SITE_URL) {
     if (!/^(https?:\/\/)/i.test(config.SITE_URL)) {
-      message.error('站点地址格式错误，必须以 http:// 或 https:// 开头')
+      message.error(t('siteUrlInvalid'))
       return
     }
   }
 
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (config.MASTER && !emailPattern.test(config.MASTER)) {
-    message.error('博主邮箱格式不正确')
+    message.error(t('masterMailInvalid'))
     return
   }
 
   if (config.SENDER_EMAIL && !emailPattern.test(config.SENDER_EMAIL)) {
-    message.error('发件人邮箱格式不正确')
+    message.error(t('senderMailInvalid'))
     return
   }
 
   if (config.SMTP_PORT) {
     const port = Number(config.SMTP_PORT)
     if (isNaN(port) || port < 1 || port > 65535) {
-      message.error('SMTP 端口必须是 1 到 65535 之间的有效端口号')
+      message.error(t('smtpPortInvalid'))
       return
     }
   }
@@ -750,10 +759,10 @@ const onSave = async () => {
       const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
       message.warning(`部分配置项未保存：${details}`)
     } else {
-      message.success('配置保存成功')
+      message.success(t('configSuccess'))
     }
   } catch (e: any) {
-    message.error('保存失败: ' + (e.message || ''))
+    message.error(t('saveFailed') + ': ' + (e.message || ''))
   } finally {
     saving.value = false
   }
@@ -770,9 +779,9 @@ const onReset = () => {
       try {
         await configApi.reset()
         await loadConfig()
-        message.success('已重置所有配置项')
+        message.success(t('resetSuccess'))
       } catch (e: any) {
-        message.error('重置失败: ' + (e.message || ''))
+        message.error(t('resetFailed') + ': ' + (e.message || ''))
       } finally {
         loading.value = false
       }
@@ -997,7 +1006,7 @@ onMounted(() => {
   word-break: break-all;
   color: var(--ink-2);
 }
-.email-test-log pre :deep(.error) { color: var(--danger, #d03050); }
+.email-test-log pre :deep(.error) { color: var(--danger); }
 
 /* ---- 浮动保存按钮 ---- */
 .save-bar {

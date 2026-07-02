@@ -277,7 +277,7 @@ const redirectTo = () => {
 }
 
 const onVerifyToken = () => {
-  if (!setupToken.value) { message.warning('请填写 Setup Token'); return }
+  if (!setupToken.value) { message.warning(t('setupTokenRequired')); return }
   setupTokenVerified.value = true
 }
 
@@ -366,7 +366,7 @@ const onLogin = async () => {
 }
 .login-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.01em;

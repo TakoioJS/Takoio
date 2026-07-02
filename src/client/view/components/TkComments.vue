@@ -358,7 +358,7 @@ onBeforeUnmount(() => { observer?.disconnect() })
 .tk-count-text strong { font-weight: 600; font-variant-numeric:tabular-nums; }
 .tk-refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: transparent; border: none; cursor: pointer; opacity: 0.5; border-radius: 50%; color: inherit; padding: 0; }
 .tk-refresh-btn:hover { opacity: 0.8; }
-.tk-sort { display: flex; align-items: center; border-radius: 20px; padding: 3px; gap: 2px; }
+.tk-sort { display: flex; align-items: center; border-radius: 20px; padding: 3px; gap: 2px; background: var(--tk-bg-muted); }
 .tk-sort-btn { background: transparent; border: none; color: inherit; opacity: 0.6; font-size: 13px; font-weight: 500; cursor: pointer; padding: 4px 14px; border-radius: 18px; transition: all 0.3s; font-family: inherit; }
 .tk-sort-btn:hover { opacity: 1; background: var(--tk-bg-muted); }
 .tk-sort-btn.active { opacity: 1; color: var(--tk-brand); background: var(--tk-brand-light); }

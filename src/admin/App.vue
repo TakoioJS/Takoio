@@ -128,19 +128,22 @@ onMounted(() => {
 :root{
   --desk:#F3EFE6; --paper:#FBF8F1; --paper-2:#FCFAF4;
   --edge:#E6DFD0; --edge-soft:#EFE9DD;
-  --ink:#2B2825; --ink-2:#57534B; --ink-3:#8A8478;
+  --ink:#2B2825; --ink-2:#57534B; --ink-3:#6B655A;
   --accent:#5E8C6A; --accent-soft:#E8F0EA;
   --warning:#B98A4B; --warning-soft:#F4EAD6;
   --danger:#B0524F; --danger-soft:#F3E3E1;
   --shadow-paper:0 1px 2px rgba(43,40,37,.05),0 6px 16px rgba(43,40,37,.04);
   --shadow-lift:0 2px 4px rgba(43,40,37,.06),0 12px 28px rgba(43,40,37,.07);
   --r-card:12px; --r-input:8px;
+  /* 字号体系（8 档） */
+  --fs-xs:11px; --fs-sm:12px; --fs-base:13px; --fs-md:14px;
+  --fs-lg:16px; --fs-xl:18px; --fs-2xl:22px; --fs-3xl:26px;
   --font-display:"Noto Serif SC","Source Han Serif SC",Georgia,serif;
 }
 html.dark{
   --desk:#1A1815; --paper:#232019; --paper-2:#2A2620;
   --edge:#38332B; --edge-soft:#2E2A23;
-  --ink:#ECE6DA; --ink-2:#B3AC9D; --ink-3:#807968;
+  --ink:#ECE6DA; --ink-2:#B3AC9D; --ink-3:#9A9385;
   --accent:#8FB89A; --accent-soft:rgba(143,184,154,.14);
   --warning:#D6AC74; --warning-soft:rgba(214,172,116,.14);
   --danger:#D48966; --danger-soft:rgba(212,137,102,.14);

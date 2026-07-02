@@ -182,6 +182,7 @@ import {
   DocumentTextOutline, EnterOutline,
 } from '@vicons/ionicons5'
 import { dataApi } from '../../api/data'
+import { t } from '@shared/utils/i18n'
 
 const message = useMessage()
 
@@ -222,7 +223,7 @@ const onFileChange = async (options: { file: UploadFileInfo }) => {
     fileName.value = file.name || ''
     message.info(`已选择文件：${fileName.value}`)
   } catch {
-    message.error('文件读取失败')
+    message.error(t('fileReadFailed'))
   }
 }
 
@@ -258,7 +259,7 @@ const onImport = async () => {
     }
   } catch (e: any) {
     importResult.value = -1
-    message.error('导入失败: ' + (e.message || ''))
+    message.error(t('importFailed') + ': ' + (e.message || ''))
     importLog.value += `导入请求失败：${e.message}\n`
   } finally {
     importing.value = false
@@ -304,7 +305,7 @@ const exportData = async (format: 'json' | 'csv') => {
     message.success(`导出成功，共 ${total} 条数据`)
     exportLog.value += `\n导出成功！数据量: ${total}`
   } catch (e: any) {
-    message.error('导出失败: ' + (e.message || ''))
+    message.error(t('exportFailed') + ': ' + (e.message || ''))
     exportLog.value += `\n导出失败：${e.message}`
   } finally {
     exporting.value = false

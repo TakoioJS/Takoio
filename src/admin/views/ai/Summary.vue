@@ -238,6 +238,7 @@ import {
   FlashOutline, TrashOutline, CreateOutline,
 } from '@vicons/ionicons5'
 import { api } from '../../api/client'
+import { t } from '@shared/utils/i18n'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -295,11 +296,11 @@ const onSaveEdit = async () => {
       keywords: editForm.keywords,
       title: editForm.title || undefined,
     })
-    message.success('摘要已更新')
+    message.success(t('summaryUpdated'))
     showEditModal.value = false
     await loadSummaries()
   } catch (e: any) {
-    message.error('保存失败: ' + (e.message || ''))
+    message.error(t('saveFailed') + ': ' + (e.message || ''))
   } finally {
     savingEdit.value = false
   }
@@ -311,7 +312,7 @@ const loadSummaries = async () => {
     const r = await api.get<{ success: boolean; summaries: SummaryItem[] }>('/api/ai/summary/list')
     summaries.value = r.summaries || []
   } catch (e: any) {
-    message.error('加载列表失败: ' + (e.message || ''))
+    message.error(t('listLoadFailed') + ': ' + (e.message || ''))
   } finally {
     loadingList.value = false
   }
@@ -343,10 +344,10 @@ const onDeleteSummary = (url: string) => {
     onPositiveClick: async () => {
       try {
         await api.delete(`/api/ai/summary?url=${encodeURIComponent(url)}`)
-        message.success('删除成功')
+        message.success(t('deleteSuccess'))
         await loadSummaries()
       } catch (e: any) {
-        message.error('删除失败: ' + (e.message || ''))
+        message.error(t('deleteFailed') + ': ' + (e.message || ''))
       }
     },
   })
@@ -361,10 +362,10 @@ const onClearAll = () => {
     onPositiveClick: async () => {
       try {
         await api.delete('/api/ai/summary/all')
-        message.success('已清空全部摘要缓存')
+        message.success(t('clearCacheSuccess'))
         await loadSummaries()
       } catch (e: any) {
-        message.error('清空失败: ' + (e.message || ''))
+        message.error(t('clearFailed') + ': ' + (e.message || ''))
       }
     },
   })

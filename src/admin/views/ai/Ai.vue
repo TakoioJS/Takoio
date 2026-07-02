@@ -251,6 +251,7 @@ import {
 } from '@vicons/ionicons5'
 import { configApi } from '../../api/config'
 import SensitiveInput from '../../components/SensitiveInput.vue'
+import { t } from '@shared/utils/i18n'
 
 interface AiProvider {
   name: string
@@ -395,7 +396,7 @@ const loadConfig = async () => {
     })))
     savedConfig.value = JSON.parse(JSON.stringify({ ...data, AI_PROVIDERS: savedProviders }))
   } catch (e: any) {
-    message.error('加载配置失败: ' + (e.message || ''))
+    message.error(t('loadConfigFailed') + ': ' + (e.message || ''))
   } finally {
     loading.value = false
   }
@@ -418,10 +419,10 @@ const onSave = async () => {
       const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
       message.warning(`部分配置项未保存：${details}`)
     } else {
-      message.success('配置保存成功')
+      message.success(t('configSuccess'))
     }
   } catch (e: any) {
-    message.error('保存失败: ' + (e.message || ''))
+    message.error(t('saveFailed') + ': ' + (e.message || ''))
   } finally {
     saving.value = false
   }
@@ -438,9 +439,9 @@ const onReset = () => {
       try {
         await configApi.reset()
         await loadConfig()
-        message.success('已重置')
+        message.success(t('resetSuccess'))
       } catch (e: any) {
-        message.error('重置失败: ' + (e.message || ''))
+        message.error(t('resetFailed') + ': ' + (e.message || ''))
       } finally {
         loading.value = false
       }
