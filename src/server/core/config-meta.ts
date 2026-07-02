@@ -148,13 +148,13 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'CDN_PREFIX',              type: 'string',  default: '',                                       public: true },
 
   // ---- Social Auth ----
+  { key: 'SOCIAL_AUTH_EMAIL_ENABLED',      type: 'boolean', default: true,                              public: true },
   { key: 'SOCIAL_AUTH_GITHUB_ENABLED',     type: 'boolean', default: false,                             public: true },
   { key: 'SOCIAL_AUTH_GITHUB_CLIENT_ID',   type: 'string',  default: '',                               hidden: true },
   { key: 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET', type: 'string',default: '',                               masked: true },
   { key: 'SOCIAL_AUTH_GOOGLE_ENABLED',     type: 'boolean', default: false,                             public: true },
   { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_ID',   type: 'string',  default: '',                               hidden: true },
   { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET', type: 'string',default: '',                               masked: true },
-  { key: 'SOCIAL_AUTH_EMAIL_ENABLED',      type: 'boolean', default: true,                              public: true },
 ]
 
 // ========== Auto-Generated Derivatives ==========

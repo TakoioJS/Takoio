@@ -268,10 +268,29 @@ export const sections: ConfigSection[] = [
   },
   {
     key: 'push',
-    label: '推送',
+    label: '即时推送',
     icon: NotificationsOutline,
     fields: [
-      { key: 'PUSHOO_CHANNELS', label: '推送通道', type: 'textarea', rows: 4, full: true, placeholder: '{"serverchan":"SCTxxx","telegram":"123456:ABC-DEF"}' },
+      { key: 'PUSH_CHANNEL_SERVERCHAN', label: 'Server酱', type: 'input', pushChannel: true },
+      { key: 'PUSH_CHANNEL_TELEGRAM', label: 'Telegram', type: 'input', pushChannel: true },
+      { key: 'PUSH_CHANNEL_ONEBOT', label: 'OneBot', type: 'input', pushChannel: true },
+      { key: 'PUSH_CHANNEL_QMSG', label: 'Qmsg酱', type: 'input', pushChannel: true },
+      { key: 'PUSH_CHANNEL_PUSHPLUS', label: 'PushPlus', type: 'input', pushChannel: true },
+      { key: 'PUSH_CHANNEL_PUSHDECK', label: 'PushDeck', type: 'input', pushChannel: true },
+    ]
+  },
+  {
+    key: 'socialAuth',
+    label: '社交登录',
+    icon: LogInOutline,
+    fields: [
+      { key: 'SOCIAL_AUTH_EMAIL_ENABLED', label: '邮箱登录', type: 'authProvider' },
+      { key: 'SOCIAL_AUTH_GITHUB_ENABLED', label: 'GitHub 登录', type: 'authProvider' },
+      { key: 'SOCIAL_AUTH_GITHUB_CLIENT_ID', label: 'GitHub Client ID', type: 'input', condition: (c: any) => c.SOCIAL_AUTH_GITHUB_ENABLED },
+      { key: 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET', label: 'GitHub Client Secret', type: 'sensitive', condition: (c: any) => c.SOCIAL_AUTH_GITHUB_ENABLED },
+      { key: 'SOCIAL_AUTH_GOOGLE_ENABLED', label: 'Google 登录', type: 'authProvider' },
+      { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_ID', label: 'Google Client ID', type: 'input', condition: (c: any) => c.SOCIAL_AUTH_GOOGLE_ENABLED },
+      { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET', label: 'Google Client Secret', type: 'sensitive', condition: (c: any) => c.SOCIAL_AUTH_GOOGLE_ENABLED },
     ]
   },
   {
@@ -390,52 +409,6 @@ export const sections: ConfigSection[] = [
       { key: 'CORS_ORIGINS', label: 'CORS 域名', type: 'input' },
       { key: 'CUSTOM_CSS', label: '自定义 CSS', type: 'textarea', rows: 4, full: true },
       { key: 'ENABLE_VISITOR_COUNTER', label: '访客计数器', type: 'switch' },
-    ]
-  },
-  {
-    key: 'socialAuth',
-    label: '社交登录',
-    icon: LogInOutline,
-    fields: [
-      {
-        key: 'SOCIAL_AUTH_EMAIL_ENABLED',
-        label: '邮箱登录',
-        type: 'switch',
-      },
-      {
-        key: 'SOCIAL_AUTH_GITHUB_ENABLED',
-        label: 'GitHub 登录',
-        type: 'switch',
-      },
-      {
-        key: 'SOCIAL_AUTH_GITHUB_CLIENT_ID',
-        label: 'GitHub Client ID',
-        type: 'input',
-        condition: (c) => !!c.SOCIAL_AUTH_GITHUB_ENABLED,
-      },
-      {
-        key: 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET',
-        label: 'GitHub Client Secret',
-        type: 'sensitive',
-        condition: (c) => !!c.SOCIAL_AUTH_GITHUB_ENABLED,
-      },
-      {
-        key: 'SOCIAL_AUTH_GOOGLE_ENABLED',
-        label: 'Google 登录',
-        type: 'switch',
-      },
-      {
-        key: 'SOCIAL_AUTH_GOOGLE_CLIENT_ID',
-        label: 'Google Client ID',
-        type: 'input',
-        condition: (c) => !!c.SOCIAL_AUTH_GOOGLE_ENABLED,
-      },
-      {
-        key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET',
-        label: 'Google Client Secret',
-        type: 'sensitive',
-        condition: (c) => !!c.SOCIAL_AUTH_GOOGLE_ENABLED,
-      },
     ]
   },
 ]

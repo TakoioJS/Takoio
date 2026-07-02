@@ -118,11 +118,15 @@ const stateCache = new Map<string, number>()
 export function createOAuthProviders (siteUrl: string, cfg: Record<string, any>): Record<string, OAuthProvider> {
   const providers: Record<string, OAuthProvider> = {}
 
-  // GitHub: env var or config key (config takes priority)
+  let authConfig: Record<string, any> = {}
+  try {
+    authConfig = JSON.parse(cfg?.SOCIAL_AUTH_CONFIG || '{}')
+  } catch { /* use defaults */ }
+
+  // GitHub: config key or env var
   const githubId = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_ID
   const githubSecret = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_SECRET || process.env.GITHUB_CLIENT_SECRET
-  const githubEnabled = cfg?.SOCIAL_AUTH_GITHUB_ENABLED ?? false
-  if (githubEnabled && githubId && githubSecret) {
+  if (githubId && githubSecret) {
     providers.github = {
       name: 'GitHub',
       authUrl: (state) => {
@@ -158,11 +162,10 @@ export function createOAuthProviders (siteUrl: string, cfg: Record<string, any>)
     }
   }
 
-  // Google: env var or config key
+  // Google: config key or env var
   const googleId = cfg?.SOCIAL_AUTH_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
   const googleSecret = cfg?.SOCIAL_AUTH_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
-  const googleEnabled = cfg?.SOCIAL_AUTH_GOOGLE_ENABLED ?? false
-  if (googleEnabled && googleId && googleSecret) {
+  if (googleId && googleSecret) {
     providers.google = {
       name: 'Google',
       authUrl: (state) => {

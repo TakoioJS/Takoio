@@ -36,8 +36,8 @@
                 v-show="!isCollapsed(section.key)"
                 class="section-body"
               >
-                <!-- 普通非推送配置项 -->
-                <template v-if="section.key !== 'push'">
+                <!-- 普通非推送/社交登录配置项 -->
+                <template v-if="section.key !== 'push' && section.key !== 'socialAuth'">
                   <template
                     v-for="(field, idx) in section.fields"
                     :key="field.key"
@@ -234,7 +234,7 @@
                 </template>
 
                 <!-- 推送配置项列表：按需添加与显示 -->
-                <template v-else>
+                <template v-else-if="section.key === 'push'">
                   <!-- 渲染已激活的推送通道 -->
                   <div
                     v-for="field in section.fields.filter(f => activePushKeys.includes(f.key))"
@@ -315,6 +315,55 @@
                         <template #icon>
                           <n-icon><AddOutline /></n-icon>
                         </template>
+                        启用
+                      </n-button>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 社交登录配置：按需添加与显示 -->
+                <template v-else-if="section.key === 'socialAuth'">
+                  <div
+                    v-for="provider in activeAuthProviders"
+                    :key="provider"
+                    class="field-row"
+                  >
+                    <div class="field-label-col">
+                      <div class="field-label">{{ provider === 'github' ? 'GitHub 登录' : provider === 'google' ? 'Google 登录' : '邮箱登录' }}</div>
+                    </div>
+                    <div class="field-control-col push-control-col">
+                      <n-switch
+                        :value="config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED']"
+                        @update:value="(v: boolean) => config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = v"
+                        size="small"
+                      />
+                      <n-button size="tiny" type="error" quaternary @click="removeAuthProvider(provider)">
+                        <template #icon><n-icon><TrashOutline /></n-icon></template>
+                      </n-button>
+                    </div>
+                  </div>
+
+                  <!-- 暂无激活提示 -->
+                  <div v-if="activeAuthProviders.length === 0" class="field-row empty-push-row">
+                    <span class="empty-text">未启用任何社交登录方式</span>
+                  </div>
+
+                  <!-- 下拉框添加 -->
+                  <div v-if="availableAuthOptions.length > 0" class="field-row">
+                    <div class="field-label-col">
+                      <div class="field-label">添加登录方式</div>
+                      <p class="field-desc">选择要启用的社交登录提供商</p>
+                    </div>
+                    <div class="field-control-col add-push-controls">
+                      <n-select
+                        v-model:value="selectedAuthToAdd"
+                        :options="availableAuthOptions"
+                        placeholder="选择登录方式..."
+                        size="small"
+                        style="flex: 1; max-width: 260px;"
+                      />
+                      <n-button type="primary" size="small" :disabled="!selectedAuthToAdd" @click="addAuthProvider">
+                        <template #icon><n-icon><AddOutline /></n-icon></template>
                         启用
                       </n-button>
                     </div>
@@ -474,6 +523,48 @@ const removePushChannel = (key: string) => {
     },
   })
 }
+
+// 社交登录动态逻辑
+const activeAuthProviders = ref<string[]>(['email'])
+const selectedAuthToAdd = ref<string | null>(null)
+
+const availableAuthOptions = computed(() => {
+  return ['github', 'google', 'email']
+    .filter(p => !activeAuthProviders.value.includes(p))
+    .map(p => ({ label: p === 'github' ? 'GitHub' : p === 'google' ? 'Google' : '邮箱', value: p }))
+})
+
+const addAuthProvider = () => {
+  if (!selectedAuthToAdd.value) return
+  const provider = selectedAuthToAdd.value
+  if (!activeAuthProviders.value.includes(provider)) {
+    activeAuthProviders.value.push(provider)
+    config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = true
+  }
+  selectedAuthToAdd.value = null
+}
+
+const removeAuthProvider = (provider: string) => {
+  dialog.warning({
+    title: '确认停用',
+    content: `确定要停用${provider === 'github' ? 'GitHub' : provider === 'google' ? 'Google' : '邮箱'}登录吗？`,
+    positiveText: '停用',
+    negativeText: '取消',
+    onPositiveClick: () => {
+      activeAuthProviders.value = activeAuthProviders.value.filter(p => p !== provider)
+      config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = false
+      message.info('已停用，保存后生效')
+    },
+  })
+}
+
+watch(() => config, () => {
+  const active: string[] = []
+  if (config.SOCIAL_AUTH_EMAIL_ENABLED !== false) active.push('email')
+  if (config.SOCIAL_AUTH_GITHUB_ENABLED) active.push('github')
+  if (config.SOCIAL_AUTH_GOOGLE_ENABLED) active.push('google')
+  activeAuthProviders.value = active
+}, { immediate: true, deep: true })
 
 // 是否占满整行（textarea 等长字段）
 const isFullRow = (field: ConfigField) => {

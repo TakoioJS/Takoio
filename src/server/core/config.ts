@@ -165,13 +165,13 @@ export interface TakoioConfig {
   COMMENT_FEATURES?: string
   PUSHOO_CHANNELS: string
   // Social Auth
+  SOCIAL_AUTH_EMAIL_ENABLED: boolean
   SOCIAL_AUTH_GITHUB_ENABLED: boolean
   SOCIAL_AUTH_GITHUB_CLIENT_ID: string
   SOCIAL_AUTH_GITHUB_CLIENT_SECRET: string
   SOCIAL_AUTH_GOOGLE_ENABLED: boolean
   SOCIAL_AUTH_GOOGLE_CLIENT_ID: string
   SOCIAL_AUTH_GOOGLE_CLIENT_SECRET: string
-  SOCIAL_AUTH_EMAIL_ENABLED: boolean
 }
 
 // ========== Default Config (auto-generated from CONFIG_META) ==========
@@ -227,6 +227,8 @@ export function validateConfigBatch (
   const valid: Record<string, unknown> = {}
   const skipped: Record<string, string> = {}
   for (const [key, value] of Object.entries(updates)) {
+    // Skip null/undefined — admin panel sends unset keys as undefined
+    if (value === null || value === undefined) continue
     if (!ALLOWED_CONFIG_KEYS.includes(key as keyof TakoioConfig)) {
       skipped[key] = `不允许的配置键: ${key}`
       continue
