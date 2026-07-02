@@ -23,7 +23,7 @@
 import { ref, computed, provide, onMounted, onBeforeUnmount } from 'vue'
 import { version } from '../utils'
 import { logger } from '../utils'
-import type { TakoioConfig, Comment } from '../types'
+import type { TakoioConfig, Comment as TakoioComment } from '../types'
 import TkComments from './components/TkComments.vue'
 import TkSummary from './components/TkSummary.vue'
 
@@ -53,7 +53,7 @@ const showSummaryHostOnly = computed(() =>
   !!props.options.articleContent
 )
 
-const onCommentPosted = (comment: Comment): void => {
+const onCommentPosted = (comment: TakoioComment): void => {
   props.options.onCommentPosted?.(comment)
 }
 

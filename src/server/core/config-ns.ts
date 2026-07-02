@@ -111,6 +111,12 @@ export interface SecurityConfig {
   enableAdminKeyword: boolean
 }
 
+export interface SocialAuthConfig {
+  github: { enabled: boolean; clientId: string; clientSecret: string }
+  google: { enabled: boolean; clientId: string; clientSecret: string }
+  email: { enabled: boolean }
+}
+
 export interface AIConfig {
   providers: string
   summary: {
@@ -130,6 +136,7 @@ export interface NamespacedConfig {
   captcha: CaptchaConfig
   imageHosting: ImageHostingConfig
   security: SecurityConfig
+  socialAuth: SocialAuthConfig
   ai: AIConfig
 }
 
@@ -232,6 +239,21 @@ export function toNamespaced (cfg: TakoioConfig): NamespacedConfig {
       ipRegionEnabled: cfg.IP_REGION_ENABLED,
       adminKeyword: cfg.ADMIN_KEYWORD || '',
       enableAdminKeyword: cfg.ENABLE_ADMIN_KEYWORD,
+    },
+    socialAuth: {
+      github: {
+        enabled: cfg.SOCIAL_AUTH_GITHUB_ENABLED,
+        clientId: cfg.SOCIAL_AUTH_GITHUB_CLIENT_ID || '',
+        clientSecret: cfg.SOCIAL_AUTH_GITHUB_CLIENT_SECRET || '',
+      },
+      google: {
+        enabled: cfg.SOCIAL_AUTH_GOOGLE_ENABLED,
+        clientId: cfg.SOCIAL_AUTH_GOOGLE_CLIENT_ID || '',
+        clientSecret: cfg.SOCIAL_AUTH_GOOGLE_CLIENT_SECRET || '',
+      },
+      email: {
+        enabled: cfg.SOCIAL_AUTH_EMAIL_ENABLED,
+      },
     },
     ai: {
       providers: cfg.AI_PROVIDERS || '[]',

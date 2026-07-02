@@ -15,6 +15,9 @@ importers:
       '@takoio/common':
         specifier: workspace:*
         version: link:packages/common
+      '@takoio/core':
+        specifier: workspace:*
+        version: link:packages/core
       dompurify:
         specifier: ^3.4.11
         version: 3.4.11
@@ -123,6 +126,12 @@ importers:
         version: 3.3.5(typescript@6.0.3)
 
   packages/common: {}
+
+  packages/core:
+    dependencies:
+      '@takoio/common':
+        specifier: workspace:*
+        version: link:../common
 
   src/admin:
     dependencies:

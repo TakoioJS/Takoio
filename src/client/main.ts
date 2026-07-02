@@ -16,6 +16,7 @@ import {
 } from './utils'
 import { getArticleSummary as getArticleSummaryApi } from './utils/api'
 import type { TakoioConfig } from './types'
+import { checkAuthCallback } from './utils/auth'
 
 /** 初始化 Takoio */
 export async function init (options: TakoioConfig = {} as TakoioConfig): Promise<void> {
@@ -23,6 +24,10 @@ export async function init (options: TakoioConfig = {} as TakoioConfig): Promise
     console.error('Takoio: envId must be a URL (e.g. https://your-server.com)')
     return
   }
+
+  // Check for OAuth callback token in URL
+  checkAuthCallback()
+
   setLanguage(options)
   await render(options)
   await updateVisitorsCount({

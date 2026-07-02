@@ -1,7 +1,3 @@
-/**
- * Takoio API — re-exported from @takoio/core for backward compatibility.
- */
-
 export {
   request,
   submitComment,
@@ -18,6 +14,12 @@ export {
   uploadImage,
   getArticleSummary,
   classifyApiError,
-} from '@takoio/core'
+  getAuthUrl,
+  sendEmailCode,
+  verifyEmailCode,
+  getAuthUser,
+} from './api'
 
-export type { ApiErrorCategory } from '@takoio/core'
+export type { ApiErrorCategory } from './api'
+
+export { timeago } from './timeago'

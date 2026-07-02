@@ -197,7 +197,7 @@ export const toast = (msg: string, type: 'success' | 'error' | 'info' = 'success
 }
 
 export { setLanguage, t } from './i18n'
-export { timeago } from './timeago'
+export { timeago } from '@takoio/core'
 export { renderTex } from './tex'
 
 export const version = String(pkg.version)

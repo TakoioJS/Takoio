@@ -2,6 +2,7 @@ import {
   InformationCircleOutline, ColorPaletteOutline,
   ImagesOutline, ShieldOutline, NotificationsOutline,
   BuildOutline, ChatbubblesOutline, CodeSlashOutline, MailOutline,
+  LogInOutline,
 } from '@vicons/ionicons5'
 
 export interface ConfigField {
@@ -389,6 +390,52 @@ export const sections: ConfigSection[] = [
       { key: 'CORS_ORIGINS', label: 'CORS 域名', type: 'input' },
       { key: 'CUSTOM_CSS', label: '自定义 CSS', type: 'textarea', rows: 4, full: true },
       { key: 'ENABLE_VISITOR_COUNTER', label: '访客计数器', type: 'switch' },
+    ]
+  },
+  {
+    key: 'socialAuth',
+    label: '社交登录',
+    icon: LogInOutline,
+    fields: [
+      {
+        key: 'SOCIAL_AUTH_EMAIL_ENABLED',
+        label: '邮箱登录',
+        type: 'switch',
+      },
+      {
+        key: 'SOCIAL_AUTH_GITHUB_ENABLED',
+        label: 'GitHub 登录',
+        type: 'switch',
+      },
+      {
+        key: 'SOCIAL_AUTH_GITHUB_CLIENT_ID',
+        label: 'GitHub Client ID',
+        type: 'input',
+        condition: (c) => !!c.SOCIAL_AUTH_GITHUB_ENABLED,
+      },
+      {
+        key: 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET',
+        label: 'GitHub Client Secret',
+        type: 'sensitive',
+        condition: (c) => !!c.SOCIAL_AUTH_GITHUB_ENABLED,
+      },
+      {
+        key: 'SOCIAL_AUTH_GOOGLE_ENABLED',
+        label: 'Google 登录',
+        type: 'switch',
+      },
+      {
+        key: 'SOCIAL_AUTH_GOOGLE_CLIENT_ID',
+        label: 'Google Client ID',
+        type: 'input',
+        condition: (c) => !!c.SOCIAL_AUTH_GOOGLE_ENABLED,
+      },
+      {
+        key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET',
+        label: 'Google Client Secret',
+        type: 'sensitive',
+        condition: (c) => !!c.SOCIAL_AUTH_GOOGLE_ENABLED,
+      },
     ]
   },
 ]

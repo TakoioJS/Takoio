@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, getUrl, getHref, getUserAgent } from '../../utils'
 import { submitComment } from '../../utils/api'
+import { getAuthState } from '../../utils/auth'
 import { renderMarkdown } from '../../utils/marked'
 import { toast, renderTex } from '../../utils'
 import type { TakoioConfig, Comment } from '../../types'
@@ -109,6 +110,7 @@ const onSubmit = async (): Promise<void> => {
       captchaToken: captchaToken.value || undefined,
       pid: props.replyTo?.pid || props.replyTo?.id || undefined,
       rid: props.replyTo?.id || undefined,
+      token: getAuthState()?.token || undefined,
     })
     emit('posted', result.data)
     form.comment = ''

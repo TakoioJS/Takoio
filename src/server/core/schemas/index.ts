@@ -21,6 +21,7 @@ export const SubmitCommentSchema = z.object({
   title: z.string().optional(),
   captchaToken: z.string().optional(),
   _token: z.string().optional(),
+  token: z.string().optional(),
 })
 
 export const GetCommentSchema = z.object({

@@ -5,9 +5,9 @@
  * 本文件仅定义客户端特有的类型（TakoioConfig）。
  */
 
-// Re-export shared types with explicit naming to avoid DOM type conflicts
+// Re-export shared types
 export type {
-  Comment as TakoioComment,
+  Comment,
   CommentSubmit,
   CommentCount,
   RecentComments,
@@ -15,10 +15,6 @@ export type {
   ApiResponse,
   PaginatedResponse,
 } from '@takoio/common'
-
-// Legacy alias: keep `Comment` export for backward compat with existing imports
-// (DOM also has a `Comment` type, so use `TakoioComment` for new code)
-export type { TakoioComment as Comment }
 
 export type { Lang } from '@takoio/common'
 
@@ -81,9 +77,9 @@ export interface TakoioConfig {
   /** 前台 Site Key */
   captchaSiteKey?: string
   /** 评论发布回调 */
-  onCommentPosted?: (comment: Comment) => void
+  onCommentPosted?: (comment: any) => void
   /** 评论加载完成回调 */
-  onCommentsLoaded?: (comments: Comment[]) => void
+  onCommentsLoaded?: (comments: any[]) => void
   /** 评论列表为空回调 */
   onCommentsEmpty?: () => void
   /** 错误回调 */

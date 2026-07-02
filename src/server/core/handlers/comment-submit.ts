@@ -19,6 +19,7 @@ import { AppError as AppErrorClass } from '../config'
 import { runPreSubmit, runPostSubmit } from '../plugins/pipeline'
 import type { HookContext } from '../plugins/types'
 import { createConfigProxy } from '../config-ns'
+import { verifyToken } from '../auth-social'
 
 // ========== Stage 1: Validate + auth + CAPTCHA ==========
 
@@ -26,25 +27,32 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
   const validation = safeValidate(SubmitCommentSchema, data)
   if (!validation.success) throw new AppErrorClass('INVALID_INPUT', validation.error, 400)
 
-  const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken } = validation.data
+  const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token } = validation.data
 
-  // Impersonation protection — silently reject if user tries to impersonate the master
+  // Social auth: if token is valid, auto-populate user info and skip CAPTCHA
+  let authUser = null
+  if (token) {
+    authUser = verifyToken(token)
+    if (authUser) {
+      logger.info({ provider: authUser.provider, name: authUser.name }, 'Authenticated comment')
+    }
+  }
+
+  // Impersonation protection
   const masterNameLower = cfg.MASTER_NAME?.toLowerCase() || ''
   const nickLower = nick.toLowerCase()
   if ((masterNameLower && nickLower === masterNameLower) || (cfg.MASTER && mail === cfg.MASTER)) {
-    // Do NOT call requireAdmin here — that would leak the fact that this nick/email belongs to the master.
-    // Instead, silently reject with a generic error to avoid information disclosure.
     logger.warn({ nick, mail: mail ? '[redacted]' : '', ip: data._ip }, 'Impersonation attempt blocked')
     throw new AppErrorClass('INVALID_INPUT', '提交失败，请检查输入信息', 400)
   }
 
-  // CAPTCHA
-  if (cfg.ENABLE_CAPTCHA) {
+  // CAPTCHA — skip if authenticated via social auth
+  if (cfg.ENABLE_CAPTCHA && !authUser) {
     if (!captchaToken) throw new AppErrorClass('INVALID_CAPTCHA', '请完成人机验证', 400)
     await verifyCaptcha(captchaToken, cfg)
   }
 
-  return { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken }
+  return { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token, authUser }
 }
 
 // ========== Stage 2: Rate limit (core infrastructure) ==========
@@ -109,7 +117,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const cfg = await getConfig()
 
   // 1. Validate
-  const { url, nick, mail, link, comment, pid, rid, ua, image, title } = await validateSubmit(data, cfg)
+  const { url, nick, mail, link, comment, pid, rid, ua, image, title, authUser } = await validateSubmit(data, cfg)
 
   // 2. Build comment object
   const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''
