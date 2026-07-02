@@ -16,7 +16,8 @@ export interface MarkableComment {
 
 /** Mark comments whose nick or email matches the site master */
 export function markMasterComments (comments: MarkableComment[], cfg: { MASTER?: string; MASTER_NAME?: string }) {
-  const masterMailMd5 = cfg.MASTER ? crypto.createHash('md5').update(cfg.MASTER.trim().toLowerCase()).digest('hex') : ''
+  // Use SHA-256 instead of MD5 for Gravatar hash to mitigate rainbow-table risks.
+  const masterMailMd5 = cfg.MASTER ? crypto.createHash('sha256').update(cfg.MASTER.trim().toLowerCase()).digest('hex') : ''
   const masterName = cfg.MASTER_NAME || ''
   const mark = (c: MarkableComment) => {
     if ((masterName && c.nick === masterName) || (masterMailMd5 && c.mailMd5 === masterMailMd5)) {

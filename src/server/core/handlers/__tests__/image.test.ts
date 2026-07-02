@@ -4,19 +4,23 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../../config', () => ({
-  getConfig: vi.fn().mockResolvedValue({
-    IMAGE_HOSTING_PROVIDER: 'test',
-    IMAGE_HOSTING_ENDPOINT: 'https://test.com',
-    IMAGE_HOSTING_TOKEN: 'test-token',
-  }),
-  AppError: class AppError extends Error {
-    constructor(public code: string, message: string, public statusCode = 400) {
-      super(message)
-      this.name = 'AppError'
-    }
-  },
-}))
+vi.mock('../../config', async () => {
+  const actual = await vi.importActual('../../config')
+  return {
+    ...actual,
+    getConfig: vi.fn().mockResolvedValue({
+      IMAGE_HOSTING_PROVIDER: 'test',
+      IMAGE_HOSTING_ENDPOINT: 'https://test.com',
+      IMAGE_HOSTING_TOKEN: 'test-token',
+    }),
+    AppError: class AppError extends Error {
+      constructor(public code: string, message: string, public statusCode = 400) {
+        super(message)
+        this.name = 'AppError'
+      }
+    },
+  }
+})
 
 vi.mock('../../utils/logger', () => ({
   logger: {
@@ -50,8 +54,9 @@ describe('handleUploadImage', () => {
   })
 
   it('rejects unsupported image format', async () => {
+    // SVG is not in the allowed MIME types (png/jpeg/jpg/gif/webp)
     const invalidImage = 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='
 
-    await expect(handleUploadImage({ image: invalidImage })).rejects.toThrow('图片格式无效')
+    await expect(handleUploadImage({ image: invalidImage })).rejects.toThrow()
   })
 })

@@ -29,11 +29,14 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
 
   const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken } = validation.data
 
-  // Impersonation protection — case-insensitive match for nick; exact match for email
+  // Impersonation protection — silently reject if user tries to impersonate the master
   const masterNameLower = cfg.MASTER_NAME?.toLowerCase() || ''
   const nickLower = nick.toLowerCase()
   if ((masterNameLower && nickLower === masterNameLower) || (cfg.MASTER && mail === cfg.MASTER)) {
-    await requireAdmin(data)
+    // Do NOT call requireAdmin here — that would leak the fact that this nick/email belongs to the master.
+    // Instead, silently reject with a generic error to avoid information disclosure.
+    logger.warn({ nick, mail: mail ? '[redacted]' : '', ip: data._ip }, 'Impersonation attempt blocked')
+    throw new AppErrorClass('INVALID_INPUT', '提交失败，请检查输入信息', 400)
   }
 
   // CAPTCHA
@@ -206,7 +209,8 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const { url, nick, mail, link, comment, pid, rid, ua, image, title } = await validateSubmit(data, cfg)
 
   // 2. Build comment object
-  const mailMd5 = mail ? crypto.createHash('md5').update(mail.trim().toLowerCase()).digest('hex') : ''
+  // Use SHA-256 instead of MD5 for Gravatar hash to mitigate rainbow-table risks.
+  const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''
   const newComment: CommentInput = {
     id: crypto.randomUUID(),
     url: url || '/',
@@ -239,11 +243,22 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   // 4. Persist
   const saved = await persistSubmit(newComment, _ip)
 
-  // 5. Invalidate comment list cache for this url
-  try {
-    await invalidateCommentListCache(newComment.url)
-  } catch (e) {
-    logger.warn('[comment-submit] Cache invalidation failed:', e)
+  // 5. Invalidate comment list cache for this url (retry up to 3 times)
+  let cacheInvalidated = false
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await invalidateCommentListCache(newComment.url)
+      cacheInvalidated = true
+      break
+    } catch (e) {
+      logger.warn(`[comment-submit] Cache invalidation attempt ${attempt} failed:`, e)
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 100 * attempt))
+      }
+    }
+  }
+  if (!cacheInvalidated) {
+    logger.error('[comment-submit] Cache invalidation failed after 3 attempts — data may be stale')
   }
 
   // 6. Notify (fire-and-forget)

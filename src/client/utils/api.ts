@@ -90,7 +90,7 @@ export const getComments = (envId: string, params: {
 
 /** Get comments count for multiple URLs */
 export const getCommentsCountApi = async (options: {
-  envId: string; urls: string[]; funcName?: string
+  envId: string; urls: string[]
 }): Promise<Array<{ url: string; count: number }>> => {
   if (!Array.isArray(options.urls)) throw new Error('Takoio: urls 参数有误')
   if (options.urls.length === 0) return []
@@ -101,7 +101,7 @@ export const getCommentsCountApi = async (options: {
 
 /** Get recent comments */
 export const getRecentCommentsApi = async (options: {
-  envId: string; funcName?: string; count?: number; includeReply?: boolean
+  envId: string; count?: number; includeReply?: boolean
 }): Promise<Comment[]> => {
   const qs = options.count ? `?count=${options.count}` : ''
   const result = await request<any>(`${baseUrl(options.envId)}/api/comments/recent${qs}`)
@@ -112,7 +112,7 @@ export const getRecentCommentsApi = async (options: {
 
 /** Get visitor count */
 export const getVisitorsCountApi = async (options: {
-  envId: string; funcName?: string; url: string; href?: string; title?: string
+  envId: string; url: string; href?: string; title?: string
 }): Promise<{ time: number; url: string; title?: string }> => {
   const qs = new URLSearchParams({ url: options.url })
   if (options.href) qs.set('href', options.href)
@@ -128,7 +128,6 @@ export const updateVisitorsCount = async (options: any): Promise<{ time: number 
   try {
     const counter = await getVisitorsCountApi({
       envId: options.envId,
-      funcName: options.funcName,
       url: options._getUrl?.(options.path) || window.location.pathname,
       href: options._getHref?.(options.href) || window.location.href,
       title: options.title ?? document.title,

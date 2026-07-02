@@ -1,71 +1,27 @@
 /**
- * Takoio 类型定义
+ * Takoio 客户端类型定义
+ *
+ * 共享类型（Comment, ApiResponse 等）从 @takoio/common 导入。
+ * 本文件仅定义客户端特有的类型（TakoioConfig, TexRenderer 等）。
  */
 
-/** 评论对象 */
-export interface Comment {
-  id: string
-  url: string
-  href?: string
-  nick: string
-  mail?: string
-  mailMd5?: string
-  link?: string
-  comment: string
-  ua: string
-  ip?: string
-  state?: string
-  created: number
-  updated?: number
-  pid?: string
-  rid?: string
-  isSpam?: boolean
-  isTop?: boolean
-  isPinned?: boolean
-  isCollapsed?: boolean
-  relativeTime?: string
-  children?: Comment[]
-  avatar?: string
-  replyCount?: number
-  isAdmin?: boolean
-  isMaster?: boolean
-  image?: string
-  tags?: string[]
-  ipRegion?: string
-  replyToNick?: string
-  renderedComment?: string
-  /** 渲染后的安全 HTML 内容（由 renderMarkdown 生成，用于 v-html 展示） */
-  _safeContent?: string
-}
+export type {
+  Comment,
+  CommentSubmit,
+  CommentCount,
+  RecentComments,
+  VisitorsCount,
+  ApiResponse,
+  PaginatedResponse,
+  TexRenderer,
+} from '@takoio/common'
 
-export type TexRenderer = (blockMode: boolean, tex: string) => string | Promise<string>
-
-/** 评论提交参数 */
-export interface CommentSubmit {
-  url: string
-  href?: string
-  nick: string
-  mail?: string
-  link?: string
-  comment: string
-  pid?: string
-  rid?: string
-  ua?: string
-  ip?: string
-  image?: string
-  sticker?: string
-  at?: string
-  isAdmin?: boolean
-  password?: string
-  token?: string
-}
+export type { Lang } from '@takoio/common'
 
 /** Takoio 配置 */
 export interface TakoioConfig {
   /** 必填：私有部署的 URL */
   envId: string
-  /** 区域 */
-  region?: string
   /** 评论框元素 */
   el?: string | HTMLElement
   /** 当前页面路径 */
@@ -89,9 +45,7 @@ export interface TakoioConfig {
   /** 搜索关键字 */
   search?: string
   /** 代码高亮主题 */
-  highlightTheme?: string
-  /** 是否自动展开所有评论 */
-  autoExpand?: boolean
+  codeHighlightTheme?: string
   /** 是否启用文章表态 */
   enableArticleReaction?: boolean
   /** 是否启用评论反应 */
@@ -108,8 +62,6 @@ export interface TakoioConfig {
   adminKeyword?: string
   /** 是否启用代码高亮 */
   enableCodeHighlight?: boolean
-  /** 代码高亮主题 */
-  codeHighlightTheme?: string
   /** 显示代码语言标签 */
   codeShowLanguage?: boolean
   /** 显示代码复制按钮 */
@@ -122,8 +74,6 @@ export interface TakoioConfig {
   captchaType?: string
   /** 前台 Site Key */
   captchaSiteKey?: string
-  /** 云函数名称 */
-  funcName?: string
   /** 评论发布回调 */
   onCommentPosted?: (comment: Comment) => void
   /** 评论加载完成回调 */
@@ -141,12 +91,6 @@ export interface TakoioConfig {
   GRAVATAR_URL?: string
   MASTER_LABEL?: string
   MASTER_LABEL_COLOR?: string
-  /** 隐身模式 */
-  phantom?: {
-    master?: string[]
-    label?: string
-    backgroundImage?: string
-  }
   /** 管理员密码 */
   adminPassword?: string
   /** 自定义 CSS */
@@ -163,8 +107,7 @@ export interface TakoioConfig {
   articleContent?: string
   /** 是否启用 AI 摘要展示（与后台 ENABLE_SUMMARY 双控，任一为 false 则不显示） */
   enableSummary?: boolean
-  /** 自定义摘要渲染回调。传入后内置摘要卡片不渲染，由宿主自行渲染。
-   *  回调参数：{ summary, keywords, loading, error, retry } */
+  /** 自定义摘要渲染回调。传入后内置摘要卡片不渲染，由宿主自行渲染 */
   renderSummary?: (ctx: {
     summary: string
     keywords: string[]
@@ -172,31 +115,4 @@ export interface TakoioConfig {
     error: string | null
     retry: () => void
   }) => void
-}
-
-/** 评论计数响应 */
-export interface CommentCount {
-  url: string
-  count: number
-}
-
-/** 最近评论 */
-export type RecentComments = Comment[]
-
-/** 访客计数 */
-export interface VisitorsCount {
-  time: number
-  url: string
-  title?: string
-}
-
-/** API 响应 */
-export interface ApiResponse<T = any> {
-  result: T
-}
-
-/** 事件类型 */
-export interface PaginatedResponse<T> {
-  total: number
-  data: T[]
 }

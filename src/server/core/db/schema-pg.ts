@@ -55,6 +55,15 @@ export const sessions = pgTable('sessions', {
   createdAt: integer('created_at').notNull(),
 })
 
+export const rateLimits = pgTable('rate_limits', {
+  key: text('key').notNull(),
+  windowStart: integer('window_start').notNull(),
+  count: integer('count').notNull().default(0),
+}, (table) => [
+  primaryKey({ columns: [table.key, table.windowStart] }),
+  index('idx_rate_limits_key').on(table.key),
+])
+
 export const reactions = pgTable('reactions', {
   url: text('url').notNull(),
   emoji: text('emoji').notNull(),

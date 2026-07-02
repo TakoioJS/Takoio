@@ -4,41 +4,47 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../../store/index', () => ({
-  configStore: {
-    getConfig: vi.fn().mockResolvedValue({}),
-    setConfig: vi.fn().mockResolvedValue(undefined),
-    setManyConfig: vi.fn().mockResolvedValue(undefined),
-    resetConfig: vi.fn().mockResolvedValue(undefined),
-  },
-  sessionStore: {
-    createToken: vi.fn().mockResolvedValue('test-token'),
-    validateToken: vi.fn().mockResolvedValue(true),
-    removeToken: vi.fn().mockResolvedValue(undefined),
-    removeAllTokens: vi.fn().mockResolvedValue(undefined),
-  },
-}))
+vi.mock('../../store/index', async () => {
+  const actual = await vi.importActual('../../store/index')
+  return {
+    ...actual,
+    configStore: {
+      getConfig: vi.fn().mockResolvedValue({}),
+      setConfig: vi.fn().mockResolvedValue(undefined),
+      setManyConfig: vi.fn().mockResolvedValue(undefined),
+      resetConfig: vi.fn().mockResolvedValue(undefined),
+    },
+    sessionStore: {
+      createToken: vi.fn().mockResolvedValue('test-token'),
+      validateToken: vi.fn().mockResolvedValue(true),
+      removeToken: vi.fn().mockResolvedValue(undefined),
+      removeAllTokens: vi.fn().mockResolvedValue(undefined),
+    },
+    rateLimitStore: {
+      checkRateLimit: vi.fn().mockResolvedValue(true),
+    },
+  }
+})
 
-vi.mock('../../config', () => ({
-  getConfig: vi.fn().mockResolvedValue({
-    SITE_NAME: 'Test Blog',
-    SMTP_HOST: 'smtp.test.com',
-    SMTP_PASS: 'secret123',
-  }),
-  maskSensitiveConfig: vi.fn().mockImplementation((cfg) => cfg),
-  DEFAULT_CONFIG: {
-    SITE_NAME: 'My Blog',
-  },
-  ALLOWED_CONFIG_KEYS: ['SITE_NAME', 'SMTP_PASS'],
-  SENSITIVE_CONFIG_KEYS: new Set(['SMTP_PASS']),
-  invalidateConfig: vi.fn(),
-  AppError: class AppError extends Error {
-    constructor(public code: string, message: string, public statusCode = 400) {
-      super(message)
-      this.name = 'AppError'
-    }
-  },
-}))
+vi.mock('../../config', async () => {
+  const actual = await vi.importActual('../../config')
+  return {
+    ...actual,
+    getConfig: vi.fn().mockResolvedValue({
+      SITE_NAME: 'Test Blog',
+      SMTP_HOST: 'smtp.test.com',
+      SMTP_PASS: 'test-smtp-pass-123',
+    }),
+    maskSensitiveConfig: vi.fn().mockImplementation((cfg) => cfg),
+    invalidateConfig: vi.fn(),
+    AppError: class AppError extends Error {
+      constructor(public code: string, message: string, public statusCode = 400) {
+        super(message)
+        this.name = 'AppError'
+      }
+    },
+  }
+})
 
 vi.mock('../../auth', () => ({
   getAuthHash: vi.fn().mockResolvedValue('hashed-password'),
@@ -86,6 +92,21 @@ vi.mock('../../store/index', async () => {
   const actual = await vi.importActual('../../store/index')
   return {
     ...actual,
+    configStore: {
+      getConfig: vi.fn().mockResolvedValue({}),
+      setConfig: vi.fn().mockResolvedValue(undefined),
+      setManyConfig: vi.fn().mockResolvedValue(undefined),
+      resetConfig: vi.fn().mockResolvedValue(undefined),
+    },
+    sessionStore: {
+      createToken: vi.fn().mockResolvedValue('test-token'),
+      validateToken: vi.fn().mockResolvedValue(true),
+      removeToken: vi.fn().mockResolvedValue(undefined),
+      removeAllTokens: vi.fn().mockResolvedValue(undefined),
+    },
+    rateLimitStore: {
+      checkRateLimit: vi.fn().mockResolvedValue(true),
+    },
     commentStore: {
       getComment: vi.fn().mockResolvedValue({ id: '1', url: '/test', ip: '127.0.0.1' }),
       setCommentIpRegion: vi.fn().mockResolvedValue(true),

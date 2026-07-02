@@ -214,6 +214,7 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   NSFW_API_KEY: '',
   NSFW_THRESHOLD: 0.5,
   BLOCKED_KEYWORDS: '赌博,博彩,外围,买分,卖分,刷分,代发,推广,SEO,裸聊,约炮,成人,刷屏,恶意攻击,小姐,招嫖',
+  AKISMET_KEY: '',
   SMTP_HOST: '',
   SMTP_PORT: 587,
   SMTP_USER: '',
@@ -257,6 +258,8 @@ export const DEFAULT_CONFIG: TakoioConfig = {
   <div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">{{ siteName }} · 管理通知</div>
 </div>`,
   CORS_ORIGINS: '',
+  CUSTOM_CSS: '',
+  COMMENT_BG_IMAGE: '',
   COMMENT_FEATURES: '',
   PUSHOO_CHANNELS: '',
 }
@@ -308,9 +311,14 @@ const CACHE_TTL = 60_000 // 60 seconds
 
 /** 配置变更订阅回调 */
 const configChangeListeners = new Set<() => void>()
+const MAX_CONFIG_LISTENERS = 100
 
 /** 订阅配置变更事件 */
 export function subscribeConfigChange(listener: () => void): () => void {
+  if (configChangeListeners.size >= MAX_CONFIG_LISTENERS) {
+    logger.warn(`[config] subscribeConfigChange: listener limit (${MAX_CONFIG_LISTENERS}) reached, refusing new subscription`)
+    return () => { /* no-op */ }
+  }
   configChangeListeners.add(listener)
   return () => configChangeListeners.delete(listener)
 }

@@ -1,15 +1,18 @@
 /**
  * 统一日志模块 — 受 LOG_LEVEL 环境变量控制。
  *
- * 用法（兼容 Node console 的两种调用形式）：
- *   logger.info('纯文本消息')
- *   logger.info({ userId: 1 }, '带元数据的消息')   // 先打印对象再打印消息
+ * 用法：
+ *   logger.info('消息')
+ *   logger.info({ userId: 1 }, '带元数据的消息')
+ *   logger.error(new Error('something'), '操作失败')
  *
  * 级别：debug < info < warn < error
  *   - LOG_LEVEL=debug：输出全部（dev 默认）
  *   - LOG_LEVEL=info ：输出 info/warn/error（生产默认）
  *   - LOG_LEVEL=warn ：仅 warn/error
  *   - LOG_LEVEL=error：仅 error
+ *
+ * 生产环境输出结构化 JSON，开发环境输出人类可读格式。
  */
 
 import { isDev, LOG_LEVEL } from '../env'
@@ -25,38 +28,75 @@ function resolveLevel (): Level {
 }
 
 const _level = resolveLevel()
+const _isDev = isDev()
 
-/** 格式化：(metaObj, msg) → "JSON(msg) msg"；单 msg → msg */
-function format (args: any[]): string {
-  if (args.length >= 2 && args[1] !== undefined) {
-    // (meta, msg) 形式
+function formatDev (level: Level, args: any[]): string {
+  const timestamp = new Date().toISOString()
+  const levelTag = `[${level.toUpperCase()}]`.padEnd(7)
+  if (args.length >= 2 && typeof args[1] === 'string') {
+    // (meta, msg) form
+    const meta = args[1]
+    const msg = args[0]
     try {
-      return `${JSON.stringify(args[1])} ${args[0]}`
+      return `${timestamp} ${levelTag} ${msg} ${JSON.stringify(meta)}`
     } catch {
-      return `${String(args[1])} ${args[0]}`
+      return `${timestamp} ${levelTag} ${msg} ${String(meta)}`
     }
   }
-  return String(args[0])
+  if (args[0] instanceof Error) {
+    return `${timestamp} ${levelTag} ${args[0].message}\n${args[0].stack || ''}`
+  }
+  return `${timestamp} ${levelTag} ${String(args[0])}`
+}
+
+function formatJson (level: Level, args: any[]): string {
+  const entry: Record<string, any> = {
+    time: new Date().toISOString(),
+    level,
+  }
+  if (args.length >= 2 && typeof args[1] === 'string') {
+    entry.msg = args[1]
+    entry.meta = args[0]
+  } else if (args[0] instanceof Error) {
+    entry.msg = args[0].message
+    entry.stack = args[0].stack
+  } else if (typeof args[0] === 'object') {
+    Object.assign(entry, args[0])
+  } else {
+    entry.msg = String(args[0])
+  }
+  try { return JSON.stringify(entry) } catch { return String(args[0]) }
+}
+
+const format = _isDev ? formatDev : formatJson
+
+function log (level: Level, ...args: any[]): void {
+  if (ORDER[_level] > ORDER[level]) return
+  const line = format(level, args)
+  if (level === 'error') {
+    process.stderr.write(line + '\n')
+  } else {
+    process.stdout.write(line + '\n')
+  }
 }
 
 export const logger = {
-  /** 当前生效的日志级别 */
   level: _level,
 
   debug (...args: any[]): void {
-    if (ORDER[_level] <= ORDER.debug) console.debug(format(args))
+    log('debug', ...args)
   },
 
   info (...args: any[]): void {
-    if (ORDER[_level] <= ORDER.info) console.info(format(args))
+    log('info', ...args)
   },
 
   warn (...args: any[]): void {
-    if (ORDER[_level] <= ORDER.warn) console.warn(format(args))
+    log('warn', ...args)
   },
 
   error (...args: any[]): void {
-    if (ORDER[_level] <= ORDER.error) console.error(format(args))
+    log('error', ...args)
   },
 }
 

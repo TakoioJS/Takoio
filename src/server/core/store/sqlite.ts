@@ -1,5 +1,5 @@
 import { getDb, initDb } from '../db/client'
-import { comments, configs, visitors, sessions, reactions, commentReactions } from '../db/schema'
+import { comments, configs, visitors, sessions, reactions, commentReactions, rateLimits } from '../db/schema'
 import { eq, and, inArray, like, or, sql, asc, desc, count as drizzleCount } from 'drizzle-orm'
 import type {
   Comment,
@@ -307,9 +307,15 @@ export const configStore: ConfigStore = {
   },
 
   async setManyConfig (data: Record<string, unknown>): Promise<void> {
-    for (const [key, value] of Object.entries(data)) {
-      await configStore.setConfig(key, value)
-    }
+    // Wrap in a transaction to ensure atomicity: all-or-nothing config update.
+    await db().transaction(async (tx) => {
+      for (const [key, value] of Object.entries(data)) {
+        const val = typeof value === 'string' ? value : JSON.stringify(value)
+        await tx.insert(configs).values({ key, value: val, updatedAt: Date.now() })
+          .onConflictDoUpdate({ target: configs.key, set: { value: val, updatedAt: Date.now() } })
+          .run()
+      }
+    })
   },
 
   async resetConfig (): Promise<void> {
@@ -319,14 +325,20 @@ export const configStore: ConfigStore = {
 
 export const visitorStore: VisitorStore = {
   async getVisitorCount (url: string, title?: string): Promise<VisitorCount> {
-    const existing = await db().select().from(visitors).where(eq(visitors.url, url)).get()
-    if (!existing) {
-      await db().insert(visitors).values({ url, title: title || '', count: 1, updatedAt: Date.now() }).run()
-      return { url, time: 1, updatedAt: Date.now() }
-    }
-    const count = existing.count + 1
-    await db().update(visitors).set({ count, updatedAt: Date.now(), ...(title ? { title } : {}) }).where(eq(visitors.url, url)).run()
-    return { url, time: count, updatedAt: Date.now() }
+    // Use atomic UPSERT: insert with count=1, or update count = count + 1 on conflict.
+    // This eliminates the read-modify-write race condition.
+    const now = Date.now()
+    await db().insert(visitors).values({ url, title: title || '', count: 1, updatedAt: now }).run()
+      .catch(() => {
+        // Conflict expected when row exists; fall through to atomic update
+      })
+    // After ensuring row exists, perform atomic increment
+    await db().run(
+      sql`UPDATE ${visitors} SET count = count + 1, updated_at = ${now}${title ? sql`, title = ${title}` : sql``} WHERE ${visitors.url} = ${url}`
+    )
+    // Fetch the updated count
+    const row = await db().select({ count: visitors.count }).from(visitors).where(eq(visitors.url, url)).get()
+    return { url, time: row?.count ?? 1, updatedAt: now }
   },
 }
 
@@ -361,16 +373,18 @@ export const sessionStore: SessionStore = {
     if (!oldToken) return null
     const { randomUUID, createHash } = await import('node:crypto')
     const oldHash = createHash('sha256').update(oldToken).digest('hex')
-    // Validate old token exists and is not expired
-    const row = await db().select().from(sessions).where(eq(sessions.token, oldHash)).get()
-    if (!row || Date.now() - row.createdAt > 24 * 60 * 60 * 1000) return null
-    // Create new token and remove old one in a transaction
     const newToken = randomUUID()
     const newHash = createHash('sha256').update(newToken).digest('hex')
-    await db().transaction(async (tx) => {
-      await tx.delete(sessions).where(eq(sessions.token, oldHash)).run()
-      await tx.insert(sessions).values({ token: newHash, createdAt: Date.now() }).run()
-    })
+    const now = Date.now()
+    const ttl = 24 * 60 * 60 * 1000
+    // Atomic: delete old token only if it exists and is not expired, then insert new token.
+    // Using a raw SQL statement to perform the check-and-swap atomically.
+    const result = await db().run(
+      sql`DELETE FROM ${sessions} WHERE ${sessions.token} = ${oldHash} AND ${sessions.createdAt} > ${now - ttl}`
+    )
+    // If no row was deleted, the old token was invalid or expired.
+    if (result.rowsAffected === 0) return null
+    await db().insert(sessions).values({ token: newHash, createdAt: now }).run()
     return newToken
   },
 
@@ -396,15 +410,15 @@ export const reactionStore: ReactionStore = {
   },
 
   async toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap> {
-    const existing = await db().select().from(reactions)
-      .where(and(eq(reactions.url, url), eq(reactions.emoji, emoji), eq(reactions.ip, ip)))
-      .get()
-    if (existing) {
+    // Atomic UPSERT: insert the reaction; on conflict (already exists) delete it.
+    // This eliminates the read-modify-write race condition.
+    try {
+      await db().insert(reactions).values({ url, emoji, ip }).run()
+    } catch {
+      // Conflict means the reaction already exists; delete it atomically.
       await db().delete(reactions)
         .where(and(eq(reactions.url, url), eq(reactions.emoji, emoji), eq(reactions.ip, ip)))
         .run()
-    } else {
-      await db().insert(reactions).values({ url, emoji, ip }).run()
     }
     return reactionStore.getReactions(url)
   },
@@ -523,4 +537,35 @@ export async function importStore (data: StoreImportData): Promise<void> {
 
 export async function ensureDb (): Promise<void> {
   await initDb()
+}
+
+// ========== DB-based Rate Limiting (phase 1: sqlite) ==========
+
+export async function dbRateLimit (
+  key: string,
+  maxRequests: number,
+  windowMs: number,
+  windowStart: number
+): Promise<boolean> {
+  const dbClient = getDb()
+  const existing = await dbClient.select().from(rateLimits)
+    .where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
+    .limit(1)
+
+  if (existing.length === 0) {
+    // First request in this window
+    await dbClient.insert(rateLimits).values({ key, windowStart, count: 1 }).onConflictDoNothing()
+    return true
+  }
+
+  const entry = existing[0]
+  if (entry.count >= maxRequests) {
+    return false
+  }
+
+  await dbClient.update(rateLimits)
+    .set({ count: entry.count + 1 })
+    .where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
+
+  return true
 }

@@ -272,10 +272,23 @@ export async function setSummaryCache (url: string, content: string, data: Summa
 
 const _memRateBuckets = new Map<string, { count: number; reset: number }>()
 
+/** Clean up expired rate-limit buckets to prevent unbounded memory growth. */
+function cleanupExpiredRateBuckets (now: number): void {
+  for (const [key, bucket] of _memRateBuckets.entries()) {
+    if (bucket.reset < now) {
+      _memRateBuckets.delete(key)
+    }
+  }
+}
+
 /** 内存限流（serverless 或 Redis 不可用时使用） */
 export function memoryRateLimit (identifier: string, max: number, windowMs: number): boolean {
   const key = `takoio:rate:${identifier}`
   const now = Date.now()
+  // Periodic cleanup: every 1000 requests, purge expired buckets to prevent leaks.
+  if (_memRateBuckets.size % 1000 === 0) {
+    cleanupExpiredRateBuckets(now)
+  }
   const bucket = _memRateBuckets.get(key)
   if (!bucket || bucket.reset < now) {
     _memRateBuckets.set(key, { count: 1, reset: now + windowMs })

@@ -35,7 +35,7 @@ export async function init (options: TakoioConfig = {} as TakoioConfig): Promise
 
 /** 获取评论计数 */
 export async function getCommentsCount (
-  options: { envId: string; urls: string[]; funcName?: string }
+  options: { envId: string; urls: string[] }
 ): Promise<Array<{ url: string; count: number }>> {
   if (!isUrl(options.envId)) {
     console.error('Takoio: getCommentsCount requires HTTP URL as envId')
@@ -46,7 +46,7 @@ export async function getCommentsCount (
 
 /** 获取最近评论 */
 export async function getRecentComments (
-  options: { envId: string; funcName?: string; count?: number; includeReply?: boolean }
+  options: { envId: string; count?: number; includeReply?: boolean }
 ): Promise<any[]> {
   if (!isUrl(options.envId)) {
     console.error('Takoio: getRecentComments requires HTTP URL as envId')
@@ -57,7 +57,7 @@ export async function getRecentComments (
 
 /** 获取访客计数 */
 export async function getVisitorsCount (
-  options: { envId: string; funcName?: string; url?: string; href?: string; title?: string }
+  options: { envId: string; url?: string; href?: string; title?: string }
 ): Promise<{ time: number } | null> {
   if (!isUrl(options.envId)) {
     console.error('Takoio: getVisitorsCount requires HTTP URL as envId')

@@ -391,8 +391,22 @@ export const configStore: ConfigStore = {
   },
 
   async setManyConfig (data: Record<string, unknown>): Promise<void> {
-    for (const [key, value] of Object.entries(data)) {
-      await configStore.setConfig(key, value)
+    // Use a client session (transaction) to ensure atomicity: all-or-nothing config update.
+    const db = await getDb()
+    const session = (await getDb()).client.startSession()
+    try {
+      await session.withTransaction(async () => {
+        for (const [key, value] of Object.entries(data)) {
+          const val = typeof value === 'string' ? value : JSON.stringify(value)
+          await col(db, 'configs').replaceOne(
+            { _id: key },
+            { _id: key, value: val, updatedAt: Date.now() },
+            { upsert: true, session }
+          )
+        }
+      })
+    } finally {
+      await session.endSession()
     }
   },
 
@@ -406,16 +420,19 @@ export const visitorStore: VisitorStore = {
   async getVisitorCount (url: string, title?: string): Promise<VisitorCount> {
     const db = await getDb()
     const coll = col(db, 'visitors')
-    const existing = await coll.findOne({ _id: url })
-    if (!existing) {
-      await coll.insertOne({ _id: url, title: title || '', count: 1, updatedAt: Date.now() })
-      return { url, time: 1, updatedAt: Date.now() }
-    }
-    const count = existing.count + 1
-    const set: any = { count, updatedAt: Date.now() }
-    if (title) set.title = title
-    await coll.updateOne({ _id: url }, { $set: set })
-    return { url, time: count, updatedAt: Date.now() }
+    const now = Date.now()
+    // Atomic find-and-modify: upsert on first visit, otherwise $inc count atomically.
+    // This eliminates the read-modify-write race condition.
+    const result = await coll.findOneAndUpdate(
+      { _id: url },
+      {
+        $inc: { count: 1 },
+        $setOnInsert: { title: title || '', updatedAt: now },
+        ...(title ? { $set: { title, updatedAt: now } } : {}),
+      },
+      { upsert: true, returnDocument: 'after' }
+    )
+    return { url, time: result?.count ?? 1, updatedAt: now }
   },
 }
 
@@ -472,12 +489,16 @@ export const sessionStore: SessionStore = {
     if (!oldToken) return null
     const db = await getDb()
     const oldHash = createHash('sha256').update(oldToken).digest('hex')
-    const row = await col(db, 'sessions').findOne({ _id: oldHash })
-    if (!row || Date.now() - toMs(row.createdAt) > SESSION_TTL_MS) return null
     const newToken = randomUUID()
     const newHash = createHash('sha256').update(newToken).digest('hex')
+    const cutoff = Date.now() - SESSION_TTL_MS
+    // Atomic check-and-swap: findAndModify deletes the old token only if it exists and is not expired.
+    const result = await col(db, 'sessions').findOneAndDelete(
+      { _id: oldHash, createdAt: { $gte: new Date(cutoff) } }
+    )
+    // If no matching document was found and deleted, the old token was invalid or expired.
+    if (!result) return null
     await col(db, 'sessions').insertOne({ _id: newHash, createdAt: new Date() })
-    await col(db, 'sessions').deleteOne({ _id: oldHash })
     return newToken
   },
 }
@@ -497,11 +518,16 @@ export const reactionStore: ReactionStore = {
   async toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap> {
     const db = await getDb()
     const coll = col(db, 'reactions')
-    const existing = await coll.findOne({ url, emoji, ip })
-    if (existing) {
-      await coll.deleteOne({ url, emoji, ip })
-    } else {
-      await coll.insertOne({ url, emoji, ip })
+    // Atomic find-and-delete: if the reaction exists, delete it; otherwise insert it.
+    // Using the result of deleteOne to determine whether to insert.
+    const deleteResult = await coll.deleteOne({ url, emoji, ip })
+    if (deleteResult.deletedCount === 0) {
+      // Reaction did not exist; insert it. Ignore duplicate key errors from race conditions.
+      try {
+        await coll.insertOne({ url, emoji, ip })
+      } catch (e: any) {
+        if (!e?.message?.includes('E11000')) throw e
+      }
     }
     return reactionStore.getReactions(url)
   },
@@ -652,4 +678,27 @@ export async function ensureDb (): Promise<void> {
   // Comment reactions: unique (commentId, ip) enforces one reaction per visitor per comment
   await col(db, 'comment_reactions').createIndex({ commentId: 1, ip: 1 }, { unique: true })
   await col(db, 'comment_reactions').createIndex({ commentId: 1 })
+}
+
+// ========== DB-based Rate Limiting (MongoDB) ==========
+
+export async function dbRateLimit (
+  key: string,
+  maxRequests: number,
+  _windowMs: number,
+  windowStart: number
+): Promise<boolean> {
+  const db = await getDb()
+  const rateCol = col(db, 'rate_limits')
+
+  const doc = await rateCol.findOne({ key, windowStart })
+  if (!doc) {
+    await rateCol.insertOne({ key, windowStart, count: 1 })
+    // TTL: auto-delete entries older than 1 hour
+    await rateCol.createIndex({ windowStart: 1 }, { expireAfterSeconds: 3600 }).catch(() => {})
+    return true
+  }
+  if (doc.count >= maxRequests) return false
+  await rateCol.updateOne({ key, windowStart }, { $inc: { count: 1 } })
+  return true
 }

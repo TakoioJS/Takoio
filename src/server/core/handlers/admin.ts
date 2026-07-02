@@ -159,11 +159,9 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
   const existingHash = await getAuthHash()
 
   if (existingHash) {
-    // Password already exists — require admin auth to change
-    const token = data.token
-    if (!token || !await sessionStore.validateToken(token)) {
-      throw new AppError('NEED_LOGIN', '需要管理员权限才能修改密码', 401)
-    }
+    // Password already exists — use requireAdmin for unified defense-in-depth check
+    // (validates token + ensures AUTH_HASH exists, preventing stale-token bypass after config reset)
+    await requireAdmin(data)
   } else {
     // First-time setup — require SETUP_TOKEN in production
     if (!isDev() && !SETUP_TOKEN) {

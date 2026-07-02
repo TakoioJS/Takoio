@@ -58,6 +58,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
+    "@takoio/common": "workspace:*",
     "dompurify": "^3.4.11",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.5",

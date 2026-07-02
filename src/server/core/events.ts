@@ -72,10 +72,22 @@ export function handleSSEConnect (event: H3Event) {
       // Disconnect detection:
       // 1. node-server preset: event.node.req 'close' event
       // 2. serverless: try the original Request's AbortSignal (if available)
+      let cleanupRegistered = false
       if (event.node?.req) {
         event.node.req.on('close', cleanup)
+        cleanupRegistered = true
       } else if ('request' in event && (event as unknown as { request?: { signal?: AbortSignal } }).request?.signal) {
         ;(event as unknown as { request: { signal: AbortSignal } }).request.signal.addEventListener('abort', cleanup)
+        cleanupRegistered = true
+      }
+
+      // Fallback: if neither disconnect mechanism is available, enforce a max lifetime
+      // to prevent memory leaks in edge-case environments.
+      if (!cleanupRegistered) {
+        setTimeout(() => {
+          clearInterval(keepAlive)
+          listeners.delete(listener)
+        }, LISTENER_TIMEOUT_MS)
       }
     },
   })

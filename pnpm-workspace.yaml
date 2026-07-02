@@ -1,6 +1,7 @@
 packages:
   - 'src/server'
   - 'src/admin'
+  - 'packages/common'
 
 allowBuilds:
   '@parcel/watcher': true
