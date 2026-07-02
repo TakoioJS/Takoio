@@ -8,7 +8,6 @@ import { ensureDb, sessionStore, initStore } from '#core/store/index'
 import { initPassword } from '#core/auth'
 import { initIpSearcher } from '#core/ip-region'
 import { logger } from '#core/utils/logger'
-import { registerBuiltinPlugins } from '#core/plugins/builtin/index'
 import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN } from '#core/env'
 
 let initialized = false
@@ -54,7 +53,4 @@ export default definePlugin(async () => {
   }
 
   logger.info('Takoio server ready')
-
-  // Register built-in plugins (moderation + notification)
-  registerBuiltinPlugins().catch(e => logger.error('[init] Plugin registration failed:', e))
 })

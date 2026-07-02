@@ -16,9 +16,8 @@ import { renderComment } from '../utils/render'
 import { invalidateCommentListCache } from '../store/redis'
 import { logger } from '../utils/logger'
 import { AppError as AppErrorClass } from '../config'
-import { runPreSubmit, runPostSubmit } from '../plugins/pipeline'
-import type { HookContext } from '../plugins/types'
-import { createConfigProxy } from '../config-ns'
+import { sendEmail } from '../email'
+import { sendNotification } from '../notify'
 import { verifyToken } from '../auth-social'
 
 // ========== Stage 1: Validate + auth + CAPTCHA ==========
@@ -99,15 +98,22 @@ async function persistSubmit (newComment: CommentInput, _ip?: string) {
   return commentStore.addComment(newComment)
 }
 
-// ========== Stage 4: Notify (SSE only — pushoo/email are postSubmit plugins) ==========
+// ========== Notification helpers ==========
 
-function notifySubmit (saved: any, newComment: CommentInput, cfg: TakoioConfig, data: SubmitCommentData & { href?: string }) {
-  // SSE real-time notification (core infrastructure)
-  import('../events').then(({ notifyComment }) => {
-    notifyComment(newComment.url, 'comment:new', {
-      comment: { id: saved.id, nick: saved.nick, comment: saved.comment, created: saved.created, url: saved.url },
-    })
-  }).catch(e => logger.error('[comment-submit] SSE notify failed:', e))
+async function sendEmailNotification (saved: any, cfg: TakoioConfig) {
+  if (!cfg.ENABLE_MAIL_NOTIFICATION || !cfg.SMTP_HOST) return
+  try {
+    const { sendEmail } = await import('../email')
+    await sendEmail(cfg, '新评论通知', `用户 ${saved.nick} 发表了评论`)
+  } catch { /* ignore */ }
+}
+
+async function sendPushNotification (saved: any, cfg: TakoioConfig) {
+  if (!cfg.PUSHOO_CHANNELS) return
+  try {
+    const { sendNotification } = await import('../notify')
+    await sendNotification(cfg, { title: '新评论', content: `${saved.nick}: ${saved.comment}` })
+  } catch { /* ignore */ }
 }
 
 // ========== Export ==========
@@ -147,27 +153,15 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     renderedComment: null,
   }
 
-  // === Plugin Pipeline: preSubmit ===
-  const hookCtx: HookContext = { event: data.event, ip: _ip || 'unknown', config: createConfigProxy(cfg) }
-  const preResult = await runPreSubmit(newComment, hookCtx)
-  if (!preResult.passed) {
-    logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Comment rejected by preSubmit pipeline')
-    throw new AppErrorClass('MODERATION_FAILED', preResult.reason || '评论审核未通过', 400)
-  }
-  if (preResult.modifications) {
-    Object.assign(newComment, preResult.modifications)
-  }
-
   // 3. Moderate (built-in)
   const modResult = await moderateSubmit(newComment, cfg, _ip, mail)
 
   // 4. Persist
   const saved = await persistSubmit(newComment, _ip)
 
-  // === Plugin Pipeline: postSubmit ===
-  runPostSubmit(saved, hookCtx).catch(e =>
-    logger.warn({ error: e.message }, '[pipeline] postSubmit async error')
-  )
+  // 5. Send notifications (fire-and-forget)
+  sendEmailNotification(saved, cfg).catch(() => {})
+  sendPushNotification(saved, cfg).catch(() => {})
 
   // 5. Invalidate comment list cache for this url (retry up to 3 times)
   let cacheInvalidated = false
@@ -187,8 +181,12 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     logger.error('[comment-submit] Cache invalidation failed after 3 attempts — data may be stale')
   }
 
-  // 6. Notify (fire-and-forget)
-  notifySubmit(saved, newComment, cfg, { ...data, url, nick, mail, link, comment, pid, rid, ua, image, title })
+  // 6. SSE real-time notification
+  import('../events').then(({ notifyComment }) => {
+    notifyComment(newComment.url, 'comment:new', {
+      comment: { id: saved.id, nick: saved.nick, comment: saved.comment, created: saved.created, url: saved.url },
+    })
+  }).catch(e => logger.error('[comment-submit] SSE notify failed:', e))
 
   return { data: saved, moderated: modResult }
 }
