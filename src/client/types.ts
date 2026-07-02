@@ -2,21 +2,27 @@
  * Takoio 客户端类型定义
  *
  * 共享类型（Comment, ApiResponse 等）从 @takoio/common 导入。
- * 本文件仅定义客户端特有的类型（TakoioConfig, TexRenderer 等）。
+ * 本文件仅定义客户端特有的类型（TakoioConfig）。
  */
 
+// Re-export shared types with explicit naming to avoid DOM type conflicts
 export type {
-  Comment,
+  Comment as TakoioComment,
   CommentSubmit,
   CommentCount,
   RecentComments,
   VisitorsCount,
   ApiResponse,
   PaginatedResponse,
-  TexRenderer,
 } from '@takoio/common'
 
+// Legacy alias: keep `Comment` export for backward compat with existing imports
+// (DOM also has a `Comment` type, so use `TakoioComment` for new code)
+export type { TakoioComment as Comment }
+
 export type { Lang } from '@takoio/common'
+
+export type TexRenderer = (blockMode: boolean, tex: string) => string | Promise<string>
 
 /** Takoio 配置 */
 export interface TakoioConfig {

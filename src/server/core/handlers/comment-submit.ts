@@ -20,6 +20,8 @@ import { invalidateCommentListCache } from '../store/redis'
 import { logger } from '../utils/logger'
 import { escapeHtml } from './_comment-shared'
 import { AppError as AppErrorClass } from '../config'
+import { runPreSubmit, runPostSubmit } from '../plugins/pipeline'
+import type { HookContext } from '../plugins/types'
 
 // ========== Stage 1: Validate + auth + CAPTCHA ==========
 
@@ -201,7 +203,7 @@ function notifySubmit (saved: any, newComment: CommentInput, cfg: TakoioConfig, 
 
 // ========== Export ==========
 
-export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: string }): Promise<any> => {
+export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: string; event?: any }): Promise<any> => {
   const _ip = data._ip
   const cfg = await getConfig()
 
@@ -209,7 +211,6 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const { url, nick, mail, link, comment, pid, rid, ua, image, title } = await validateSubmit(data, cfg)
 
   // 2. Build comment object
-  // Use SHA-256 instead of MD5 for Gravatar hash to mitigate rainbow-table risks.
   const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''
   const newComment: CommentInput = {
     id: crypto.randomUUID(),
@@ -237,11 +238,27 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     renderedComment: null,
   }
 
-  // 3. Moderate
+  // === Plugin Pipeline: preSubmit ===
+  const hookCtx: HookContext = { event: data.event, ip: _ip || 'unknown', config: cfg }
+  const preResult = await runPreSubmit(newComment, hookCtx)
+  if (!preResult.passed) {
+    logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Comment rejected by preSubmit pipeline')
+    throw new AppErrorClass('MODERATION_FAILED', preResult.reason || '评论审核未通过', 400)
+  }
+  if (preResult.modifications) {
+    Object.assign(newComment, preResult.modifications)
+  }
+
+  // 3. Moderate (built-in)
   const modResult = await moderateSubmit(newComment, cfg, _ip, mail)
 
   // 4. Persist
   const saved = await persistSubmit(newComment, _ip)
+
+  // === Plugin Pipeline: postSubmit ===
+  runPostSubmit(saved, hookCtx).catch(e =>
+    logger.warn({ error: e.message }, '[pipeline] postSubmit async error')
+  )
 
   // 5. Invalidate comment list cache for this url (retry up to 3 times)
   let cacheInvalidated = false

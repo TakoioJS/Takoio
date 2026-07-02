@@ -107,7 +107,7 @@ export default defineHandler(async (event) => {
     // DELETE /api/comments/:id
     if (segments.length === 1 && method === 'DELETE') {
       await requireAdmin({ token: getToken(event) })
-      return handleCommentDelete({ id })
+      return handleCommentDelete({ id }, event)
     }
 
     // PATCH /api/comments/:id/hide
@@ -134,7 +134,7 @@ export default defineHandler(async (event) => {
     // PATCH /api/comments/:id/approve
     if (segments[1] === 'approve' && method === 'PATCH') {
       await requireAdmin({ token: getToken(event) })
-      return handleCommentApprove({ id })
+      return handleCommentApprove({ id }, event)
     }
 
     // GET /api/comments/:id/reactions

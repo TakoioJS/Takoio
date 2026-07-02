@@ -20,6 +20,9 @@ import { getConfig } from '../config'
 import { renderComment } from '../utils/render'
 import { markMasterComments, invalidateCommentCacheById } from './_comment-shared'
 import { AppError } from '../config'
+import { logger } from '../utils/logger'
+import { runPreDelete, runPreApprove } from '../plugins/pipeline'
+import type { HookContext } from '../plugins/types'
 
 // ========== Comment Update ==========
 
@@ -36,9 +39,19 @@ export const handleCommentUpdate = async (data: UpdateCommentData) => {
 
 // ========== Comment Delete ==========
 
-export const handleCommentDelete = async (data: CommentIdData) => {
+export const handleCommentDelete = async (data: CommentIdData, event?: any) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+
+  // Plugin pipeline: preDelete
+  const cfg = await getConfig()
+  const hookCtx: HookContext = { event, ip: 'admin', config: cfg }
+  const preResult = await runPreDelete(validation.data.id, hookCtx)
+  if (!preResult.passed) {
+    logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Delete rejected by plugin pipeline')
+    throw new AppError('FORBIDDEN', preResult.reason || '删除被拒绝', 403)
+  }
+
   await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.deleteComment(validation.data.id) }
 }
@@ -95,9 +108,19 @@ export const handleCommentSetSpam = async (data: CommentIdData & { isSpam?: bool
 
 // ========== Comment Approve (pending → visible) ==========
 
-export const handleCommentApprove = async (data: CommentIdData) => {
+export const handleCommentApprove = async (data: CommentIdData, event?: any) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
+
+  // Plugin pipeline: preApprove
+  const cfg = await getConfig()
+  const hookCtx: HookContext = { event, ip: 'admin', config: cfg }
+  const preResult = await runPreApprove(validation.data.id, hookCtx)
+  if (!preResult.passed) {
+    logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Approval rejected by plugin pipeline')
+    throw new AppError('FORBIDDEN', preResult.reason || '审核被拒绝', 403)
+  }
+
   await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.showComment(validation.data.id) }
 }
