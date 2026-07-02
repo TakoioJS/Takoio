@@ -3,7 +3,6 @@
  */
 
 import { z } from 'zod'
-import { ALLOWED_CONFIG_KEYS } from '../config'
 
 // ========== Comment ==========
 
@@ -74,12 +73,8 @@ export const UpdateCommentSchema = z.object({
 
 // ========== Config ==========
 
-/** 允许通过 SET_CONFIG 修改的配置键白名单 — 从 config.ts 的 DEFAULT_CONFIG 自动生成，永不同步 */
-
-const ALLOWED_CONFIG_KEYS_TUPLE = ALLOWED_CONFIG_KEYS as unknown as [string, ...string[]]
-
 export const SetConfigSchema = z.object({
-  config: z.record(z.enum(ALLOWED_CONFIG_KEYS_TUPLE), z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
 })
 
 // ========== Counter ==========

@@ -672,6 +672,17 @@ const loadConfig = async () => {
     }
     config.COMMENT_FEATURES = commentFeatures
 
+    // Parse PUSHOO_CHANNELS JSON and populate individual PUSH_CHANNEL_* fields
+    if (data.PUSHOO_CHANNELS && typeof data.PUSHOO_CHANNELS === 'string') {
+      try {
+        const pushChannels = JSON.parse(data.PUSHOO_CHANNELS) as Record<string, string>
+        for (const [channelName, channelValue] of Object.entries(pushChannels)) {
+          const key = `PUSH_CHANNEL_${channelName.toUpperCase()}`
+          config[key] = channelValue
+        }
+      } catch { /* ignore invalid JSON */ }
+    }
+
     // 动态更新 AI 审核提供商选项
     updateAiProviderOptions(data.AI_PROVIDERS)
 
@@ -751,6 +762,21 @@ const onSave = async () => {
     payload.ENABLE_ARTICLE_REACTION = commentFeatures.includes('articleReaction')
     payload.ENABLE_LINK_INPUT = commentFeatures.includes('linkInput')
     payload.SHOW_UA_INFO = commentFeatures.includes('uaInfo')
+
+    // Serialize push channel values into PUSHOO_CHANNELS JSON string
+    const pushChannels: Record<string, string> = {}
+    const pushChannelPrefix = 'PUSH_CHANNEL_'
+    for (const key of Object.keys(payload)) {
+      if (key.startsWith(pushChannelPrefix)) {
+        const channelName = key.slice(pushChannelPrefix.length).toLowerCase()
+        if (payload[key]) {
+          pushChannels[channelName] = String(payload[key])
+        }
+        delete payload[key]
+      }
+    }
+    payload.PUSHOO_CHANNELS = JSON.stringify(pushChannels)
+
     const result = await configApi.save(payload) as { success: boolean; skipped?: Record<string, string> }
     // 重新从后端加载配置，确保 savedConfig 与实际存储一致
     // 避免本地 payload 与后端处理后的值（如掩码跳过、类型转换）不同步
