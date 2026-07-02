@@ -18,6 +18,7 @@ import { logger } from '../utils/logger'
 import { AppError as AppErrorClass } from '../config'
 import { runPreSubmit, runPostSubmit } from '../plugins/pipeline'
 import type { HookContext } from '../plugins/types'
+import { createConfigProxy } from '../config-ns'
 
 // ========== Stage 1: Validate + auth + CAPTCHA ==========
 
@@ -139,7 +140,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   }
 
   // === Plugin Pipeline: preSubmit ===
-  const hookCtx: HookContext = { event: data.event, ip: _ip || 'unknown', config: cfg }
+  const hookCtx: HookContext = { event: data.event, ip: _ip || 'unknown', config: createConfigProxy(cfg) }
   const preResult = await runPreSubmit(newComment, hookCtx)
   if (!preResult.passed) {
     logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Comment rejected by preSubmit pipeline')

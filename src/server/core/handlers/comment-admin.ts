@@ -23,6 +23,7 @@ import { AppError } from '../config'
 import { logger } from '../utils/logger'
 import { runPreDelete, runPreApprove } from '../plugins/pipeline'
 import type { HookContext } from '../plugins/types'
+import { createConfigProxy } from '../config-ns'
 
 // ========== Comment Update ==========
 
@@ -45,7 +46,7 @@ export const handleCommentDelete = async (data: CommentIdData, event?: any) => {
 
   // Plugin pipeline: preDelete
   const cfg = await getConfig()
-  const hookCtx: HookContext = { event, ip: 'admin', config: cfg }
+  const hookCtx: HookContext = { event, ip: 'admin', config: createConfigProxy(cfg) }
   const preResult = await runPreDelete(validation.data.id, hookCtx)
   if (!preResult.passed) {
     logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Delete rejected by plugin pipeline')
@@ -114,7 +115,7 @@ export const handleCommentApprove = async (data: CommentIdData, event?: any) => 
 
   // Plugin pipeline: preApprove
   const cfg = await getConfig()
-  const hookCtx: HookContext = { event, ip: 'admin', config: cfg }
+  const hookCtx: HookContext = { event, ip: 'admin', config: createConfigProxy(cfg) }
   const preResult = await runPreApprove(validation.data.id, hookCtx)
   if (!preResult.passed) {
     logger.info({ rejectedBy: preResult.rejectedBy, reason: preResult.reason }, 'Approval rejected by plugin pipeline')

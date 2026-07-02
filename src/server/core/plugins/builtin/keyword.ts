@@ -12,7 +12,8 @@ export const keywordModerationPlugin: TakoioPlugin = {
   version: '1.0.0',
 
   async preSubmit (comment, ctx: HookContext): Promise<HookResult> {
-    const blocked = ctx.config?.BLOCKED_KEYWORDS as string | undefined
+    const cfg = ctx.config as any
+    const blocked = cfg?.moderation?.blockedKeywords as string | undefined
     if (!blocked) return { action: 'continue' }
 
     const keywords = blocked

@@ -29,3 +29,7 @@ export {
   runPreRender,
   runPostRender,
 } from './pipeline'
+
+// Re-export namespaced config for plugin development
+export { toNamespaced, createConfigProxy } from '../config-ns'
+export type { NamespacedConfig, SiteConfig, CommentConfig, ModerationConfig, NotificationConfig, AppearanceConfig, CaptchaConfig, ImageHostingConfig, SecurityConfig, AIConfig } from '../config-ns'

@@ -24,11 +24,12 @@ export const emailNotifyPlugin: TakoioPlugin = {
   version: '1.0.0',
 
   async postSubmit (comment, ctx: HookContext): Promise<void> {
-    const cfg = ctx.config as Record<string, any>
+    const cfg = ctx.config as any
 
-    if (!cfg?.ENABLE_MAIL_NOTIFICATION || !cfg?.SMTP_HOST) return
+    const email = cfg?.notification?.email
+    if (!email?.enabled || !email?.host) return
 
-    const siteName = cfg?.SITE_NAME || 'Takoio'
+    const siteName = cfg?.site?.name || 'Takoio'
     const mail = comment.mail || ''
     const nick = comment.nick || ''
     const text = (comment.comment || '').slice(0, 500)

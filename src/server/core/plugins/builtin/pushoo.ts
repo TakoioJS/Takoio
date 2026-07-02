@@ -9,9 +9,10 @@
 import type { TakoioPlugin, HookContext } from '../types'
 
 function parseChannels (config: Record<string, any>): Array<{ platform: string; token: string }> {
-  if (!config.PUSHOO_CHANNELS || typeof config.PUSHOO_CHANNELS !== 'string') return []
+  const raw = config?.notification?.pushoo?.channels || config?.PUSHOO_CHANNELS
+  if (!raw || typeof raw !== 'string') return []
   try {
-    const parsed = JSON.parse(config.PUSHOO_CHANNELS)
+    const parsed = JSON.parse(raw)
     const channels: Array<{ platform: string; token: string }> = []
     for (const [platform, token] of Object.entries(parsed)) {
       if (typeof token === 'string' && token) channels.push({ platform, token })
@@ -25,11 +26,11 @@ export const pushooNotifyPlugin: TakoioPlugin = {
   version: '1.0.0',
 
   async postSubmit (comment, ctx: HookContext): Promise<void> {
-    const cfg = ctx.config as Record<string, any>
+    const cfg = ctx.config as any
     const channels = parseChannels(cfg)
     if (!channels.length) return
 
-    const siteName = cfg?.SITE_NAME || 'Takoio'
+    const siteName = cfg?.site?.name || 'Takoio'
     const nick = comment.nick || ''
     const text = (comment.comment || '').slice(0, 200)
 

@@ -60,18 +60,18 @@ export const aiModerationPlugin: TakoioPlugin = {
   version: '1.0.0',
 
   async preSubmit (comment, ctx: HookContext): Promise<HookResult> {
-    const cfg = ctx.config as Record<string, any>
+    const cfg = ctx.config as any
 
     // Check if AI moderation is enabled
-    if (cfg?.AUTO_AUDIT_METHOD !== 'ai') return { action: 'continue' }
+    if (cfg?.moderation?.autoAuditMethod !== 'ai') return { action: 'continue' }
 
     let endpoint = ''
     let key = ''
     let format = 'openai'
 
     try {
-      const providers = JSON.parse(cfg?.AI_PROVIDERS || '[]')
-      const provider = providers.find((p: any) => p.id === cfg?.AUTO_AUDIT_AI_PROVIDER)
+      const providers = JSON.parse(cfg?.ai?.providers || '[]')
+      const provider = providers.find((p: any) => p.id === cfg?.moderation?.autoAuditAiProvider)
       if (provider) {
         endpoint = provider.endpoint || ''
         key = provider.key || ''
@@ -81,8 +81,8 @@ export const aiModerationPlugin: TakoioPlugin = {
 
     if (!key || !endpoint) return { action: 'continue' }
 
-    const model = cfg?.AUTO_AUDIT_AI_MODEL || 'gpt-4o-mini'
-    const prompt = cfg?.AUTO_AUDIT_AI_PROMPT || DEFAULT_PROMPT
+    const model = cfg?.moderation?.autoAuditAiModel || 'gpt-4o-mini'
+    const prompt = cfg?.moderation?.autoAuditAiPrompt || DEFAULT_PROMPT
     const text = comment.comment || ''
 
     try {
