@@ -202,6 +202,35 @@ onBeforeUnmount(() => {
   --tk-text-tertiary:var(--tk-text-3);
   --tk-border-strong:color-mix(in srgb,currentColor 25%,transparent);
 
+  /* =========================================================
+   *  对齐 comment-section-ui 设计稿：设计 token 落库
+   *  - 暗色系（data-theme="dark"）使用 colors_and_type.css 暗色值
+   *  - 亮色系（data-theme="light"）走极简柔和值
+   *  - 这些值用于卡片背景、提交单容器、pill 标签、3 个元信息等
+   * ========================================================= */
+  --tk-bg-page:transparent;
+  --tk-bg-card:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-bg-elevated:color-mix(in srgb,currentColor 7%,transparent);
+  --tk-bg-input:color-mix(in srgb,currentColor 5%,transparent);
+  --tk-bg-hover:color-mix(in srgb,currentColor 8%,transparent);
+  --tk-bg-overlay:color-mix(in srgb,#000 60%,transparent);
+  --tk-border-light:color-mix(in srgb,currentColor 16%,transparent);
+  --tk-shadow-card:0 1px 2px rgba(0,0,0,0.04);
+  --tk-shadow-float:0 4px 16px color-mix(in srgb,#000 12%,transparent);
+  --tk-r-sm:4px;
+  --tk-avatar-sm:32px;
+  --tk-avatar-md:40px;
+  --tk-avatar-lg:48px;
+  --tk-space-xs:4px;
+  --tk-space-sm:8px;
+  --tk-space-md:12px;
+  --tk-space-lg:16px;
+  --tk-space-xl:20px;
+  --tk-space-2xl:24px;
+  --tk-space-3xl:32px;
+  /* 品牌色发光环：用于输入框聚焦外发光（设计稿 164 行） */
+  --tk-brand-glow:color-mix(in srgb,var(--tk-brand) 15%,transparent);
+
   color:inherit; font-size:var(--tk-fs-base); line-height:var(--tk-lh);
   font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
 }
@@ -210,11 +239,40 @@ onBeforeUnmount(() => {
 .tk-root[data-theme="light"]{
   --tk-bg-popup:#fff;
   --tk-shadow:0 6px 16px rgba(0,0,0,0.06);
+  /* 设计稿亮色降饱和补色 */
+  --tk-bg-card:#ffffff;
+  --tk-bg-elevated:#fafafa;
+  --tk-bg-input:#ffffff;
+  --tk-bg-hover:#f3f4f6;
+  --tk-border:#e5e7eb;
+  --tk-border-light:#e5e7eb;
 }
 .tk-root[data-theme="dark"]{
   --tk-bg-popup:#1e1e1e;
   --tk-shadow:0 6px 16px rgba(0,0,0,0.35);
-  --tk-shadow-lift:0 2px 4px rgba(0,0,0,.4),0 12px 28px rgba(0,0,0,.32);
+  --tk-shadow-lift:0 2px 4px rgba(0,0,0,.4),0 12px 28px rgba(0,0,0,0.32);
+  /* 设计稿 colors_and_type.css 暗色值 */
+  --tk-bg-page:#0d0d0d;
+  --tk-bg-card:#1a1a1a;
+  --tk-bg-elevated:#1f1f1f;
+  --tk-bg-input:#1f1f1f;
+  --tk-bg-hover:#262626;
+  --tk-bg-overlay:rgba(0,0,0,0.6);
+  --tk-text-primary:#f5f5f5;
+  --tk-text-secondary:#a3a3a3;
+  --tk-text-tertiary:#737373;
+  --tk-text-muted:#525252;
+  --tk-border:#2a2a2a;
+  --tk-border-light:#333333;
+  --tk-separator:#262626;
+  --tk-shadow-card:0 1px 2px rgba(0,0,0,0.04);
+  --tk-shadow-float:0 4px 16px rgba(0,0,0,0.12);
+  --tk-status-success:#22c55e;
+  --tk-status-warning:#f59e0b;
+  --tk-status-error:#ef4444;
+  --tk-status-info:#3b82f6;
+  --tk-badge-red:#ef4444;
+  --tk-badge-red-bg:rgba(239,68,68,0.15);
 }
 
 .tk-root a { color: var(--tk-brand); text-decoration: none; }

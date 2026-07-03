@@ -100,17 +100,19 @@
 
     <div
       v-else
-      class="tk-comments-list"
+      class="tk-thread-card"
     >
-      <TransitionGroup name="tk-comment-list">
-        <TkComment
-          v-for="comment in comments"
-          :key="comment.id"
-          :comment="comment"
-          :options="mergedOptions"
-          @reply="onReplyClick"
-        />
-      </TransitionGroup>
+      <div class="tk-comments-list">
+        <TransitionGroup name="tk-comment-list">
+          <TkComment
+            v-for="comment in comments"
+            :key="comment.id"
+            :comment="comment"
+            :options="mergedOptions"
+            @reply="onReplyClick"
+          />
+        </TransitionGroup>
+      </div>
     </div>
 
     <div
@@ -449,7 +451,16 @@ onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch() })
 .tk-infinite-sentinel { text-align: center; padding: 16px 0; }
 .tk-load-more { color: var(--tk-brand); cursor: pointer; font-size: 13px; opacity: 0.7; transition: opacity 0.2s; }
 .tk-load-more:hover { opacity: 1; }
-.tk-comments-list { display: flex; flex-direction: column; gap: 10px; }
+.tk-thread-card {
+  /* 设计稿：评论列表单卡片容器 */
+  background: var(--tk-bg-card);
+  border: 1px solid var(--tk-border);
+  border-radius: var(--tk-r-card);
+  box-shadow: var(--tk-shadow-card);
+  padding: var(--tk-space-lg);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.tk-comments-list { display: flex; flex-direction: column; gap: 0; }
 .tk-comment-list-enter-active, .tk-comment-list-leave-active { transition: all 0.5s cubic-bezier(.22,.61,.36,1); }
 .tk-comment-list-enter-from { opacity: 0; transform: translateY(8px); }
 .tk-comment-list-leave-to { opacity: 0; transform: scale(0.96); }

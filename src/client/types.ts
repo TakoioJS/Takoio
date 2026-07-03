@@ -125,4 +125,26 @@ export interface TakoioConfig {
     error: string | null
     retry: () => void
   }) => void
+  /**
+   * 默认私密评论（设计稿 296-302 行 Public/Private 切换）
+   * - 默认 false
+   * - 切换时仅 UI 状态生效；后端是否接受由 schema 决定
+   */
+  privateComment?: boolean
+  /**
+   * 是否启用登录下拉（设计稿 311-330 行）
+   * - 默认 true
+   * - 仅在未登录时显示
+   */
+  enableLoginDropdown?: boolean
+  /**
+   * 登录提供商列表（设计稿 317-330 行）
+   * - 默认 ['github', 'google', 'email']
+   */
+  loginProviders?: Array<'github' | 'google' | 'email'>
+  /**
+   * 是否显示登录入口（与 loginProviders 共同控制）
+   * - 默认 true
+   */
+  enableLogin?: boolean
 }

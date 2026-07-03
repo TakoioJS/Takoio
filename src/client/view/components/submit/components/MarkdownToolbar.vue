@@ -1,7 +1,10 @@
 <template>
-  <div class="tk-markdown-actions">
+  <div
+    class="tk-markdown-actions"
+    :class="{ 'tk-markdown-actions-compact': variant === 'compact' }"
+  >
     <button
-      v-for="btn in buttons"
+      v-for="btn in visibleButtons"
       :key="btn.action"
       type="button"
       class="tk-btn-circle"
@@ -23,11 +26,21 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface Props {
   editorRef: { value: HTMLTextAreaElement | null | undefined }
   modelValue: string
+  /**
+   * `default`：全部 7 个按钮（粗体 / 斜体 / 删除线 / 链接 / 行内代码 / 代码块 / 引用）
+   * `compact`：仅保留 7 个按钮中设计稿高优先的（粗体 / 斜体 / 链接 / 行内代码 / 代码块 / 引用）
+   *            适配设计稿 comment-input.html 172–302 行：保留视觉重量更高按钮
+   */
+  variant?: 'default' | 'compact'
 }
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  variant: 'default',
+})
 const emit = defineEmits<{ (e: 'update:modelValue', val: string): void }>()
 
 const wrapSelection = (prefix: string, suffix: string): void => {
@@ -97,6 +110,12 @@ const buttons = [
     handler: () => wrapSelection('\n> ', ''),
   },
 ]
+
+// 设计稿 compact 模式：保留视觉重量更高的按钮，删除线被剔除
+const visibleButtons = computed(() => {
+  if (props.variant !== 'compact') return buttons
+  return buttons.filter(b => b.action !== 'strike')
+})
 </script>
 
 <style scoped>
@@ -104,4 +123,12 @@ const buttons = [
 .tk-markdown-actions::-webkit-scrollbar { display: none; }
 .tk-btn-circle { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: inherit; opacity: .6; cursor: pointer; border-radius: 50%; transition: all .15s; padding: 0; flex-shrink: 0; }
 .tk-btn-circle:hover { opacity: 1; background: var(--tk-bg-muted); }
+
+/* 设计稿：紧凑无边框模式（用于卡片内工具栏） */
+.tk-markdown-actions-compact { gap: 2px; flex: 0 1 auto; overflow: visible; }
+.tk-markdown-actions-compact .tk-btn-circle {
+  width: 28px; height: 28px;
+  opacity: .55; border-radius: var(--tk-r-input);
+}
+.tk-markdown-actions-compact .tk-btn-circle:hover { opacity: 1; background: var(--tk-bg-hover); }
 </style>

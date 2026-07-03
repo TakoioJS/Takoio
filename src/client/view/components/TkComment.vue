@@ -278,6 +278,11 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
   border-radius:var(--tk-r-card);
   transition:background .22s cubic-bezier(.22,.61,.36,1);}
 @media(hover:hover){.tk-comment:hover{background:var(--tk-bg-subtle);}}
+/* 设计稿：评论列表卡片内，相邻评论之间用 1px 分隔线（非卡片） */
+.tk-comments-list > .tk-comment + .tk-comment {
+  border-top: 1px solid var(--tk-separator, var(--tk-border-soft));
+  margin-top: 0;
+}
 .tk-comment-reply { margin-top: 6px; margin-left: 0; padding-left: 0; border-radius: 0; }
 .tk-comment-reply{background:transparent!important;border:none!important;box-shadow:none!important;}
 .tk-replies .tk-replies .tk-comment:hover { background: var(--tk-bg-subtle); }
@@ -294,8 +299,10 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-nick a:hover { text-decoration: underline; }
 .tk-nick.tk-master { color:var(--tk-warning); }
 .tk-nick.tk-admin { color:var(--tk-success); }
-.tk-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:600;
-  padding:1px 8px;border-radius:var(--tk-r-pill);border:none;line-height:1.6;margin-left:4px;}
+.tk-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:500;
+  padding:2px 8px;border-radius:var(--tk-r-pill);border:none;line-height:1.6;margin-left:6px;
+  /* 设计稿 pill 标签：暗色底弱对比 */
+  background:var(--tk-bg-hover); color:var(--tk-text-tertiary);}
 .tk-tag-warning{background:var(--tk-tag-warning-bg,color-mix(in srgb,var(--tk-warning) 14%,transparent));color:var(--tk-tag-warning-fg,var(--tk-warning));}
 .tk-tag-success{background:var(--tk-tag-success-bg,color-mix(in srgb,var(--tk-success) 14%,transparent));color:var(--tk-tag-success-fg,var(--tk-success));}
 .tk-tag-danger{background:var(--tk-tag-danger-bg,color-mix(in srgb,var(--tk-danger) 14%,transparent));color:var(--tk-tag-danger-fg,var(--tk-danger));}
@@ -321,10 +328,26 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
 .tk-comment-content :deep(.tk-owo-emotion) { height: 1.5em; width: 1.5em; vertical-align: middle; display: inline-block; margin: 0 3px; object-fit: contain; }
 .tk-comment-content :deep(.tk-comment-inline-image) { max-width: 100%; max-height: 300px; border-radius: var(--tk-r-card); display: block; margin: 8px 0; }
 .tk-comment-reactions { margin-top: 6px; }
-.tk-comment-meta { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--tk-border-soft); display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--tk-text-3); line-height: 1; }
-.tk-meta-item { display: inline-flex; align-items: center; gap: 3px; }
+.tk-comment-meta {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tk-border-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--tk-text-3);
+  line-height: 1;
+  /* 设计稿：IP / OS / Browser / Reaction 同行；窄屏自动换行 */
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tk-meta-item { display: inline-flex; align-items: center; gap: 3px;
+  /* 设计稿 pill 化：与 .tk-tag 一致 */
+  padding: 2px 8px; border-radius: var(--tk-r-pill);
+  background: var(--tk-bg-hover); color: var(--tk-text-tertiary); }
 .tk-replies { margin-top: 8px; margin-left: -34px; padding-left: 60px; position: relative; }
-.tk-replies::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--tk-border-soft); }
+.tk-replies::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--tk-border-soft); border-radius: 1px; }
 @media (max-width: 640px) {
   .tk-comment { padding: 10px 8px; gap: 6px; }
   /* 移动端缩小头像，为正文/信息区腾出横向空间 */

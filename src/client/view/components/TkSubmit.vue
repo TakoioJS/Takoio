@@ -18,6 +18,8 @@ import ImagePreview from './submit/components/ImagePreview.vue'
 import ReactionBar from './submit/components/ReactionBar.vue'
 import CaptchaWidget from './submit/components/CaptchaWidget.vue'
 import MarkdownToolbar from './submit/components/MarkdownToolbar.vue'
+import LoginDropdown from './submit/components/LoginDropdown.vue'
+import PrivacyToggle from './submit/components/PrivacyToggle.vue'
 
 interface Props { options: TakoioConfig; siteConfig?: Record<string, any>; replyTo?: Comment | null }
 const props = defineProps<Props>()
@@ -31,6 +33,7 @@ const submitting = ref(false)
 const showPreview = ref(false)
 const previewHtml = ref('')
 const previewRef = ref<HTMLElement>()
+const isFocused = ref(false) // 焦点态：用于 .tk-submit-card-focus 外发光
 const form = reactive({ nick: '', mail: '', link: '', comment: '' })
 const defaultEmojis = ['👍', '👎', '❤️', '😂', '🤯', '🎉']
 
@@ -90,6 +93,33 @@ const { imageUploading, uploadedImages, uploadRef, removeImage, triggerUpload, o
 const captchaToken = ref('')
 const captchaError = ref('')
 
+// --- 设计稿新增：免登录 / 登录下拉 / 公开-私密切换 ---
+// 1) 登录下拉：仅当未登录 + 启用登录 + 至少一个 provider 时显示
+const isLoggedIn = computed(() => !!getAuthState()?.token)
+const loginProviders = computed<Array<'github' | 'google' | 'email'>>(() => {
+  const raw = (props.siteConfig?.LOGIN_PROVIDERS || props.options.loginProviders) as
+    | string | string[] | undefined
+  const list = Array.isArray(raw) ? raw : (typeof raw === 'string' ? raw.split(',') : [])
+  const allow = new Set(['github', 'google', 'email'])
+  return list.filter((p): p is 'github' | 'google' | 'email' => allow.has(String(p).toLowerCase().trim()))
+})
+const showLogin = computed(() =>
+  !isLoggedIn.value &&
+  props.options.enableLogin !== false &&
+  loginProviders.value.length > 0
+)
+// 2) 免登录评论：当未登录 + 后台 ENABLE_GUEST_COMMENT=true 时，垂直堆叠额外信息
+const showGuestInfo = computed(() => {
+  if (isLoggedIn.value) return false
+  const flag = props.siteConfig?.ENABLE_GUEST_COMMENT
+  return flag === true || flag === 'true' || flag === 1 || flag === '1'
+})
+// 3) 公开 / 私密切换（设计稿 296–302 行）：TakoioConfig.privateComment 默认 false
+const privateComment = ref<boolean>(!!props.options.privateComment)
+
+// 同步 options 变化（外部动态切换）
+watch(() => props.options.privateComment, (v) => { if (typeof v === 'boolean') privateComment.value = v })
+
 // --- Submit ---
 const onSubmit = async (): Promise<void> => {
   if (!validate(t)) return
@@ -126,6 +156,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 </script>
 
 <template>
+  <!-- 设计稿：article-level reactions 移至 .tk-submit-card 之上（不在卡片内） -->
   <div
     v-if="!replyTo && options.enableArticleReaction"
     class="tk-article-reactions"
@@ -171,125 +202,72 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
     </button>
   </div>
 
-  <form ref="formRef">
-    <div class="tk-meta-row">
-      <div class="tk-meta-item">
-        <input
-          v-model="form.nick"
-          :aria-label="t('nickname')"
-          :placeholder="t('nickname')"
-          class="tk-input"
-          :class="{ 'tk-input-error': errors.nick }"
-        >
-        <span
-          v-if="errors.nick"
-          class="tk-field-error"
-        >{{ errors.nick }}</span>
-      </div>
-      <div class="tk-meta-item">
-        <input
-          v-model="form.mail"
-          type="email"
-          :aria-label="t('email')"
-          :placeholder="t('email')"
-          class="tk-input"
-          :class="{ 'tk-input-error': errors.mail }"
-        >
-        <span
-          v-if="errors.mail"
-          class="tk-field-error"
-        >{{ errors.mail }}</span>
-      </div>
+  <!-- 设计稿：单一卡片容器，聚焦时品牌色外发光 -->
+  <div
+    ref="formRef"
+    class="tk-submit-card"
+    :class="{ 'tk-submit-card-focus': isFocused }"
+  >
+    <form
+      class="tk-submit-form"
+      @submit.prevent="onSubmit"
+    >
+      <!-- 顶部 meta-row：登录态默认显示 nickname / email -->
       <div
-        v-if="options.enableLinkInput"
-        class="tk-meta-item"
+        v-if="!showGuestInfo"
+        class="tk-meta-row"
       >
-        <input
-          v-model="form.link"
-          :aria-label="t('link')"
-          :placeholder="t('link')"
-          class="tk-input"
-          :class="{ 'tk-input-error': errors.link }"
+        <div class="tk-meta-item">
+          <input
+            v-model="form.nick"
+            :aria-label="t('nickname')"
+            :placeholder="t('nickname')"
+            class="tk-input"
+            :class="{ 'tk-input-error': errors.nick }"
+          >
+          <span
+            v-if="errors.nick"
+            class="tk-field-error"
+          >{{ errors.nick }}</span>
+        </div>
+        <div class="tk-meta-item">
+          <input
+            v-model="form.mail"
+            type="email"
+            :aria-label="t('email')"
+            :placeholder="t('email')"
+            class="tk-input"
+            :class="{ 'tk-input-error': errors.mail }"
+          >
+          <span
+            v-if="errors.mail"
+            class="tk-field-error"
+          >{{ errors.mail }}</span>
+        </div>
+        <div
+          v-if="options.enableLinkInput"
+          class="tk-meta-item"
         >
-        <span
-          v-if="errors.link"
-          class="tk-field-error"
-        >{{ errors.link }}</span>
+          <input
+            v-model="form.link"
+            :aria-label="t('link')"
+            :placeholder="t('link')"
+            class="tk-input"
+            :class="{ 'tk-input-error': errors.link }"
+          >
+          <span
+            v-if="errors.link"
+            class="tk-field-error"
+          >{{ errors.link }}</span>
+        </div>
       </div>
-    </div>
 
-    <div class="tk-editor-item">
-      <textarea
-        ref="editorRef"
-        v-model="form.comment"
-        class="tk-textarea"
-        :aria-label="t('placeholder')"
-        :placeholder="t('placeholder')"
-        :maxlength="commentMaxLength"
-        rows="4"
-        @keydown.ctrl.enter="onSubmit"
-        @paste="onPaste"
-      />
-      <div class="tk-word-limit">
-        <span>{{ form.comment.length }}</span>/{{ commentMaxLength }}
-      </div>
-    </div>
-
-    <ImagePreview
-      :images="uploadedImages"
-      :alt-text="t('imageAlt')"
-      :remove-label="t('delete')"
-      @remove="removeImage"
-    />
-
-    <div
-      v-if="imageUploading"
-      class="tk-image-uploading"
-    >
-      <svg
-        class="tk-spin"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
+      <!-- 设计稿：免登录态垂直堆叠（comment-input-guest.html 218-227 行） -->
+      <div
+        v-else
+        class="tk-guest-info"
       >
-        <circle
-          cx="12"
-          cy="12"
-          r="10"
-          opacity=".25"
-        /><path
-          d="M12 2a10 10 0 0 1 10 10"
-          stroke-linecap="round"
-        />
-      </svg>
-      <span>{{ t('imageUploading') }}</span>
-    </div>
-
-    <div
-      v-if="errorMsg"
-      class="tk-error-row"
-    >
-      <span class="tk-error-msg">{{ errorMsg }}</span>
-    </div>
-
-    <div class="tk-toolbar">
-      <div class="tk-toolbar-left">
-        <MarkdownToolbar
-          v-model="form.comment"
-          :editor-ref="{ value: editorRef }"
-        />
-      </div>
-
-      <div class="tk-toolbar-right">
-        <button
-          v-if="showUploadBtn"
-          type="button"
-          class="tk-btn-outline"
-          @click="triggerUpload"
-        >
+        <div class="tk-guest-hint">
           <svg
             width="14"
             height="14"
@@ -297,61 +275,228 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
             fill="none"
             stroke="currentColor"
             stroke-width="2"
-          ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line
-            x1="12"
-            y1="3"
-            x2="12"
-            y2="15"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
+            cx="12"
+            cy="7"
+            r="4"
           /></svg>
-          {{ t('uploadImage') }}
-        </button>
-        <input
-          ref="uploadRef"
-          type="file"
-          accept="image/*"
-          class="tk-hidden-upload"
-          @change="onFileChange"
+          {{ t('guestInfoTitle') || '免登录评论需要填写以下信息' }}
+        </div>
+        <div class="tk-guest-fields">
+          <div class="tk-meta-item">
+            <label class="tk-field-label">
+              {{ t('nickname') }} <span class="tk-required">*</span>
+            </label>
+            <input
+              v-model="form.nick"
+              :aria-label="t('nickname')"
+              :placeholder="t('nickname')"
+              class="tk-input"
+              :class="{ 'tk-input-error': errors.nick }"
+            >
+            <span
+              v-if="errors.nick"
+              class="tk-field-error"
+            >{{ errors.nick }}</span>
+          </div>
+          <div class="tk-meta-item">
+            <label class="tk-field-label">
+              {{ t('email') }} <span class="tk-required">*</span>
+            </label>
+            <input
+              v-model="form.mail"
+              type="email"
+              :aria-label="t('email')"
+              :placeholder="t('email')"
+              class="tk-input"
+              :class="{ 'tk-input-error': errors.mail }"
+            >
+            <span
+              v-if="errors.mail"
+              class="tk-field-error"
+            >{{ errors.mail }}</span>
+          </div>
+          <div
+            v-if="options.enableLinkInput"
+            class="tk-meta-item"
+          >
+            <label class="tk-field-label">{{ t('link') }}</label>
+            <input
+              v-model="form.link"
+              :aria-label="t('link')"
+              :placeholder="t('link')"
+              class="tk-input"
+              :class="{ 'tk-input-error': errors.link }"
+            >
+            <span
+              v-if="errors.link"
+              class="tk-field-error"
+            >{{ errors.link }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tk-editor-item">
+        <textarea
+          ref="editorRef"
+          v-model="form.comment"
+          class="tk-textarea"
+          :aria-label="t('placeholder')"
+          :placeholder="t('placeholder')"
+          :maxlength="commentMaxLength"
+          rows="4"
+          @focus="isFocused = true"
+          @blur="isFocused = false"
+          @keydown.ctrl.enter="onSubmit"
+          @paste="onPaste"
+        />
+        <div class="tk-word-limit">
+          <span>{{ form.comment.length }}</span>/{{ commentMaxLength }}
+        </div>
+      </div>
+
+      <ImagePreview
+        :images="uploadedImages"
+        :alt-text="t('imageAlt')"
+        :remove-label="t('delete')"
+        @remove="removeImage"
+      />
+
+      <div
+        v-if="imageUploading"
+        class="tk-image-uploading"
+      >
+        <svg
+          class="tk-spin"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
         >
-        <button
-          type="button"
-          class="tk-btn-outline"
-          @click="showPreview = !showPreview"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+          <circle
             cx="12"
             cy="12"
-            r="3"
-          /></svg>
-          {{ t('preview') }}
-        </button>
-        <button
-          type="submit"
-          class="tk-btn-primary"
-          :disabled="submitting"
-          @click.prevent="onSubmit"
-        >
-          <svg
-            v-if="submitting"
-            class="tk-spin"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-          {{ submitting ? (t('submitting') || '提交中…') : t('submit') }}
-        </button>
+            r="10"
+            opacity=".25"
+          /><path
+            d="M12 2a10 10 0 0 1 10 10"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>{{ t('imageUploading') }}</span>
       </div>
-    </div>
-  </form>
+
+      <div
+        v-if="errorMsg"
+        class="tk-error-row"
+      >
+        <span class="tk-error-msg">{{ errorMsg }}</span>
+      </div>
+
+      <!-- 设计稿：内嵌工具栏（与 textarea 之间 1px border-top 分隔） -->
+      <div class="tk-toolbar">
+        <div class="tk-toolbar-left">
+          <!-- 设计稿：pill 发送按钮（comment-input.html 263 行） -->
+          <button
+            type="submit"
+            class="tk-btn-send"
+            :disabled="submitting"
+            @click.prevent="onSubmit"
+          >
+            <svg
+              v-if="submitting"
+              class="tk-spin"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+            <svg
+              v-else
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><line
+              x1="22"
+              y1="2"
+              x2="11"
+              y2="13"
+            /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+            <span class="tk-btn-send-text">{{ submitting ? (t('submitting') || '提交中…') : (t('submit') || '发送') }}</span>
+          </button>
+
+          <!-- 图片上传按钮 -->
+          <button
+            v-if="showUploadBtn"
+            type="button"
+            class="tk-btn-icon-ghost"
+            :title="t('uploadImage')"
+            :aria-label="t('uploadImage')"
+            @click="triggerUpload"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"
+            /></svg>
+          </button>
+          <input
+            ref="uploadRef"
+            type="file"
+            accept="image/*"
+            class="tk-hidden-upload"
+            @change="onFileChange"
+          >
+
+          <!-- 设计稿：7 个 markdown 按钮以紧凑无边框方式排列 -->
+          <MarkdownToolbar
+            v-model="form.comment"
+            :editor-ref="{ value: editorRef }"
+            variant="compact"
+          />
+
+          <!-- 设计稿：登录下拉（带 chevron 的 pill 按钮） -->
+          <LoginDropdown
+            v-if="showLogin"
+            :providers="loginProviders"
+            :env-id="options.envId"
+            class="tk-toolbar-login"
+          />
+        </div>
+
+        <div class="tk-toolbar-right">
+          <!-- 公开 / 私密切换（设计稿 296–302 行） -->
+          <PrivacyToggle
+            :model-value="privateComment"
+            @update:model-value="privateComment = $event"
+            :public-label="t('public') || '公开'"
+            :private-label="t('private') || '私密'"
+          />
+        </div>
+      </div>
+    </form>
+  </div>
 
   <div
     v-show="showPreview"
@@ -376,32 +521,96 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 <style scoped>
 .tk-submit { padding:0 0 20px; margin-bottom:24px; }
 .tk-reply-to { margin-bottom: 10px; padding: 6px 12px; background: var(--tk-bg-muted); border-radius: var(--tk-r-input); font-size: 13px; display: flex; align-items: center; gap: 6px; }
-.tk-meta-row { display: flex; gap: 10px; margin-bottom: 10px; }
-.tk-meta-item { flex: 1; margin-bottom: 0; }
-.tk-editor-item { margin-bottom: 0; position: relative; }
 
-.tk-input, .tk-textarea { width: 100%; padding: 8px 12px; font-size: 14px; font-family: inherit; color: inherit; background: transparent; border: 1px solid var(--tk-border); border-radius: var(--tk-r-input); outline: none; transition: border-color .15s; box-sizing: border-box; }
+/* =========================================================
+ * 设计稿：单卡片容器 + 聚焦外发光
+ * - 背景 var(--tk-bg-input)，边框 var(--tk-border-light)，圆角 12px
+ * - 工具栏与上方内容之间 1px 顶部分隔
+ * - :focus-within 时品牌色 1px box-shadow
+ * ========================================================= */
+.tk-submit-card {
+  background: var(--tk-bg-input);
+  border: 1px solid var(--tk-border-light);
+  border-radius: var(--tk-r-card);
+  padding: var(--tk-space-md);
+  transition: box-shadow .18s ease, border-color .18s ease;
+  position: relative;
+}
+.tk-submit-card:focus-within,
+.tk-submit-card-focus {
+  border-color: var(--tk-brand);
+  box-shadow: 0 0 0 1px var(--tk-brand-glow);
+}
+.tk-submit-form { display: flex; flex-direction: column; gap: var(--tk-space-md); }
+
+/* 设计稿：免登录态垂直堆叠 */
+.tk-guest-info { display: flex; flex-direction: column; gap: var(--tk-space-sm); padding-bottom: var(--tk-space-sm); }
+.tk-guest-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--tk-text-tertiary);
+  font-weight: 500;
+}
+.tk-guest-fields { display: flex; flex-direction: column; gap: var(--tk-space-sm); }
+.tk-field-label {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--tk-text-secondary); margin-bottom: 4px;
+}
+.tk-required { color: var(--tk-status-error, #ef4444); margin-left: 2px; }
+
+.tk-meta-row { display: flex; gap: 10px; }
+.tk-meta-item { flex: 1; min-width: 0; }
+.tk-editor-item { position: relative; }
+
+.tk-input, .tk-textarea { width: 100%; padding: 8px 12px; font-size: 14px; font-family: inherit; color: inherit; background: transparent; border: 1px solid var(--tk-border-light); border-radius: var(--tk-r-input); outline: none; transition: border-color .15s, box-shadow .15s; box-sizing: border-box; }
 .tk-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .tk-input:hover, .tk-textarea:hover { border-color: var(--tk-border-strong); }
-.tk-input:focus,.tk-textarea:focus{
-  border-color:var(--tk-border-strong);
-  border-bottom-color:var(--tk-brand);
-  box-shadow:inset 0 -1px 0 var(--tk-brand);
-  background:var(--tk-bg-inset);}
+.tk-input:focus,.tk-textarea:focus{ border-color: var(--tk-brand); }
 .tk-input-error { border-color: var(--tk-danger) !important; }
 .tk-field-error { font-size: 11px; color: var(--tk-danger); margin-top: 2px; display: block; }
 .tk-word-limit { position: absolute; bottom: 8px; right: 10px; font-size: 11px; opacity: .45; pointer-events: none; }
-.tk-image-uploading { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: inherit; opacity: .6; }
+.tk-image-uploading { display: flex; align-items: center; gap: 6px; font-size: 13px; color: inherit; opacity: .6; }
 @keyframes tk-rotate { to { transform: rotate(360deg); } }
 .tk-spin { animation: tk-rotate 1s linear infinite; }
 .tk-hidden-upload { display: none; }
-.tk-error-row { width: 100%; margin-bottom: 8px; padding: 0 4px; box-sizing: border-box; }
+.tk-error-row { width: 100%; box-sizing: border-box; }
 .tk-error-msg { font-size: 12px; color: var(--tk-danger); line-height: 1.4; word-break: break-all; }
 .tk-avatar-preview { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 
-.tk-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 12px; }
-.tk-toolbar-left { display: flex; gap: 4px; align-items: center; flex: 1; min-width: 0; }
-.tk-toolbar-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* 设计稿：内嵌工具栏（textarea 与 toolbar 之间 1px border-top 分隔） */
+.tk-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  flex-wrap: wrap;
+  padding-top: var(--tk-space-sm);
+  border-top: 1px solid var(--tk-border-light);
+}
+.tk-toolbar-left { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.tk-toolbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.tk-toolbar-login { margin-left: auto; }
+
+/* 设计稿：pill 发送按钮 */
+.tk-btn-send {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: var(--tk-brand);
+  border: none; border-radius: var(--tk-r-pill);
+  color: #fff; font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s, transform .1s;
+  flex-shrink: 0;
+}
+.tk-btn-send:hover { background: var(--tk-brand-hover); }
+.tk-btn-send:active { transform: scale(0.98); }
+.tk-btn-send:disabled { background: var(--tk-bg-hover); color: var(--tk-text-tertiary); cursor: not-allowed; }
+
+/* 设计稿：紧凑无边框 icon 按钮（用于图片/工具） */
+.tk-btn-icon-ghost {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  background: transparent; border: none; border-radius: var(--tk-r-input);
+  color: var(--tk-text-secondary);
+  cursor: pointer; opacity: .7; transition: all .15s;
+}
+.tk-btn-icon-ghost:hover { opacity: 1; background: var(--tk-bg-hover); color: var(--tk-text-primary); }
 
 .tk-btn-circle { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: inherit; opacity: .6; cursor: pointer; border-radius: 50%; transition: all .15s; padding: 0; position: relative; flex-shrink: 0; }
 .tk-btn-circle:hover { opacity: 1; background: var(--tk-bg-muted); }
@@ -431,9 +640,13 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
 @media (max-width: 640px) {
   .tk-submit { padding: 14px 0; }
+  /* 设计稿：meta-row 垂直堆叠（用户偏好：vertical stacking over horizontal） */
   .tk-meta-row { flex-direction: column; gap: 6px; }
-  .tk-toolbar { flex-direction: column; gap: 8px; align-items: stretch; }
-  .tk-toolbar-left { flex-wrap: nowrap; overflow-x: auto; }
-  .tk-toolbar-right { justify-content: flex-end; }
+  /* 设计稿：工具栏窄屏不强制换行（保留可见 send + image + 关键 md） */
+  .tk-toolbar { flex-direction: row; gap: 8px; align-items: center; }
+  .tk-toolbar-left { flex-wrap: wrap; overflow: visible; }
+  .tk-toolbar-right { flex-shrink: 0; }
+  .tk-btn-send-text { display: none; } /* 窄屏：发送按钮只显示图标 */
+  .tk-submit-card { padding: 10px; }
 }
 </style>
