@@ -12,11 +12,14 @@ Rewritten from [Twikoo](https://github.com/twikoojs/twikoo).
 
 ## Features
 
-- **Lightweight** — Client UMD bundle ~84 kB (gzip), Vue externalized, two-line CDN setup
-- **Multi-database** — SQLite (self-hosted) / MongoDB (serverless), lazy-loaded via store registry
+- **Lightweight** — Client UMD bundle ~83 kB (gzip), Vue externalized, two-line CDN setup
+- **Multi-database** — SQLite (self-hosted) / MongoDB / PostgreSQL (serverless), lazy-loaded via store registry
+- **Social Login** — GitHub, Google OAuth and email verification code login with JWT session management
 - **AI-powered** — Article summarization and AI comment moderation (OpenAI / Anthropic / Gemini)
+- **Push Notifications** — Powered by Pushoo, supports 20+ channels including ServerChan, Telegram, Bark
+- **Security** — Security headers (CSP / HSTS / X-Frame-Options), brute-force protection, SameSite cookies
 - **Admin Panel** — Standalone Vue 3 SPA (Naive UI) for comment management, configuration, and data import/export
-- **Rich features** — Markdown, code highlighting (Shiki), external TeX renderer, emoji reactions, image upload, captcha, IP geolocation, email notifications
+- **Rich features** — Markdown, code highlighting (highlight.js), server-side rendering (Shiki), external TeX renderer, emoji reactions, image upload, captcha, IP geolocation, email notifications
 - **Flexible deployment** — Node.js self-hosted, Vercel, Netlify — one-line Nitro preset switch
 
 ## Quick Start
@@ -134,11 +137,17 @@ server {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DB_TYPE` | Database type: `sqlite` or `mongodb` | `sqlite` |
+| `DB_TYPE` | Database type: `sqlite` / `mongodb` / `postgres` | `sqlite` |
 | `MONGODB_URI` | MongoDB connection string (required when `DB_TYPE=mongodb`) | — |
-| `TAKOIO_THROTTLE` | Min interval between requests from same IP (ms) | `250` |
+| `POSTGRES_URL` | PostgreSQL connection string (required when `DB_TYPE=postgres`) | — |
+| `TAKOIO_THROTTLE` | Min interval between requests from same IP (ms) | `0` |
 | `SETUP_TOKEN` | Token for initial admin password setup (prevents unauthorized takeover) | — |
-| `REDIS_URL` | Redis connection (required for AI summary caching) | — |
+| `REDIS_URL` | Redis connection (rate limiting, caching) | — |
+| `AUTH_JWT_SECRET` | JWT signing secret (required for social login) | — |
+| `GITHUB_CLIENT_ID` | GitHub OAuth Client ID | — |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth Client Secret | — |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | — |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | — |
 | `LOG_LEVEL` | Log level: `debug` / `info` / `warn` / `error` | `debug` (dev) / `info` (prod) |
 | `TZ` | Timezone | `Asia/Shanghai` |
 
@@ -151,6 +160,7 @@ Common options for `init()`. Full type definitions in [types.ts](./src/client/ty
 | `envId` | `string` | **Required.** Server URL |
 | `el` | `string \| HTMLElement` | Mount target selector |
 | `path` | `string` | Page path (comment association key) |
+| `pathNormalize` | `string` | Path normalization: `exact` / `remove-trailing-slash` / `add-trailing-slash` / `auto` |
 | `lang` | `string` | Language: `zh-CN` / `zh-TW` / `en` |
 | `pageSize` | `number` | Comments per page, default `10` |
 | `sort` | `string` | Sort order: `newest` / `oldest` / `hottest` |
@@ -162,10 +172,14 @@ Common options for `init()`. Full type definitions in [types.ts](./src/client/ty
 | `visitorCounter` | `boolean` | Show page view counter |
 | `enableSummary` | `boolean` | AI article summary |
 | `articleContent` | `string` | Article body text (required for AI summary) |
-| `paginationMode` | `string` | `pagination` / `infinite` (infinite scroll) |
+| `paginationMode` | `string` | `pagination` / `readmore` (load more) |
 | `customCSS` | `string` | Custom CSS injection |
 | `placeholder` | `string` | Comment box placeholder text |
 | `texRenderer` | `(blockMode, tex) => string \| Promise<string>` | External math renderer |
+| `onCommentPosted` | `(comment) => void` | Callback when a comment is posted |
+| `onCommentsLoaded` | `(comments) => void` | Callback when comments are loaded |
+| `onLoginSuccess` | `() => void` | Callback on login success (including social login) |
+| `onLogoutSuccess` | `() => void` | Callback on logout success |
 
 ### Math Rendering
 
@@ -205,6 +219,9 @@ After startup:
 
 ```
 Takoio/
+├── packages/
+│   ├── common/          # @takoio/common — shared i18n, types, utilities
+│   └── core/            # @takoio/core — core API, timeago
 ├── src/
 │   ├── client/          # Client widget (Vue 3) — npm package
 │   ├── server/          # Server (Nitro 3) — workspace package
@@ -220,9 +237,9 @@ Takoio/
 
 ### Tech Stack
 
-Client: Vue 3.5, Vite 8, UnoCSS, Pinia, Marked, Shiki, DOMPurify
+Client: Vue 3.5, Vite 8, UnoCSS, Pinia, Marked, highlight.js, DOMPurify
 
-Server: Nitro 3, h3, Drizzle ORM, LibSQL/MongoDB, Vercel AI SDK, Zod, Nodemailer
+Server: Nitro 3, h3, Drizzle ORM, LibSQL/MongoDB/PostgreSQL, Shiki, Vercel AI SDK, Zod, Nodemailer, Pushoo
 
 Admin: Vue 3, Vue Router 5, Pinia 3, Naive UI
 
@@ -240,7 +257,7 @@ pnpm lint          # Linting (ESLint)
 ```
 ┌─────────────────────────────────────┐
 │  Client Widget (npm / CDN)          │  ← Embeddable comment component
-│  Vue 3 · UMD 167kB gzip            │
+│  Vue 3 · UMD ~83 kB gzip           │
 └──────────────┬──────────────────────┘
                │ HTTP / REST
 ┌──────────────▼──────────────────────┐

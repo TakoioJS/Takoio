@@ -12,11 +12,14 @@
 
 ## 特性
 
-- **轻量嵌入** — 客户端 UMD 包约 84 kB (gzip)，Vue 外部化，CDN 两行引入
-- **多数据库** — SQLite（自托管）/ MongoDB（Serverless），Store 注册模式按需加载
+- **轻量嵌入** — 客户端 UMD 包约 83 kB (gzip)，Vue 外部化，CDN 两行引入
+- **多数据库** — SQLite（自托管）/ MongoDB / PostgreSQL（Serverless），Store 注册模式按需加载
+- **社交登录** — 支持 GitHub、Google OAuth 及邮箱验证码登录，JWT 会话管理
 - **AI 集成** — 文章摘要生成、AI 评论审核，支持 OpenAI / Anthropic / Gemini
+- **推送通知** — 基于 Pushoo，支持 Server酱、Telegram、Bark 等 20+ 推送渠道
+- **安全加固** — 安全响应头（CSP / HSTS / X-Frame-Options）、暴力破解防护、SameSite Cookie
 - **管理面板** — 独立 Vue 3 SPA（Naive UI），评论管理、配置、数据导入导出
-- **丰富功能** — Markdown、代码高亮 (Shiki)、外部 TeX 渲染器、表情反应、图片上传、验证码、IP 归属地、邮件通知
+- **丰富功能** — Markdown、代码高亮 (highlight.js)、服务端渲染 (Shiki)、外部 TeX 渲染器、表情反应、图片上传、验证码、IP 归属地、邮件通知
 - **多平台部署** — Node.js 自托管、Vercel、Netlify，Nitro preset 一行切换
 
 ## 快速开始
@@ -134,11 +137,17 @@ server {
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `DB_TYPE` | 数据库类型：`sqlite` 或 `mongodb` | `sqlite` |
+| `DB_TYPE` | 数据库类型：`sqlite` / `mongodb` / `postgres` | `sqlite` |
 | `MONGODB_URI` | MongoDB 连接串（`DB_TYPE=mongodb` 时必填） | — |
-| `TAKOIO_THROTTLE` | 同一 IP 请求间隔（ms） | `250` |
+| `POSTGRES_URL` | PostgreSQL 连接串（`DB_TYPE=postgres` 时必填） | — |
+| `TAKOIO_THROTTLE` | 同一 IP 请求间隔（ms） | `0` |
 | `SETUP_TOKEN` | 首次设置令牌，防止未授权抢占管理员密码 | — |
-| `REDIS_URL` | Redis 连接（AI 摘要缓存需要） | — |
+| `REDIS_URL` | Redis 连接（限流、缓存） | — |
+| `AUTH_JWT_SECRET` | JWT 签名密钥（社交登录必配） | — |
+| `GITHUB_CLIENT_ID` | GitHub OAuth Client ID | — |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth Client Secret | — |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | — |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | — |
 | `LOG_LEVEL` | 日志级别：`debug` / `info` / `warn` / `error` | 开发 `debug`，生产 `info` |
 | `TZ` | 时区 | `Asia/Shanghai` |
 
@@ -151,6 +160,7 @@ server {
 | `envId` | `string` | **必填**，服务端 URL |
 | `el` | `string \| HTMLElement` | 挂载元素选择器 |
 | `path` | `string` | 当前页面路径（评论关联 key） |
+| `pathNormalize` | `string` | 路径规范化：`exact` / `remove-trailing-slash` / `add-trailing-slash` / `auto` |
 | `lang` | `string` | 语言：`zh-CN` / `zh-TW` / `en` |
 | `pageSize` | `number` | 每页评论数，默认 `10` |
 | `sort` | `string` | 排序：`newest` / `oldest` / `hottest` |
@@ -162,10 +172,14 @@ server {
 | `visitorCounter` | `boolean` | 显示浏览量 |
 | `enableSummary` | `boolean` | AI 文章摘要 |
 | `articleContent` | `string` | 文章正文（启用摘要时必传） |
-| `paginationMode` | `string` | `pagination`（分页）/ `infinite`（无限滚动） |
+| `paginationMode` | `string` | `pagination`（分页）/ `readmore`（加载更多） |
 | `customCSS` | `string` | 自定义 CSS |
 | `placeholder` | `string` | 评论框占位符 |
 | `texRenderer` | `(blockMode, tex) => string \| Promise<string>` | 外部数学公式渲染器 |
+| `onCommentPosted` | `(comment) => void` | 评论发布回调 |
+| `onCommentsLoaded` | `(comments) => void` | 评论加载回调 |
+| `onLoginSuccess` | `() => void` | 登录成功回调（含社交登录） |
+| `onLogoutSuccess` | `() => void` | 登出成功回调 |
 
 ### 数学公式
 
@@ -205,6 +219,9 @@ pnpm dev
 
 ```
 Takoio/
+├── packages/
+│   ├── common/          # @takoio/common — 共享 i18n、类型、工具
+│   └── core/            # @takoio/core — 核心 API、timeago
 ├── src/
 │   ├── client/          # 客户端组件（Vue 3）— npm 包
 │   ├── server/          # 服务端（Nitro 3）— workspace 包
@@ -220,9 +237,9 @@ Takoio/
 
 ### 技术栈
 
-客户端：Vue 3.5、Vite 8、UnoCSS、Pinia、Marked、Shiki、DOMPurify
+客户端：Vue 3.5、Vite 8、UnoCSS、Pinia、Marked、highlight.js、DOMPurify
 
-服务端：Nitro 3、h3、Drizzle ORM、LibSQL/MongoDB、Vercel AI SDK、Zod、Nodemailer
+服务端：Nitro 3、h3、Drizzle ORM、LibSQL/MongoDB/PostgreSQL、Shiki、Vercel AI SDK、Zod、Nodemailer、Pushoo
 
 管理面板：Vue 3、Vue Router 5、Pinia 3、Naive UI
 
@@ -240,7 +257,7 @@ pnpm lint          # 代码检查（ESLint）
 ```
 ┌─────────────────────────────────────┐
 │  Client Widget (npm / CDN)          │  ← 嵌入式评论组件
-│  Vue 3 · UMD 167kB gzip            │
+│  Vue 3 · UMD ~83 kB gzip           │
 └──────────────┬──────────────────────┘
                │ HTTP / REST
 ┌──────────────▼──────────────────────┐
