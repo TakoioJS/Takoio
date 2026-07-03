@@ -248,6 +248,12 @@ export const requireAdmin = async (data: any): Promise<void> => {
  *  Only validates state-changing requests (POST/PUT/DELETE/PATCH).
  *  GET requests are skipped as they are read-only and may not have Origin header.
  */
+/** Parse CORS_ORIGINS config which may be a comma-separated string or an array. */
+const parseOrigins = (value: string | string[] | undefined): string[] => {
+  if (Array.isArray(value)) return value.map((s) => String(s).trim()).filter(Boolean)
+  return String(value || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+}
+
 export const validateOrigin = async (event: any): Promise<void> => {
   const method = event.method || 'GET'
   // Only validate state-changing methods
@@ -255,7 +261,7 @@ export const validateOrigin = async (event: any): Promise<void> => {
 
   const cfg = await getConfig(event)
   const allowedOrigins = [
-    ...(cfg.CORS_ORIGINS || '').split(/[,，]/).map((s: string) => s.trim()),
+    ...parseOrigins(cfg.CORS_ORIGINS),
     ...(cfg.SITE_URL ? [cfg.SITE_URL] : []),
   ].filter(Boolean)
   if (allowedOrigins.length === 0) return // No allowed origins configured = skip validation

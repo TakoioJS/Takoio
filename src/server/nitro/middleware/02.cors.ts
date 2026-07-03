@@ -14,9 +14,15 @@ import { isDev } from '#core/env'
 
 let cachedWarn = false
 
+/** Parse CORS_ORIGINS config which may be a comma-separated string or an array. */
+const parseOrigins = (value: string | string[] | undefined): string[] => {
+  if (Array.isArray(value)) return value.map((s) => String(s).trim()).filter(Boolean)
+  return String(value || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+}
+
 export default defineMiddleware(async (event) => {
   const cfg = await getConfig(event)
-  const origins = (cfg.CORS_ORIGINS || '').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
+  const origins = parseOrigins(cfg.CORS_ORIGINS)
   const origin = getRequestHeader(event, 'origin') || ''
 
   let allowed = false
