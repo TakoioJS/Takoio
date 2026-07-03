@@ -381,10 +381,16 @@ const loadConfig = async () => {
     for (const key of aiFieldKeys) {
       config[key] = data[key] ?? getDefaultValue(key)
     }
-    const rawProviders = data.AI_PROVIDERS ?? []
-    const savedProviders: any[] = typeof rawProviders === 'string'
-      ? (() => { try { const p = JSON.parse(rawProviders); return Array.isArray(p) ? p : [] } catch { return [] } })()
-      : Array.isArray(rawProviders) ? rawProviders : []
+    // AI_PROVIDERS 含 API key，被后端掩码保护（masked），需通过 private-key API 加载真实值
+    const { data: rawProviders } = await configApi.privateKey.get('AI_PROVIDERS')
+    const savedProviders: any[] = (() => {
+      if (!rawProviders) return []
+      if (Array.isArray(rawProviders)) return rawProviders
+      if (typeof rawProviders === 'string') {
+        try { const p = JSON.parse(rawProviders); return Array.isArray(p) ? p : [] } catch { return [] }
+      }
+      return []
+    })()
     aiProviders.splice(0, aiProviders.length, ...savedProviders.map((p: any) => ({
       name: p.name ?? '',
       format: p.format ?? 'openai',

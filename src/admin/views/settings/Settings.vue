@@ -683,8 +683,9 @@ const loadConfig = async () => {
       } catch { /* ignore invalid JSON */ }
     }
 
-    // 动态更新 AI 审核提供商选项
-    updateAiProviderOptions(data.AI_PROVIDERS)
+    // AI_PROVIDERS 含 API key，被后端掩码保护（masked），需通过 private-key API 加载真实值生成选项
+    const { data: rawAiProviders } = await configApi.privateKey.get('AI_PROVIDERS')
+    updateAiProviderOptions(rawAiProviders)
 
     savedConfig.value = JSON.parse(JSON.stringify(data)) as Record<string, unknown>
     if (savedConfig.value) {

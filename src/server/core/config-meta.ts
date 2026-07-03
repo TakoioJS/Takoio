@@ -105,7 +105,7 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'AUTO_AUDIT_AI_MODEL',     type: 'string',  default: '',                                       hidden: true },
   { key: 'AUTO_AUDIT_AI_PROMPT',    type: 'string',  default: '',                                       hidden: true },
   { key: 'BLOCKED_KEYWORDS',        type: 'string',  default: '赌博,博彩,外围,买分,卖分,刷分,代发,推广,SEO,裸聊,约炮,成人,刷屏,恶意攻击,小姐,招嫖', hidden: true },
-  { key: 'AKISMET_KEY',             type: 'string',  default: '',                                       hidden: true },
+  { key: 'AKISMET_KEY',             type: 'string',  default: '',                                       masked: true, hidden: true },
   { key: 'ENABLE_ANTI_SPAM',        type: 'boolean', default: false,                                    public: true },
 
   // ---- IP & Security ----
@@ -137,7 +137,7 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'PUSHOO_CHANNELS',         type: 'string',  default: '',                                       masked: true, hidden: true },
 
   // ---- AI / LLM ----
-  { key: 'AI_PROVIDERS',            type: 'string',  default: '[]',                                     hidden: true },
+  { key: 'AI_PROVIDERS',            type: 'string',  default: '[]',                                     masked: true, hidden: true },
   { key: 'AI_SUMMARY_ENABLED',      type: 'boolean', default: true,                                     public: true },
   { key: 'AI_SUMMARY_PROVIDER',     type: 'string',  default: '',                                       hidden: true },
   { key: 'AI_SUMMARY_MODEL',        type: 'string',  default: '',                                       hidden: true },

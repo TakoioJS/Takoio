@@ -108,4 +108,9 @@ export const configApi = {
 
   testEmail: (email: string, template: string) =>
     api.post('/api/admin/email-test', { email, template }),
+
+  privateKey: {
+    get: (key: string) =>
+      api.get<{ data: string | null }>('/api/admin/private-key', { key }),
+  },
 }
