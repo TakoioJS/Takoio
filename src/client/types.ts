@@ -28,6 +28,14 @@ export interface TakoioConfig {
   el?: string | HTMLElement
   /** 当前页面路径 */
   path?: string
+  /** 路径规范化模式：
+   *  - 'exact'（默认）精确匹配，不处理
+   *  - 'remove-trailing-slash' 去掉尾部斜杠（大多数博客场景）
+   *  - 'add-trailing-slash' 添加尾部斜杠（特定框架需求）
+   *  - 'auto' 尝试两种格式，取有数据的（双请求探测） */
+  pathNormalize?: 'exact' | 'remove-trailing-slash' | 'add-trailing-slash' | 'auto'
+  /** 自定义路径转换函数（优先级高于 pathNormalize） */
+  pathTransform?: (path: string) => string
   /** 当前页面 URL */
   href?: string
   /** 当前页面标题 */

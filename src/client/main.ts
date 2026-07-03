@@ -17,6 +17,7 @@ import {
 import { getArticleSummary as getArticleSummaryApi } from './utils'
 import type { TakoioConfig } from './types'
 import { checkAuthCallback } from './utils/auth'
+import { getUrl, getHref } from './utils'
 
 /** 初始化 Takoio */
 export async function init (options: TakoioConfig = {} as TakoioConfig): Promise<void> {
@@ -32,6 +33,8 @@ export async function init (options: TakoioConfig = {} as TakoioConfig): Promise
   await render(options)
   await updateVisitorsCount({
     ...options,
+    _getUrl: (path?: string) => getUrl(path, { pathNormalize: options.pathNormalize, pathTransform: options.pathTransform }),
+    _getHref: (href?: string) => getHref(href),
     _isLocalhost: () => ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(
       typeof window !== 'undefined' ? window.location.hostname : ''
     )

@@ -99,7 +99,7 @@ const onSubmit = async (): Promise<void> => {
   try {
     const ua = await getUserAgent()
     const result = await submitComment(props.options.envId, {
-      url: getUrl(props.options.path),
+      url: getUrl(props.options.path, { pathNormalize: props.options.pathNormalize, pathTransform: props.options.pathTransform }),
       href: getHref(props.options.href),
       title: props.options.title || document.title,
       nick: form.nick,

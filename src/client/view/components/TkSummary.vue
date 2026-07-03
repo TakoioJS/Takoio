@@ -159,7 +159,7 @@ const generateSummary = async () => {
   state.value = 'loading'
   notifyHost()
   try {
-    const url = getUrl(props.options.path)
+    const url = getUrl(props.options.path, { pathNormalize: props.options.pathNormalize, pathTransform: props.options.pathTransform })
     const result = await getArticleSummary(props.options.envId, {
       content: props.options.articleContent,
       url,

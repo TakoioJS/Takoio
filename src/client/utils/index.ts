@@ -37,8 +37,30 @@ export const renderLinks = (el: Element | Element[] | null): void => {
   }
 }
 
-/** 获取 URL（兼容魔法路径） */
-export const getUrl = (path?: string): string => {
+/** 路径规范化选项 */
+export interface NormalizePathOpts {
+  pathNormalize?: 'exact' | 'remove-trailing-slash' | 'add-trailing-slash' | 'auto'
+  pathTransform?: (path: string) => string
+}
+
+/** 根据配置规范化路径（同步，不处理 'auto' — auto 需异步探测由调用方处理） */
+export function normalizePath (path: string, opts: NormalizePathOpts): string {
+  // pathTransform 优先级最高
+  if (opts.pathTransform) return opts.pathTransform(path)
+  switch (opts.pathNormalize) {
+    case 'remove-trailing-slash':
+      return path.replace(/\/+$/, '') || '/'
+    case 'add-trailing-slash':
+      return path.endsWith('/') ? path : path + '/'
+    case 'auto':
+    case 'exact':
+    default:
+      return path
+  }
+}
+
+/** 获取 URL（兼容魔法路径，支持规范化） */
+export const getUrl = (path?: string, opts?: NormalizePathOpts): string => {
   let url: string
   if (typeof window !== 'undefined' && (window as any).TAKOIO_MAGIC_PATH) {
     url = (window as any).TAKOIO_MAGIC_PATH
@@ -56,9 +78,9 @@ export const getUrl = (path?: string): string => {
         url = path
     }
   } else {
-    url = window.location.pathname
+    url = typeof window !== 'undefined' ? window.location.pathname : '/'
   }
-  return url
+  return opts ? normalizePath(url, opts) : url
 }
 
 /** 获取完整链接 */

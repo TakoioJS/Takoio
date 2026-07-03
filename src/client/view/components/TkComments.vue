@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed, onBeforeUnmount, inject, type Ref } from 'vue'
-import { t, getComments } from '../../utils'
+import { t, getComments, getUrl, normalizePath, type NormalizePathOpts } from '../../utils'
 import type { Comment, TakoioConfig } from '../../types'
 import TkSubmit from './TkSubmit.vue'
 import TkComment from './TkComment.vue'
@@ -190,6 +190,62 @@ const mergedOptions = computed(() => {
     ...(cfg.GLOBAL_COLOR && { brandColor: cfg.GLOBAL_COLOR }),
   }
 })
+
+// 路径规范化选项（从用户 init 配置透传）
+const normalizeOpts = computed<NormalizePathOpts>(() => ({
+  pathNormalize: mergedOptions.value.pathNormalize,
+  pathTransform: mergedOptions.value.pathTransform,
+}))
+
+// auto 模式探测后确定的实际请求 path（缓存，避免每次 fetch/loadMore 重复探测）
+// 非 auto 模式由 resolveTargetUrl 同步计算后立即赋值
+const resolvedUrl = ref<string | null>(null)
+
+/**
+ * 解析当前页面的目标 URL。
+ * - 非 auto 模式：同步规范化（getUrl + normalizePath），直接返回
+ * - auto 模式：双请求探测——先请求去尾斜杠 path，total>0 则采用；
+ *   否则请求加尾斜杠 path，total>0 则采用；都为 0 则回退去尾斜杠（新评论默认归属）
+ *   两个候选相同时只请求一次。探测结果缓存到 resolvedUrl。
+ */
+const resolveTargetUrl = async (signal: AbortSignal): Promise<string | null> => {
+  const rawPath = getUrl(mergedOptions.value.path) // 先解析 magic-string，不做规范化
+  const mode = normalizeOpts.value.pathNormalize
+  if (mode !== 'auto') {
+    // 同步规范化
+    const url = normalizePath(rawPath, normalizeOpts.value)
+    resolvedUrl.value = url
+    return url
+  }
+  // auto 双请求探测
+  const candidateA = rawPath.replace(/\/+$/, '') || '/'
+  const candidateB = rawPath.endsWith('/') ? rawPath : rawPath + '/'
+  // 两候选相同（如根路径 '/'），无需探测
+  if (candidateA === candidateB) {
+    resolvedUrl.value = candidateA
+    return candidateA
+  }
+  // 先探测 candidateA（去尾斜杠）
+  try {
+    const resultA = await getComments(mergedOptions.value.envId, { url: candidateA, page: 1, pageSize: 1, sort: sort.value, signal })
+    if (signal.aborted) return null
+    if (resultA.total > 0) { resolvedUrl.value = candidateA; return candidateA }
+  } catch (e) {
+    if (e instanceof Error && e.name === 'TakoioCancelledError') return null
+    // 探测失败则继续尝试 candidateB
+  }
+  // 再探测 candidateB（加尾斜杠）
+  try {
+    const resultB = await getComments(mergedOptions.value.envId, { url: candidateB, page: 1, pageSize: 1, sort: sort.value, signal })
+    if (signal.aborted) return null
+    if (resultB.total > 0) { resolvedUrl.value = candidateB; return candidateB }
+  } catch (e) {
+    if (e instanceof Error && e.name === 'TakoioCancelledError') return null
+  }
+  // 都为 0 或都失败 → 回退去尾斜杠（作为新评论的默认归属）
+  resolvedUrl.value = candidateA
+  return candidateA
+}
 
 const comments = ref<Comment[]>([])
 const total = ref(0)
@@ -255,7 +311,8 @@ const loadMore = async (): Promise<void> => {
 
   loadingMore.value = true; page.value += 1
   try {
-    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
+    const targetUrl = resolvedUrl.value || getUrl(mergedOptions.value.path, normalizeOpts.value)
+    const result = await getComments(mergedOptions.value.envId, { url: targetUrl, page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
     const newComments = result.data || []
     resolveReplyToNick(newComments)
     let combined = [...allComments.value, ...newComments]
@@ -282,7 +339,9 @@ const fetchComments = async (): Promise<void> => {
 
   loading.value = true; errorMsg.value = ''
   try {
-    const result = await getComments(mergedOptions.value.envId, { url: mergedOptions.value.path || (typeof window !== 'undefined' ? window.location.pathname : '/'), page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
+    const targetUrl = await resolveTargetUrl(signal)
+    if (signal.aborted) return
+    const result = await getComments(mergedOptions.value.envId, { url: targetUrl!, page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
     const fetched = result.data || []
     resolveReplyToNick(fetched)
     if (infiniteMode.value) allComments.value = fetched
