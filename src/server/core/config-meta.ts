@@ -44,7 +44,7 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'PAGE_SIZE',               type: 'number',  default: 10,                                       public: true },
   { key: 'COMMENT_SORT',            type: 'string',  default: 'newest',                                 public: true },
   { key: 'COMMENT_LENGTH_MAX',      type: 'number',  default: 500,                                      public: true },
-  { key: 'REQUIRED_FIELDS',         type: 'string[]',default: ['nick'],                                 public: true },
+  { key: 'REQUIRED_FIELDS',         type: 'string[]', default: ['nick'],                                 public: true },
   { key: 'COMMENT_NICK_REQUIRED',   type: 'boolean', default: true,                                     public: true },
   { key: 'COMMENT_PAGINATION_MODE', type: 'string',  default: 'pagination',                             public: true },
   { key: 'COMMENT_RATE_LIMIT',      type: 'number',  default: 30000,                                    public: true },
@@ -87,9 +87,9 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'IMAGE_HOSTING_TOKEN',     type: 'string',  default: '',                                       masked: true },
   { key: 'IMAGE_HOSTING_BUCKET',    type: 'string',  default: '',                                       hidden: true },
   { key: 'IMAGE_HOSTING_REGION',    type: 'string',  default: '',                                       hidden: true },
-  { key: 'IMAGE_HOSTING_ACCESS_KEY',type: 'string',  default: '',                                       masked: true },
-  { key: 'IMAGE_HOSTING_SECRET_KEY',type: 'string',  default: '',                                       masked: true },
-  { key: 'IMAGE_HOSTING_CDN_DOMAIN',type: 'string',  default: '',                                       hidden: true },
+  { key: 'IMAGE_HOSTING_ACCESS_KEY', type: 'string',  default: '',                                       masked: true },
+  { key: 'IMAGE_HOSTING_SECRET_KEY', type: 'string',  default: '',                                       masked: true },
+  { key: 'IMAGE_HOSTING_CDN_DOMAIN', type: 'string',  default: '',                                       hidden: true },
 
   // ---- NSFW ----
   { key: 'ENABLE_NSFW_DETECTION',   type: 'boolean', default: false,                                    public: true },
@@ -129,9 +129,9 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'SENDER_EMAIL',            type: 'string',  default: '',                                       hidden: true },
   { key: 'SENDER_NAME',             type: 'string',  default: '',                                       public: true },
   { key: 'MAIL_SUBJECT',            type: 'string',  default: '有人在 {title} 中回复了你',              public: true },
-  { key: 'MAIL_TEMPLATE',           type: 'string',  default: `<div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#333"><div style="text-align:center;padding:16px 0;font-size:22px;font-weight:700;color:#10b981">{{ siteName }}</div><div style="background:#f9fafb;border-radius:10px;padding:20px;margin:12px 0"><div style="font-size:14px;color:#666;margin-bottom:8px"><strong style="color:#333">{{ nick }}</strong> 回复了你：</div><div style="font-size:15px;line-height:1.7;padding:14px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;white-space:pre-wrap">{{ comment }}</div></div><div style="text-align:center;margin:20px 0"><a href="{{ url }}" style="display:inline-block;padding:10px 28px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">查看回复</a></div><div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">来自 {{ siteName }} 的邮件通知</div></div>`, hidden: true },
+  { key: 'MAIL_TEMPLATE',           type: 'string',  default: '<div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#333"><div style="text-align:center;padding:16px 0;font-size:22px;font-weight:700;color:#10b981">{{ siteName }}</div><div style="background:#f9fafb;border-radius:10px;padding:20px;margin:12px 0"><div style="font-size:14px;color:#666;margin-bottom:8px"><strong style="color:#333">{{ nick }}</strong> 回复了你：</div><div style="font-size:15px;line-height:1.7;padding:14px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;white-space:pre-wrap">{{ comment }}</div></div><div style="text-align:center;margin:20px 0"><a href="{{ url }}" style="display:inline-block;padding:10px 28px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">查看回复</a></div><div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">来自 {{ siteName }} 的邮件通知</div></div>', hidden: true },
   { key: 'MAIL_SUBJECT_ADMIN',      type: 'string',  default: '新的评论：{nick} 在 {title}',            public: true },
-  { key: 'MAIL_TEMPLATE_ADMIN',     type: 'string',  default: `<div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#333"><div style="text-align:center;padding:16px 0;font-size:22px;font-weight:700;color:#10b981">{{ siteName }}</div><div style="background:#f9fafb;border-radius:10px;padding:20px;margin:12px 0"><div style="font-size:13px;color:#666;margin-bottom:10px">访客 <strong style="color:#333">{{ nick }}</strong> 在文章 <strong>{{ title }}</strong> 中发表了新评论</div><div style="font-size:15px;line-height:1.7;padding:14px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;white-space:pre-wrap;margin-bottom:10px">{{ comment }}</div><div style="font-size:12px;color:#999;border-top:1px solid #e5e7eb;padding-top:8px">IP: {{ ip }} ｜ UA: {{ ua }}</div></div><div style="text-align:center;margin:20px 0"><a href="{{ url }}" style="display:inline-block;padding:10px 28px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">管理评论</a></div><div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">{{ siteName }} · 管理通知</div></div>`, hidden: true },
+  { key: 'MAIL_TEMPLATE_ADMIN',     type: 'string',  default: '<div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#333"><div style="text-align:center;padding:16px 0;font-size:22px;font-weight:700;color:#10b981">{{ siteName }}</div><div style="background:#f9fafb;border-radius:10px;padding:20px;margin:12px 0"><div style="font-size:13px;color:#666;margin-bottom:10px">访客 <strong style="color:#333">{{ nick }}</strong> 在文章 <strong>{{ title }}</strong> 中发表了新评论</div><div style="font-size:15px;line-height:1.7;padding:14px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;white-space:pre-wrap;margin-bottom:10px">{{ comment }}</div><div style="font-size:12px;color:#999;border-top:1px solid #e5e7eb;padding-top:8px">IP: {{ ip }} ｜ UA: {{ ua }}</div></div><div style="text-align:center;margin:20px 0"><a href="{{ url }}" style="display:inline-block;padding:10px 28px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">管理评论</a></div><div style="font-size:12px;color:#999;text-align:center;border-top:1px solid #e5e7eb;padding-top:14px">{{ siteName }} · 管理通知</div></div>', hidden: true },
 
   // ---- Pushoo ----
   { key: 'PUSHOO_CHANNELS',         type: 'string',  default: '',                                       masked: true, hidden: true },
@@ -151,10 +151,10 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'SOCIAL_AUTH_EMAIL_ENABLED',      type: 'boolean', default: true,                              public: true },
   { key: 'SOCIAL_AUTH_GITHUB_ENABLED',     type: 'boolean', default: false,                             public: true },
   { key: 'SOCIAL_AUTH_GITHUB_CLIENT_ID',   type: 'string',  default: '',                               hidden: true },
-  { key: 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET', type: 'string',default: '',                               masked: true },
+  { key: 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET', type: 'string', default: '',                               masked: true },
   { key: 'SOCIAL_AUTH_GOOGLE_ENABLED',     type: 'boolean', default: false,                             public: true },
   { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_ID',   type: 'string',  default: '',                               hidden: true },
-  { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET', type: 'string',default: '',                               masked: true },
+  { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET', type: 'string', default: '',                               masked: true },
 ]
 
 // ========== Auto-Generated Derivatives ==========

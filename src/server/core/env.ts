@@ -6,30 +6,30 @@
  */
 
 /** 获取 Nitro preset 名称（小写） */
-function getPreset(): string {
+function getPreset (): string {
   return (process.env.NITRO_PRESET || (import.meta as any).env?.PRESET || '').toLowerCase()
 }
 
 /** 是否为开发（热开发）模式 */
-export function isDev(): boolean {
+export function isDev (): boolean {
   const metaDev = (import.meta as any).dev
   if (typeof metaDev === 'boolean') return metaDev
   return process.env.NODE_ENV === 'development'
 }
 
 /** 是否为生产模式 */
-export function isProd(): boolean {
+export function isProd (): boolean {
   return !isDev()
 }
 
 /** 是否为 serverless 部署环境 */
-export function isServerless(): boolean {
+export function isServerless (): boolean {
   const preset = getPreset()
   return preset === 'vercel' || preset === 'netlify' || preset === 'cloudflare'
 }
 
 /** 获取当前部署 preset */
-export function getPresetName(): string {
+export function getPresetName (): string {
   return getPreset()
 }
 
@@ -72,4 +72,3 @@ export const LOG_LEVEL = (process.env.LOG_LEVEL || '').toLowerCase() as 'debug' 
 
 /** 初始化设置 Token */
 export const SETUP_TOKEN = process.env.SETUP_TOKEN
-

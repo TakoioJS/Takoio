@@ -54,12 +54,12 @@ export interface AIProviderConfig {
 }
 
 /** 将 AI Provider 配置序列化为 JSON 字符串（存储用） */
-export function serializeAIProviders(providers: AIProviderConfig[]): string {
+export function serializeAIProviders (providers: AIProviderConfig[]): string {
   return JSON.stringify(providers)
 }
 
 /** 将 JSON 字符串反序列化为 AI Provider 配置数组 */
-export function deserializeAIProviders(json: string): AIProviderConfig[] {
+export function deserializeAIProviders (json: string): AIProviderConfig[] {
   try {
     const parsed = JSON.parse(json)
     if (!Array.isArray(parsed)) return []
@@ -235,7 +235,7 @@ export function validateConfigBatch (
     try {
       valid[key] = validateConfigValue(key, value)
     } catch {
-      skipped[key] = `值类型不正确`
+      skipped[key] = '值类型不正确'
     }
   }
   return { valid, skipped }

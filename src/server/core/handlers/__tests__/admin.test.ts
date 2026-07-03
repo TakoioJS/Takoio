@@ -38,7 +38,7 @@ vi.mock('../../config', async () => {
     maskSensitiveConfig: vi.fn().mockImplementation((cfg) => cfg),
     invalidateConfig: vi.fn(),
     AppError: class AppError extends Error {
-      constructor(public code: string, message: string, public statusCode = 400) {
+      constructor (public code: string, message: string, public statusCode = 400) {
         super(message)
         this.name = 'AppError'
       }

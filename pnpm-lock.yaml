@@ -12,12 +12,6 @@ importers:
 
   .:
     dependencies:
-      '@takoio/common':
-        specifier: workspace:*
-        version: link:packages/common
-      '@takoio/core':
-        specifier: workspace:*
-        version: link:packages/core
       dompurify:
         specifier: ^3.4.11
         version: 3.4.11
@@ -43,6 +37,12 @@ importers:
       '@playwright/test':
         specifier: ^1.61.1
         version: 1.61.1
+      '@takoio/common':
+        specifier: workspace:*
+        version: link:packages/common
+      '@takoio/core':
+        specifier: workspace:*
+        version: link:packages/core
       '@types/node':
         specifier: ^26.0.1
         version: 26.0.1

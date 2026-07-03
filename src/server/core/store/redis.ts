@@ -23,7 +23,7 @@ let _connecting = false
 let _connectPromise: Promise<Redis> | null = null
 
 /** 获取或创建 Redis 连接（lazy + singleton） */
-async function getRedisClient(): Promise<Redis | null> {
+async function getRedisClient (): Promise<Redis | null> {
   const url = REDIS_URL
   if (!url) return null
 
@@ -78,7 +78,7 @@ async function getRedisClient(): Promise<Redis | null> {
 }
 
 /** 安全关闭 Redis 连接（用于测试或优雅退出） */
-export async function closeRedis(): Promise<void> {
+export async function closeRedis (): Promise<void> {
   if (_redisClient) {
     try { await _redisClient.quit() } catch { /* ignore */ }
     _redisClient = null
@@ -93,7 +93,7 @@ export async function closeRedis(): Promise<void> {
  * 在复用连接上执行 Redis 操作。
  * 连接异常时自动降级到内存兜底。
  */
-export async function withRedis<T>(fn: (client: Redis) => Promise<T>): Promise<T | null> {
+export async function withRedis<T> (fn: (client: Redis) => Promise<T>): Promise<T | null> {
   try {
     const client = await getRedisClient()
     if (!client) return null
@@ -193,9 +193,9 @@ const summaryCacheKey = (url: string, content: string): string =>
 // Memory fallback when Redis is unavailable — LRU with max size
 class LRUCache<K, V> {
   private cache = new Map<K, V>()
-  constructor(private maxSize: number) {}
+  constructor (private maxSize: number) {}
 
-  get(key: K): V | undefined {
+  get (key: K): V | undefined {
     const value = this.cache.get(key)
     if (value) {
       // 移动到最新
@@ -205,7 +205,7 @@ class LRUCache<K, V> {
     return value
   }
 
-  set(key: K, value: V): void {
+  set (key: K, value: V): void {
     if (this.cache.has(key)) {
       this.cache.delete(key)
     } else if (this.cache.size >= this.maxSize) {
@@ -216,19 +216,19 @@ class LRUCache<K, V> {
     this.cache.set(key, value)
   }
 
-  delete(key: K): boolean {
+  delete (key: K): boolean {
     return this.cache.delete(key)
   }
 
-  has(key: K): boolean {
+  has (key: K): boolean {
     return this.cache.has(key)
   }
 
-  keys(): IterableIterator<K> {
+  keys (): IterableIterator<K> {
     return this.cache.keys()
   }
 
-  get size(): number {
+  get size (): number {
     return this.cache.size
   }
 }
@@ -236,7 +236,7 @@ class LRUCache<K, V> {
 const _memCache = new LRUCache<string, { data: SummaryCacheData; expire: number }>(1000)
 setInterval(() => {
   const now = Date.now()
-  for (const [k, v] of _memCache.keys()) {
+  for (const k of _memCache.keys()) {
     const entry = _memCache.get(k)
     if (entry && entry.expire < now) _memCache.delete(k)
   }
@@ -331,7 +331,7 @@ const _memCommentCache = new LRUCache<string, { data: any; expire: number }>(100
 const _memCommentUrlIndex = new Map<string, Set<string>>()
 
 /** 清理过期的内存缓存 */
-function cleanupMemCommentCache(): void {
+function cleanupMemCommentCache (): void {
   const now = Date.now()
   for (const k of _memCommentCache.keys()) {
     const entry = _memCommentCache.get(k)

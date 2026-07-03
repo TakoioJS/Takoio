@@ -53,7 +53,7 @@ export default defineNitroConfig({
         imports: [
           'getQuery', 'readBody', 'getRequestHeader', 'setResponseHeader',
           'setResponseStatus', 'getRequestURL', 'createError', 'sendNoContent',
-          'sendStream', 'getRequestIP', 'H3Error',
+          'sendStream', 'getRequestIP', 'H3Error', 'sendRedirect',
         ],
       },
     ],

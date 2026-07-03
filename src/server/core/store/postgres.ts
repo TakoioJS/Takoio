@@ -26,7 +26,7 @@ import type {
   SessionStore,
   ReactionStore,
 } from './index'
-import { COMMENT_STATE, relTime, stripPrivate, fromRowPg, commentToPgRow, BATCH_SIZE_PG } from './utils'
+import { COMMENT_STATE, relTime, stripPrivate, fromRowPg as fromRow } from './utils'
 
 const db = () => getDb()
 

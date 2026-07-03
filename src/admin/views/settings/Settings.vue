@@ -334,30 +334,49 @@
                     class="field-row"
                   >
                     <div class="field-label-col">
-                      <div class="field-label">{{ provider === 'github' ? 'GitHub 登录' : provider === 'google' ? 'Google 登录' : '邮箱登录' }}</div>
+                      <div class="field-label">
+                        {{ provider === 'github' ? 'GitHub 登录' : provider === 'google' ? 'Google 登录' : '邮箱登录' }}
+                      </div>
                     </div>
                     <div class="field-control-col push-control-col">
                       <n-switch
                         :value="config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED']"
-                        @update:value="(v: boolean) => config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = v"
                         size="small"
+                        @update:value="(v: boolean) => config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = v"
                       />
-                      <n-button size="tiny" type="error" quaternary @click="removeAuthProvider(provider)">
-                        <template #icon><n-icon><TrashOutline /></n-icon></template>
+                      <n-button
+                        size="tiny"
+                        type="error"
+                        quaternary
+                        @click="removeAuthProvider(provider)"
+                      >
+                        <template #icon>
+                          <n-icon><TrashOutline /></n-icon>
+                        </template>
                       </n-button>
                     </div>
                   </div>
 
                   <!-- 暂无激活提示 -->
-                  <div v-if="activeAuthProviders.length === 0" class="field-row empty-push-row">
+                  <div
+                    v-if="activeAuthProviders.length === 0"
+                    class="field-row empty-push-row"
+                  >
                     <span class="empty-text">未启用任何社交登录方式</span>
                   </div>
 
                   <!-- 下拉框添加 -->
-                  <div v-if="availableAuthOptions.length > 0" class="field-row">
+                  <div
+                    v-if="availableAuthOptions.length > 0"
+                    class="field-row"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">添加登录方式</div>
-                      <p class="field-desc">选择要启用的社交登录提供商</p>
+                      <div class="field-label">
+                        添加登录方式
+                      </div>
+                      <p class="field-desc">
+                        选择要启用的社交登录提供商
+                      </p>
                     </div>
                     <div class="field-control-col add-push-controls">
                       <n-select
@@ -367,8 +386,15 @@
                         size="small"
                         style="flex: 1; max-width: 260px;"
                       />
-                      <n-button type="primary" size="small" :disabled="!selectedAuthToAdd" @click="addAuthProvider">
-                        <template #icon><n-icon><AddOutline /></n-icon></template>
+                      <n-button
+                        type="primary"
+                        size="small"
+                        :disabled="!selectedAuthToAdd"
+                        @click="addAuthProvider"
+                      >
+                        <template #icon>
+                          <n-icon><AddOutline /></n-icon>
+                        </template>
                         启用
                       </n-button>
                     </div>

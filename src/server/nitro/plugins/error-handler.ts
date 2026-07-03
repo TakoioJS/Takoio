@@ -27,7 +27,7 @@ export default definePlugin((nitroApp) => {
     let code: string
     let message: string
     let statusCode: number
-    let details: any = undefined
+    let details: any
 
     if (error instanceof AppError) {
       code = error.code
@@ -57,7 +57,7 @@ export default definePlugin((nitroApp) => {
     const body = { error: { code, message, ...(details ? { details } : {}) } }
     setResponseStatus(event, statusCode)
     setResponseHeader(event, 'Content-Type', 'application/json')
-    send(event, JSON.stringify(body))
+    event.node.res.end(JSON.stringify(body))
     event.handled = true
   })
 })

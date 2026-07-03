@@ -28,6 +28,8 @@ const GLOBALS = {
   setResponseStatus: 'readonly',
   definePlugin: 'readonly',
   defineErrorHandler: 'readonly',
+  send: 'readonly',
+  sendRedirect: 'readonly',
 }
 
 export default [

@@ -14,7 +14,7 @@ vi.mock('../../config', async () => {
       IMAGE_HOSTING_TOKEN: 'test-token',
     }),
     AppError: class AppError extends Error {
-      constructor(public code: string, message: string, public statusCode = 400) {
+      constructor (public code: string, message: string, public statusCode = 400) {
         super(message)
         this.name = 'AppError'
       }
