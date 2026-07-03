@@ -38,3 +38,15 @@ export async function invalidateCommentCacheById (id: string): Promise<void> {
     // ignore — cache 失效失败不影响主流程
   }
 }
+
+/** Normalize comment href to an absolute URL for admin/dashboard display.
+ *  Falls back to SITE_URL + url when href is missing or relative.
+ */
+export function normalizeCommentHref (comment: { href?: string | null; url?: string }, siteUrl: string): string {
+  const raw = (comment.href || comment.url || '').trim()
+  if (/^https?:\/\//i.test(raw)) return raw
+  const path = raw.replace(/^\/+/, '')
+  const base = (siteUrl || '').replace(/\/+$/, '')
+  if (!base) return path ? `/${path}` : '#'
+  return `${base}/${path}`
+}

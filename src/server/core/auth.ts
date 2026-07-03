@@ -244,6 +244,7 @@ export const requireAdmin = async (data: any): Promise<void> => {
 
 /** Validate Origin/Referer header for admin requests to mitigate CSRF.
  *  Allowed origins are taken from CORS_ORIGINS and SITE_URL config.
+ *  Same-origin requests (origin host matches request host) are always allowed.
  *  Only validates state-changing requests (POST/PUT/DELETE/PATCH).
  *  GET requests are skipped as they are read-only and may not have Origin header.
  */
@@ -263,6 +264,12 @@ export const validateOrigin = async (event: any): Promise<void> => {
   if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)
 
   const originHost = new URL(origin).hostname
+
+  // Same-origin request: allow if origin host matches the request's host header.
+  // Browsers do not let attackers forge Origin to match the target host on cross-site requests.
+  const requestHost = getRequestHeader(event, 'host')?.split(':')[0]
+  if (requestHost && originHost === requestHost) return
+
   const isAllowed = allowedOrigins.some((allowed) => {
     if (allowed === '*') return true
     try {
@@ -273,6 +280,7 @@ export const validateOrigin = async (event: any): Promise<void> => {
   })
 
   if (!isAllowed) {
-    throw new AppError('INVALID_ORIGIN', '请求来源不合法', 403)
+    logger.warn({ origin, originHost, allowedOrigins, requestHost }, 'Admin request rejected due to invalid origin')
+    throw new AppError('INVALID_ORIGIN', `请求来源不合法: ${originHost}`, 403)
   }
 }

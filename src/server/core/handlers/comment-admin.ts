@@ -18,7 +18,7 @@ import type {
 import { commentStore } from '../store/index'
 import { getConfig } from '../config'
 import { renderComment } from '../utils/render'
-import { markMasterComments, invalidateCommentCacheById } from './_comment-shared'
+import { markMasterComments, invalidateCommentCacheById, normalizeCommentHref } from './_comment-shared'
 import { AppError } from '../config'
 import { logger } from '../utils/logger'
 
@@ -71,6 +71,9 @@ export const handleCommentGetAdmin = async (data: AdminCommentData) => {
 
   const rawCfg = await getConfig()
   markMasterComments(result.data, rawCfg)
+  for (const c of result.data) {
+    c.href = normalizeCommentHref(c, rawCfg.SITE_URL || '')
+  }
 
   return result
 }

@@ -19,7 +19,7 @@ import type {
 } from '../schemas'
 import { commentStore, visitorStore, reactionStore } from '../store/index'
 import { getConfig } from '../config'
-import { markMasterComments } from './_comment-shared'
+import { markMasterComments, normalizeCommentHref } from './_comment-shared'
 import { AppError } from '../config'
 
 // ========== Counter ==========
@@ -55,6 +55,9 @@ export const handleGetRecentComments = async (data: { count: number }) => {
 
   const rawCfg = await getConfig()
   markMasterComments(result, rawCfg)
+  for (const c of result) {
+    c.href = normalizeCommentHref(c, rawCfg.SITE_URL || '')
+  }
 
   return { data: result }
 }
