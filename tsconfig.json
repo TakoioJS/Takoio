@@ -28,5 +28,5 @@
     "src/**/*.tsx",
     "src/**/*.vue"
   ],
-  "exclude": ["node_modules", "dist", "docs", "src/admin"]
+  "exclude": ["node_modules", "dist", "docs", "src/admin", "src/server/nitro"]
 }

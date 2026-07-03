@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nitro dev",
+    "prepare": "nitro prepare",
     "build": "nitro build",
     "build:vercel": "NITRO_PRESET=vercel nitro build",
     "build:netlify": "NITRO_PRESET=netlify nitro build",

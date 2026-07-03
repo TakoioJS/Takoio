@@ -4,8 +4,7 @@
 
 import { logger } from './utils/logger'
 import { configStore, sessionStore } from './store/index'
-import { type TakoioConfig } from './config'
-import { AppError } from './config'
+import { type TakoioConfig, AppError, getConfig } from './config'
 import { getRequestHeader } from 'h3'
 
 // ========== Password Hash Cache ==========
@@ -244,13 +243,21 @@ export const requireAdmin = async (data: any): Promise<void> => {
 }
 
 /** Validate Origin/Referer header for admin requests to mitigate CSRF.
+ *  Allowed origins are taken from CORS_ORIGINS and SITE_URL config.
  *  Only validates state-changing requests (POST/PUT/DELETE/PATCH).
  *  GET requests are skipped as they are read-only and may not have Origin header.
  */
-export const validateOrigin = (event: any, allowedOrigins: string[]): void => {
+export const validateOrigin = async (event: any): Promise<void> => {
   const method = event.method || 'GET'
   // Only validate state-changing methods
   if (method === 'GET' || method === 'HEAD') return
+
+  const cfg = await getConfig(event)
+  const allowedOrigins = [
+    ...(cfg.CORS_ORIGINS || '').split(/[,，]/).map((s: string) => s.trim()),
+    ...(cfg.SITE_URL ? [cfg.SITE_URL] : []),
+  ].filter(Boolean)
+  if (allowedOrigins.length === 0) return // No allowed origins configured = skip validation
 
   const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer') || ''
   if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)

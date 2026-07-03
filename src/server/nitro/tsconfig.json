@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "#core/*": ["./core/*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "../node_modules/.nitro/types/nitro.d.ts"
+  ],
+  "exclude": []
+}

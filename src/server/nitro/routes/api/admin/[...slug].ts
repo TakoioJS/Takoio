@@ -61,15 +61,15 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'config' && method === 'GET') {
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
-    return handleGetConfig({})
+    await validateOrigin(event)
+    return handleGetConfig()
   }
 
   // PUT /api/admin/config
   if (segments[0] === 'config' && method === 'PUT') {
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
+    await validateOrigin(event)
     const data = await validateBody(event, SetConfigSchema)
     return handleSetConfig({ ...data, _ip: await getClientIp(event) })
   }
@@ -78,8 +78,8 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'config' && method === 'DELETE') {
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
-    return handleConfigReset({})
+    await validateOrigin(event)
+    return handleConfigReset()
   }
 
   // GET /api/admin/version (public — minimal)
@@ -111,7 +111,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'type' && method === 'PUT') {
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
+    await validateOrigin(event)
     const data = await validateBody(event, TypeSetSchema)
     return handleTypeSet(data)
   }
@@ -129,7 +129,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'private-key' && method === 'PUT') {
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
+    await validateOrigin(event)
     const data = await validateBody(event, PrivateKeySetSchema)
     return handlePrivateKeySet(data)
   }
@@ -138,7 +138,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'notification' && method === 'POST') {
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
+    await validateOrigin(event)
     const data = await validateBody(event, SendNotificationSchema)
     return handleSendNotification(data)
   }
@@ -172,7 +172,7 @@ export default defineHandler(async (event) => {
     const source = segments[1]
     const token = getToken(event)
     await requireAdmin({ token })
-    validateOrigin(event, [event.node.req.headers.origin || ''])
+    await validateOrigin(event)
     const body = await validateBody(event, ImportSchema)
     return handleImport(source, body)
   }

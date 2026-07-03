@@ -72,3 +72,4 @@ src/server/data/
 .omc
 
 src/client/utils/__tests__/
+.superpowers/
