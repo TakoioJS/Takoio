@@ -20,7 +20,7 @@ import type {
 import { commentStore, visitorStore, reactionStore } from '../store/index'
 import { getConfig } from '../config'
 import { markMasterComments, normalizeCommentHref } from './_comment-shared'
-import { AppError } from '../config'
+import { AppError } from '../errors'
 
 // ========== Counter ==========
 

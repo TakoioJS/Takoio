@@ -10,6 +10,7 @@
 
 import { reactive, ref, computed } from 'vue'
 import { useMessage, useDialog } from 'naive-ui'
+import { t } from '@shared/utils/i18n'
 import { configApi } from '../api/config'
 import type { ConfigField, ConfigSection } from '../views/settings/schema'
 
@@ -131,13 +132,13 @@ export function useConfigEditor (options: UseConfigEditorOptions) {
       await loadConfig()
       if (result.skipped && Object.keys(result.skipped).length > 0) {
         const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
-        message.warning(`部分配置项未保存：${details}`)
+        message.warning(t('unsavedConfigWarning') + '：' + details)
       } else {
-        message.success('配置保存成功')
+        message.success(t('configSuccess'))
       }
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
-      message.error('保存失败: ' + err.message)
+      message.error(t('saveFailed') + ': ' + err.message)
     } finally {
       saving.value = false
     }

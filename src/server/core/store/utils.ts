@@ -115,7 +115,5 @@ export function commentToDoc (data: CommentInput) {
   }
 }
 
-/** 批量插入分批大小 */
-export const BATCH_SIZE_SQLITE = 50
-export const BATCH_SIZE_PG = 100
-export const BATCH_SIZE_MONGO = 100
+// 批量插入分批大小 — 迁入 constants.ts（Phase 7 Task 7.2.5），此处 re-export 保持向后兼容
+export { BATCH_SIZE_SQLITE, BATCH_SIZE_PG, BATCH_SIZE_MONGO } from '../constants'

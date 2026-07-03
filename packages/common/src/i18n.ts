@@ -3,6 +3,11 @@
  *
  * This is the single source of truth for all translation strings.
  * Both client and admin panel import from here.
+ *
+ * Admin onboarding (Phase 6): admin's non-component modules (api/client.ts,
+ * stores/auth.ts) import { t, setLanguage } directly from @takoio/common,
+ * while admin's .vue components still resolve translations through the
+ * src/client/utils/i18n.ts wrapper (which re-uses `messages` from here).
  */
 
 export type Lang = 'zh-CN' | 'zh-TW' | 'en' | string
@@ -441,6 +446,14 @@ export const messages: Record<string, Record<string, string>> = {
     fileSelected: '已选择文件：',
     listLoadFailed: '加载列表失败',
     clearFailed: '清空失败',
+    // Admin API client error messages (Phase 6)
+    requestFailed: '请求失败',
+    networkError: '网络请求失败',
+    oldPasswordFailed: '旧密码验证失败',
+    modifyFailed: '修改失败',
+    fetchModelsSuccess: '拉取成功：NUM 个模型',
+    fetchModelsFailed: '拉取失败',
+    unsavedConfigWarning: '部分配置项未保存',
   },
   'zh-TW': {
     placeholder: '說點什麼…',
@@ -829,6 +842,14 @@ export const messages: Record<string, Record<string, string>> = {
     fileSelected: '已選擇檔案：',
     listLoadFailed: '加載列表失敗',
     clearFailed: '清空失敗',
+    // Admin API client error messages (Phase 6)
+    requestFailed: '請求失敗',
+    networkError: '網路請求失敗',
+    oldPasswordFailed: '舊密碼驗證失敗',
+    modifyFailed: '修改失敗',
+    fetchModelsSuccess: '拉取成功：NUM 個模型',
+    fetchModelsFailed: '拉取失敗',
+    unsavedConfigWarning: '部分配置項未保存',
   },
   en: {
     placeholder: 'Say something…',
@@ -1258,6 +1279,14 @@ export const messages: Record<string, Record<string, string>> = {
     fileSelected: 'File selected: ',
     listLoadFailed: 'Failed to load list',
     clearFailed: 'Clear failed',
+    // Admin API client error messages (Phase 6)
+    requestFailed: 'Request failed',
+    networkError: 'Network request failed',
+    oldPasswordFailed: 'Old password verification failed',
+    modifyFailed: 'Modification failed',
+    fetchModelsSuccess: 'Fetched NUM models',
+    fetchModelsFailed: 'Failed to fetch models',
+    unsavedConfigWarning: 'Some config items were not saved',
   }
 }
 

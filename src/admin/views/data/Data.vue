@@ -247,14 +247,14 @@ const onImport = async () => {
     const count = result.count || 0
     if (count > 0) {
       importResult.value = count
-      message.success(`成功导入 ${count} 条评论`)
+      message.success(t('importSuccess').replace('NUM', String(count)))
       importLog.value += `导入成功！处理记录数：${count}\n`
       if (source === 'takoio') {
         importLog.value += '已恢复 Takoio 数据（包含文章反应、访客等），未覆盖现有后台配置。'
       }
     } else {
       importResult.value = -1
-      message.error(result.error || '导入失败')
+      message.error(result.error || t('importFailed'))
       importLog.value += `导入失败：${result.error || '未知错误'}`
     }
   } catch (e: any) {
@@ -302,7 +302,7 @@ const exportData = async (format: 'json' | 'csv') => {
       downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
     }
     const total = (result.total as number) || (Array.isArray(data) ? data.length : Object.keys(data).length)
-    message.success(`导出成功，共 ${total} 条数据`)
+    message.success(t('exportSuccess').replace('NUM', String(total)))
     exportLog.value += `\n导出成功！数据量: ${total}`
   } catch (e: any) {
     message.error(t('exportFailed') + ': ' + (e.message || ''))

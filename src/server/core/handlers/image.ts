@@ -6,7 +6,8 @@
 
 import { createHash, createHmac, randomUUID } from 'node:crypto'
 import { safeValidate, UploadImageSchema } from '../schemas'
-import { MAX_UPLOAD_SIZE, getConfig, AppError } from '../config'
+import { MAX_UPLOAD_SIZE, getConfig } from '../config'
+import { AppError } from '../errors'
 import { logger } from '../utils/logger'
 
 // ========== Detect Image Type (magic bytes) ==========

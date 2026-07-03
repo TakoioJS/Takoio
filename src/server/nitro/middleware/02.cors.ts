@@ -8,9 +8,9 @@
  * 3. Dev mode (no CORS_ORIGINS): reflects any origin, no credentials (warns once)
  */
 
-import { getConfig } from '#core/config'
-import { logger } from '#core/utils/logger'
-import { isDev } from '#core/env'
+import { getConfig } from '#core'
+import { logger } from '#core'
+import { isDev } from '#core'
 
 let cachedWarn = false
 

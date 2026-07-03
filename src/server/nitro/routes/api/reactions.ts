@@ -5,14 +5,15 @@
  * Both endpoints call the same handlers as /api/comments/:id/reactions.
  */
 
-import { handleReactionGet, handleReactionSubmit } from '#core/handlers/comment'
-import { getClientIp } from '#core/utils/ip'
-import { ReactionGetSchema, ReactionSubmitSchema } from '#core/schemas'
+import { handleReactionGet, handleReactionSubmit } from '#core'
+import { getClientIp } from '#core'
+import { ReactionGetSchema, ReactionSubmitSchema } from '#core'
+import { buildRequestContext } from '../../utils/request-context'
 // validateBody, validateQuery — auto-imported from nitro/utils/ by Nitro
 
 export default defineHandler(async (event) => {
   const { url } = validateQuery(event, ReactionGetSchema)
-  const ip = await getClientIp(event)
+  const ip = await getClientIp(buildRequestContext(event))
 
   if (event.method === 'GET') {
     return handleReactionGet({ url, _ip: ip })

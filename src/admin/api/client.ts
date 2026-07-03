@@ -1,3 +1,5 @@
+import { t } from '@takoio/common'
+
 export interface ApiError extends Error {
   status?: number
   data?: any
@@ -39,7 +41,7 @@ async function request<T> (url: string, options: RequestInit = {}): Promise<T> {
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      const error = new Error(data.message || `请求失败 (${res.status})`) as ApiError
+      const error = new Error(data.message || `${t('requestFailed')} (${res.status})`) as ApiError
       error.status = res.status
       error.data = data
       if (res.status === 401) {
@@ -52,7 +54,7 @@ async function request<T> (url: string, options: RequestInit = {}): Promise<T> {
     return data as T
   } catch (e: any) {
     if (e.status) throw e
-    const error = new Error(e.message || '网络请求失败') as ApiError
+    const error = new Error(e.message || t('networkError')) as ApiError
     throw error
   }
 }

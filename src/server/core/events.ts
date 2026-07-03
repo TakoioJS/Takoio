@@ -3,11 +3,13 @@
  * Clients connect via GET /api/events?url=/path
  * Server pushes events via the `notifyComment` function.
  *
- * Migrated from Hono: Context → H3Event.
+ * Migrated from Hono → H3 → SSESink port.
+ * The h3-specific setResponseHeader/sendStream/disconnect-detection now live
+ * in the nitro adapter (buildSSESink); core only consumes the SSESink port.
  */
 
-import { getQuery, setResponseHeader, sendStream } from 'h3'
-import type { H3Event } from 'h3'
+import type { SSESink } from './ports'
+import { MAX_LISTENERS, LISTENER_TIMEOUT_MS } from './constants'
 
 interface Listener {
   url: string
@@ -16,8 +18,6 @@ interface Listener {
 }
 
 const listeners = new Set<Listener>()
-const MAX_LISTENERS = 1000
-const LISTENER_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
 /** Broadcast a comment event to all connected clients watching the given URL */
 export function notifyComment (url: string, event: string, payload: any) {
@@ -29,70 +29,51 @@ export function notifyComment (url: string, event: string, payload: any) {
   }
 }
 
-/** SSE endpoint handler */
-export function handleSSEConnect (event: H3Event) {
-  const url = (getQuery(event).url as string) || '*'
+/**
+ * Pure SSE business logic — framework-agnostic.
+ * The `sink` (built by nitro's buildSSESink) handles response headers,
+ * the underlying ReadableStream, and disconnect detection mechanism.
+ */
+export function runSSEStream (sink: SSESink, query: Record<string, string>) {
+  const url = query.url || '*'
 
-  setResponseHeader(event, 'Content-Type', 'text/event-stream')
-  setResponseHeader(event, 'Cache-Control', 'no-cache')
-  setResponseHeader(event, 'Connection', 'keep-alive')
-  setResponseHeader(event, 'X-Accel-Buffering', 'no') // Disable nginx buffering
+  // Send initial connection event
+  sink.write(`data: ${JSON.stringify({ event: 'connected', url })}\n\n`)
 
-  const stream = new ReadableStream({
-    start (controller) {
-      const encoder = new TextEncoder()
-      const send = (data: string) => {
-        try { controller.enqueue(encoder.encode(data)) } catch { /* client disconnected */ }
-      }
+  const listener: Listener = { url, send: (data) => sink.write(data), createdAt: Date.now() }
+  listeners.add(listener)
 
-      // Send initial connection event
-      send(`data: ${JSON.stringify({ event: 'connected', url })}\n\n`)
+  // Enforce max listener limit
+  if (listeners.size > MAX_LISTENERS) {
+    const oldest = listeners.values().next().value
+    if (oldest) {
+      listeners.delete(oldest)
+    }
+  }
 
-      const listener: Listener = { url, send, createdAt: Date.now() }
-      listeners.add(listener)
+  // Keep-alive ping every 30s
+  const keepAlive = setInterval(() => {
+    sink.write(': ping\n\n')
+  }, 30_000)
 
-      // Enforce max listener limit
-      if (listeners.size > MAX_LISTENERS) {
-        const oldest = listeners.values().next().value
-        if (oldest) {
-          listeners.delete(oldest)
-        }
-      }
+  const cleanup = () => {
+    clearInterval(keepAlive)
+    listeners.delete(listener)
+  }
 
-      // Keep-alive ping every 30s
-      const keepAlive = setInterval(() => {
-        send(': ping\n\n')
-      }, 30_000)
+  // Disconnect detection is delegated to the sink adapter (nitro layer),
+  // which decides whether to use Node `req.on('close')` or Web `AbortSignal`.
+  // Returns true if a real detector was wired up; false otherwise.
+  const cleanupRegistered = sink.onDisconnect(cleanup)
 
-      const cleanup = () => {
-        clearInterval(keepAlive)
-        listeners.delete(listener)
-      }
-
-      // Disconnect detection:
-      // 1. node-server preset: event.node.req 'close' event
-      // 2. serverless: try the original Request's AbortSignal (if available)
-      let cleanupRegistered = false
-      if (event.node?.req) {
-        event.node.req.on('close', cleanup)
-        cleanupRegistered = true
-      } else if ('request' in event && (event as unknown as { request?: { signal?: AbortSignal } }).request?.signal) {
-        ;(event as unknown as { request: { signal: AbortSignal } }).request.signal.addEventListener('abort', cleanup)
-        cleanupRegistered = true
-      }
-
-      // Fallback: if neither disconnect mechanism is available, enforce a max lifetime
-      // to prevent memory leaks in edge-case environments.
-      if (!cleanupRegistered) {
-        setTimeout(() => {
-          clearInterval(keepAlive)
-          listeners.delete(listener)
-        }, LISTENER_TIMEOUT_MS)
-      }
-    },
-  })
-
-  return sendStream(event, stream)
+  // Fallback: if the sink cannot detect disconnects (edge-case environments),
+  // enforce a max lifetime to prevent memory leaks.
+  if (!cleanupRegistered) {
+    setTimeout(() => {
+      clearInterval(keepAlive)
+      listeners.delete(listener)
+    }, LISTENER_TIMEOUT_MS)
+  }
 }
 
 /** Clean up stale listeners */

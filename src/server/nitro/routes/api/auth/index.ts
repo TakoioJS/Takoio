@@ -20,10 +20,10 @@ import {
   generateVerifyCode,
   storeVerifyCode,
   verifyEmailCode,
-} from '#core/auth-social'
-import { sendEmail } from '#core/email'
-import { getConfig } from '#core/config'
-import type { AuthUser } from '#core/auth-social'
+} from '#core'
+import { sendEmail } from '#core'
+import { getConfig } from '#core'
+import type { AuthUser } from '#core'
 
 // Helper: get site URL from config or request
 function getSiteUrl (event: any): string {

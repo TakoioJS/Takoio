@@ -11,6 +11,10 @@ import { timeago } from './timeago'
 
 export const isUrl = (str: string): boolean => /^https?:\/\//.test(str)
 
+// Phase 7 Task 7.2.6 决策（方案 C）：API_TIMEOUT_MS 保留在此处，不迁入 src/server/core/constants.ts
+// 理由：跨包迁移需引入 packages/core → src/server/core 的包间依赖，与 monorepo 依赖方向相反
+// （packages 应被 server 消费，而非反向引用 server 的 constants）
+// 后续若需共享，应在 packages/common 下新增常量层，由两边共同 import
 const API_TIMEOUT_MS = 30_000
 
 const baseUrl = (envId: string): string => {

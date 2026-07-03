@@ -13,7 +13,7 @@
  */
 
 import { randomBytes } from 'node:crypto'
-import { isProd } from '#core/env'
+import { isProd } from '#core'
 
 // CSP nonce 通过 event.context 传递给 admin-spa 中间件
 // 用类型断言访问，避免 declare module 扩展被 eslint 误报为未使用

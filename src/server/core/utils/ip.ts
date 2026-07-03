@@ -5,13 +5,14 @@
  * falls within TRUSTED_PROXIES. If no trusted proxies configured,
  * only the direct socket IP is used (no header forging possible).
  *
- * Migrated from Hono: replaced @hono/node-server/conninfo with
- * H3's getRequestIP + getRequestHeader.
+ * Migrated from Hono → H3 → RequestContext port.
+ * The direct socket IP is now provided by the nitro adapter
+ * (buildRequestContext → getRequestIP(event, { xForwardedFor: false }));
+ * core is fully framework-agnostic.
  */
 
-import { getRequestHeader, getRequestIP } from 'h3'
-import type { H3Event } from 'h3'
 import { getConfig } from '../config'
+import type { RequestContext } from '../ports'
 
 // Headers to check in order of preference
 const PROXY_HEADERS = [
@@ -29,12 +30,12 @@ const pickFirstIp = (header: string | undefined): string =>
 const isTrustedProxy = (ip: string, trusted: string[]): boolean =>
   trusted.length === 0 ? false : trusted.includes(ip)
 
-export const getClientIp = async (event: H3Event): Promise<string> => {
-  const config = await getConfig(event)
+export const getClientIp = async (ctx: RequestContext): Promise<string> => {
+  const config = await getConfig(ctx)
 
-  // Determine the direct connection IP (the actual remote address)
-  // H3's getRequestIP: in Node.js reads from socket, in serverless reads from headers
-  const directIp = getRequestIP(event, { xForwardedFor: false }) || '127.0.0.1'
+  // Direct connection IP is extracted by the nitro adapter (from socket,
+  // NOT from X-Forwarded-For — preserves the original security guarantee).
+  const directIp = ctx.ip || '127.0.0.1'
 
   // Parse trusted proxies
   const trustedRaw = config.TRUSTED_PROXIES || ''
@@ -47,13 +48,13 @@ export const getClientIp = async (event: H3Event): Promise<string> => {
   if (isTrusted) {
     const customHeader = config.IP_PROXY_HEADER?.toLowerCase()
     if (customHeader) {
-      const ip = pickFirstIp(getRequestHeader(event, customHeader))
+      const ip = pickFirstIp(ctx.headers[customHeader])
       if (ip) return ip
     }
 
     // 2. Standard proxy headers (only when trusted)
     for (const h of PROXY_HEADERS) {
-      const ip = pickFirstIp(getRequestHeader(event, h))
+      const ip = pickFirstIp(ctx.headers[h])
       if (ip) return ip
     }
   }

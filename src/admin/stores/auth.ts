@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { t } from '@takoio/common'
 import { api } from '../api/client'
 
 const SESSION_KEY = 'takoio-admin-session'
@@ -111,10 +112,10 @@ export const useAuthStore = defineStore('auth', {
           this.needSetup = true
           return { success: false, message: 'needSetup' }
         }
-        return { success: false, message: data.message || '登录失败' }
+        return { success: false, message: data.message || t('loginFailed') }
       } catch (e: unknown) {
         const err = e instanceof Error ? e : new Error(String(e))
-        return { success: false, message: err.message || '登录失败' }
+        return { success: false, message: err.message || t('loginFailed') }
       }
     },
 
@@ -126,10 +127,10 @@ export const useAuthStore = defineStore('auth', {
           this.needSetup = false
           return { success: true }
         }
-        return { success: false, message: data.message || '设置失败' }
+        return { success: false, message: data.message || t('setupFailed') }
       } catch (e: unknown) {
         const err = e instanceof Error ? e : new Error(String(e))
-        return { success: false, message: err.message || '设置失败' }
+        return { success: false, message: err.message || t('setupFailed') }
       }
     },
 
@@ -148,17 +149,17 @@ export const useAuthStore = defineStore('auth', {
         // Verify old password first
         const verifyData = await api.post<{ success: boolean }>('/api/admin/login', { password: oldPwd })
         if (!verifyData.success) {
-          return { success: false, message: '旧密码验证失败' }
+          return { success: false, message: t('oldPasswordFailed') }
         }
         const setData = await api.put<{ success: boolean; token?: string; message?: string }>('/api/admin/password', { password: newPwd })
         if (setData.success) {
           if (setData.token) this._saveSession(setData.token)
           return { success: true }
         }
-        return { success: false, message: setData.message || '修改失败' }
+        return { success: false, message: setData.message || t('modifyFailed') }
       } catch (e: unknown) {
         const err = e instanceof Error ? e : new Error(String(e))
-        return { success: false, message: err.message || '修改失败' }
+        return { success: false, message: err.message || t('modifyFailed') }
       }
     },
   },

@@ -9,7 +9,7 @@ import { commentStore } from '../store/index'
 import { getConfig, publicConfigSubset } from '../config'
 import { getOrSetCommentListCache } from '../store/redis'
 import { markMasterComments } from './_comment-shared'
-import { AppError } from '../config'
+import { AppError } from '../errors'
 
 export const handleCommentGet = async (data: GetCommentData) => {
   const validation = safeValidate(GetCommentSchema, data)

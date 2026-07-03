@@ -6,10 +6,11 @@
 
 import type { CommentInput } from '../store/index'
 import type { TakoioConfig } from '../config'
-import { AppError } from '../config'
+import { AppError } from '../errors'
 import { moderateComment, getAuditAction } from '../moderate'
 import { logger } from '../utils/logger'
 import { deserializeAIProviders } from '../config'
+import { COMMENT_WINDOW_MAX, COMMENT_WINDOW_MS, COMMENT_RATE_LIMIT_DEFAULT } from '../constants'
 
 // ========== Types ==========
 
@@ -64,16 +65,13 @@ export async function runAiModeration (comment: CommentInput, cfg: TakoioConfig)
 
 // ========== Stage 2: Rate Limit ==========
 
-const COMMENT_WINDOW_MAX = 3
-const COMMENT_WINDOW_MS = 60_000
-
 export async function checkRateLimit (
   _ip: string,
   mail: string | undefined,
   cfg: TakoioConfig,
   getRecentComments: (limit: number) => Promise<Array<{ ip?: string; mail?: string; created: number }>>
 ): Promise<RateLimitResult> {
-  const limit = typeof cfg.COMMENT_RATE_LIMIT === 'number' ? cfg.COMMENT_RATE_LIMIT : 30000
+  const limit = typeof cfg.COMMENT_RATE_LIMIT === 'number' ? cfg.COMMENT_RATE_LIMIT : COMMENT_RATE_LIMIT_DEFAULT
   if (limit <= 0 || !_ip || _ip === 'unknown') {
     return { allowed: true }
   }

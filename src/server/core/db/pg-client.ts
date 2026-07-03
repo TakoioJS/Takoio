@@ -2,6 +2,7 @@ import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { sql } from 'drizzle-orm'
 import * as schema from './schema-pg'
+import { columnMigrations } from './migrations'
 
 export type PgDbClient = ReturnType<typeof drizzle<typeof schema>>
 export type PgRawClient = ReturnType<typeof postgres>
@@ -116,20 +117,12 @@ export async function initDb (): Promise<void> {
   `)
   const existingColumnNames = new Set((existingColumns as unknown as Array<{ column_name: string }>).map(r => r.column_name))
 
-  const columnMigrations: [string, string, ReturnType<typeof sql>][] = [
-    ['add_comments_image', 'image', sql`ALTER TABLE comments ADD COLUMN image TEXT`],
-    ['add_comments_sticker', 'sticker', sql`ALTER TABLE comments ADD COLUMN sticker TEXT`],
-    ['add_comments_ip_region', 'ip_region', sql`ALTER TABLE comments ADD COLUMN ip_region TEXT`],
-    ['add_comments_tags', 'tags', sql`ALTER TABLE comments ADD COLUMN tags TEXT`],
-    ['add_comments_rendered', 'rendered_comment', sql`ALTER TABLE comments ADD COLUMN rendered_comment TEXT`],
-  ]
-
-  for (const [name, column, alterSql] of columnMigrations) {
-    if (!appliedNames.has(name)) {
-      if (!existingColumnNames.has(column)) {
-        await db.execute(alterSql)
+  for (const m of columnMigrations) {
+    if (!appliedNames.has(m.name)) {
+      if (!existingColumnNames.has(m.column)) {
+        await db.execute(sql.raw(m.sql))
       }
-      await db.execute(sql`INSERT INTO migrations (name, applied_at) VALUES (${name}, ${Date.now()})`)
+      await db.execute(sql`INSERT INTO migrations (name, applied_at) VALUES (${m.name}, ${Date.now()})`)
     }
   }
 }

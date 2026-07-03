@@ -6,8 +6,8 @@
  * diagnostics require admin auth to avoid leaking internal state.
  */
 
-import { getRedisDiagnostics } from '#core/store/redis'
-import { requireAdmin } from '#core/auth'
+import { getRedisDiagnostics } from '#core'
+import { requireAdmin } from '#core'
 // getToken — auto-imported from nitro/utils/ by Nitro
 
 export default defineHandler(async (event) => {

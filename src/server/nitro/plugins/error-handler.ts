@@ -12,8 +12,8 @@
  * before they reach the default h3 error handler.
  */
 
-import { AppError } from '#core/config'
-import { logger } from '#core/utils/logger'
+import { AppError } from '#core'
+import { logger } from '#core'
 
 export default definePlugin((nitroApp) => {
   nitroApp.hooks.hook('error', (error, context) => {

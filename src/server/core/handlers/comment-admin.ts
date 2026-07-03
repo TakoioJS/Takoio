@@ -19,7 +19,7 @@ import { commentStore } from '../store/index'
 import { getConfig } from '../config'
 import { renderComment } from '../utils/render'
 import { markMasterComments, invalidateCommentCacheById, normalizeCommentHref } from './_comment-shared'
-import { AppError } from '../config'
+import { AppError } from '../errors'
 import { logger } from '../utils/logger'
 
 // ========== Comment Update ==========

@@ -7,7 +7,7 @@ import { safeValidate } from '../schemas'
 import { ImportSchema, ExportSchema } from '../schemas'
 import { commentStore, getStore, importStore } from '../store/index'
 import type { CommentInput, Comment, StoreImportData } from '../store/index'
-import { AppError } from '../config'
+import { AppError } from '../errors'
 import { logger } from '../utils/logger'
 
 // ========== Import ==========

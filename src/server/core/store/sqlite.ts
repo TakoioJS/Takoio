@@ -27,6 +27,7 @@ import type {
   ReactionStore,
 } from './index'
 import { COMMENT_STATE, relTime, stripPrivate, fromRow, commentToSqliteRow, BATCH_SIZE_SQLITE } from './utils'
+import { buildGetCommentsQuery } from './query-helpers'
 
 const db = () => getDb()
 
@@ -61,28 +62,30 @@ export const commentStore: CommentStore = {
   },
 
   async getComments (url: string, page = 1, pageSize = 10, sort: CommentSort = 'newest'): Promise<PaginatedResult<CommentListItem>> {
-    const visibleStates: CommentState[] = ['visible', 'pending']
-    const orderBy = sort === 'oldest'
-      ? asc(comments.created)
-      : sort === 'hottest'
-        ? desc(comments.like)
-        : desc(comments.created)
+    const q = buildGetCommentsQuery({ url, page, pageSize, sort })
+    const orderCol = q.orderBy.column === 'created' ? comments.created : comments.like
+    const orderBy = q.orderBy.direction === 'asc' ? asc(orderCol) : desc(orderCol)
+    const where = and(
+      eq(comments.url, q.where.url),
+      inArray(comments.state, q.where.visibleStates),
+      sql`${comments.pid} IS NULL`
+    )
 
     const total = await db().select({ count: drizzleCount() }).from(comments)
-      .where(and(eq(comments.url, url), inArray(comments.state, visibleStates), sql`${comments.pid} IS NULL`))
+      .where(where)
       .get()
 
     const rows = await db().select().from(comments)
-      .where(and(eq(comments.url, url), inArray(comments.state, visibleStates), sql`${comments.pid} IS NULL`))
+      .where(where)
       .orderBy(orderBy)
-      .limit(pageSize).offset((page - 1) * pageSize)
+      .limit(q.limit).offset(q.offset)
       .all()
 
     const parentIds = rows.map(r => r.id)
     const replyMap = new Map<string, CommentListItem[]>()
     if (parentIds.length > 0) {
       const allReplies = await db().select().from(comments)
-        .where(and(inArray(comments.pid, parentIds as string[]), inArray(comments.state, visibleStates)))
+        .where(and(inArray(comments.pid, parentIds as string[]), inArray(comments.state, q.where.visibleStates)))
         .orderBy(asc(comments.created))
         .all()
       for (const r of allReplies) {

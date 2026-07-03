@@ -7,9 +7,10 @@
 
 import {
   handleCommentGet, handleCommentSubmit,
-} from '#core/handlers/comment'
-import { getClientIp } from '#core/utils/ip'
-import { GetCommentSchema, SubmitCommentSchema } from '#core/schemas'
+} from '#core'
+import { getClientIp } from '#core'
+import { GetCommentSchema, SubmitCommentSchema } from '#core'
+import { buildRequestContext } from '../../../utils/request-context'
 
 export default defineHandler(async (event) => {
   const method = event.method
@@ -24,7 +25,7 @@ export default defineHandler(async (event) => {
   if (method === 'POST') {
     const data = await validateBody(event, SubmitCommentSchema)
     // 注入 token 用于博主冒名防护（requireAdmin 读 data.token，兼容 data._token）
-    return handleCommentSubmit({ ...data, _ip: await getClientIp(event), token: getToken(event), event })
+    return handleCommentSubmit({ ...data, _ip: await getClientIp(buildRequestContext(event)), token: getToken(event), event })
   }
 
   throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })

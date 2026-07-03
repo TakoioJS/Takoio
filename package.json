@@ -51,6 +51,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 9820",
     "lint": "eslint src/**/*.{ts,vue}",
     "lint:fix": "eslint src/**/*.{ts,vue} --fix",
+    "lint:arch": "eslint --config eslint.config.js src/server/core src/server/nitro",
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -8,9 +8,9 @@
  */
 
 import { H3Error } from 'h3'
-import { AppError } from '#core/config'
-import { logger } from '#core/utils/logger'
-import { isDev } from '#core/env'
+import { AppError } from '#core'
+import { logger } from '#core'
+import { isDev } from '#core'
 
 export default defineErrorHandler((error, event) => {
   // AppError: business logic errors with structured codes

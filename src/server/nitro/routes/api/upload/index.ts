@@ -5,9 +5,10 @@
  * preventing IP spoofing via x-forwarded-for header.
  */
 
-import { handleUploadImage } from '#core/handlers/image'
-import { getClientIp } from '#core/utils/ip'
-import { UploadImageSchema } from '#core/schemas'
+import { handleUploadImage } from '#core'
+import { getClientIp } from '#core'
+import { UploadImageSchema } from '#core'
+import { buildRequestContext } from '../../../utils/request-context'
 // validateBody — auto-imported from nitro/utils/ by Nitro
 
 export default defineHandler(async (event) => {
@@ -17,6 +18,6 @@ export default defineHandler(async (event) => {
   const data = await validateBody(event, UploadImageSchema)
   return handleUploadImage({
     image: data.image,
-    _ip: await getClientIp(event),
+    _ip: await getClientIp(buildRequestContext(event)),
   })
 })

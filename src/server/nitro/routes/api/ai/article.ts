@@ -7,11 +7,12 @@
  * Requires AI_SUMMARY_ENABLED to be true.
  */
 
-import { handleArticleSummary } from '#core/handlers/summary'
-import { getConfig } from '#core/config'
-import { getSummaryCache, setSummaryCache, redisRateLimit } from '#core/store/redis'
-import { getClientIp } from '#core/utils/ip'
-import { isDev } from '#core/env'
+import { handleArticleSummary } from '#core'
+import { getConfig } from '#core'
+import { getSummaryCache, setSummaryCache, redisRateLimit } from '#core'
+import { getClientIp } from '#core'
+import { isDev } from '#core'
+import { buildRequestContext } from '../../../utils/request-context'
 import { createError } from 'h3'
 
 const MAX_CONTENT_LEN = 20_000
@@ -59,7 +60,7 @@ export default defineHandler(async (event) => {
     body.title = body.title.slice(0, MAX_TITLE_LEN)
   }
 
-  const ip = await getClientIp(event)
+  const ip = await getClientIp(buildRequestContext(event))
   // Dev mode: skip rate limiting for testing
   if (!isDev()) {
     const allowed = await redisRateLimit(`article:${ip}`, ARTICLE_RATE_MAX, ARTICLE_RATE_WINDOW)

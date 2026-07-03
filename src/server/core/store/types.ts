@@ -166,3 +166,73 @@ export interface StoreImportData {
   reactions?: Record<string, ReactionMap>
   commentReactions?: Record<string, ReactionMap>
 }
+
+// ========== Store interfaces ==========
+// 注意：所有后端实现（sqlite.ts / mongodb.ts / postgres.ts）
+// 必须返回符合这些 interface 的数据，由 TS 编译器强制校验签名一致性。
+
+export interface CommentStore {
+  addComment (data: CommentInput): Promise<Comment>
+  /** 批量插入评论（导入用），返回插入条数 */
+  addComments (data: CommentInput[]): Promise<number>
+  getComment (id: string): Promise<Comment | undefined>
+  updateComment (id: string, data: CommentUpdate): Promise<boolean>
+  getComments (url: string, page?: number, pageSize?: number, sort?: CommentSort): Promise<PaginatedResult<CommentListItem>>
+  getReplies (pid: string): Promise<CommentListItem[]>
+  getCommentsCount (urls: string[]): Promise<CommentCount[]>
+  getRecentComments (limit?: number): Promise<CommentListItem[]>
+  getRawRecentComments (limit?: number): Promise<RawComment[]>
+  getCommentReactions (commentId: string): Promise<CommentReactionMap>
+  toggleCommentReaction (commentId: string, emoji: string, ip: string): Promise<CommentReactionMap>
+  setCommentState (id: string, state: CommentState): Promise<boolean>
+  hideComment (id: string): Promise<boolean>
+  showComment (id: string): Promise<boolean>
+  deleteComment (id: string): Promise<boolean>
+  setTop (id: string, isTop: boolean): Promise<boolean>
+  setSpam (id: string, isSpam?: boolean): Promise<boolean>
+  getDashboardStats (): Promise<DashboardStats>
+  getDashboardTrend (days?: number): Promise<DashboardTrendItem[]>
+  setCommentIpRegion (id: string, ipRegion: string): Promise<boolean>
+  getAllComments (page?: number, pageSize?: number): Promise<PaginatedResult<Comment>>
+  searchComments (page?: number, pageSize?: number, searchStr?: string, filter?: string): Promise<PaginatedResult<Comment>>
+}
+
+export interface ConfigStore {
+  getConfig (): Promise<Record<string, unknown>>
+  setConfig (key: string, value: unknown): Promise<void>
+  setManyConfig (data: Record<string, unknown>): Promise<void>
+  resetConfig (): Promise<void>
+}
+
+export interface VisitorStore {
+  getVisitorCount (url: string, title?: string): Promise<VisitorCount>
+}
+
+export interface SessionStore {
+  createToken (): Promise<string>
+  validateToken (token: string): Promise<boolean>
+  removeToken (token: string): Promise<void>
+  rotateToken (oldToken: string): Promise<string | null>
+  removeAllTokens (): Promise<void>
+  cleanupSessions (): Promise<void>
+}
+
+export interface ReactionStore {
+  getReactions (url: string): Promise<ReactionMap>
+  toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap>
+}
+
+/**
+ * Store backend module shape — every backend (sqlite/mongodb/postgres)
+ * must export these members. Enforces compile-time consistency across implementations.
+ */
+export interface StoreBackend {
+  commentStore: CommentStore
+  configStore: ConfigStore
+  visitorStore: VisitorStore
+  sessionStore: SessionStore
+  reactionStore: ReactionStore
+  getStore (): Promise<StoreSnapshot>
+  importStore (data: StoreImportData): Promise<void>
+  ensureDb (): Promise<void>
+}

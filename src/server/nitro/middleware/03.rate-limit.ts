@@ -5,9 +5,10 @@
  * the old Hono implementation (frontend depends on this shape).
  */
 
-import { rateLimitStore } from '#core/store/index'
-import { getClientIp } from '#core/utils/ip'
-import { isServerless, TAKOIO_THROTTLE_MS } from '#core/env'
+import { rateLimitStore } from '#core'
+import { getClientIp } from '#core'
+import { isServerless, TAKOIO_THROTTLE_MS } from '#core'
+import { buildRequestContext } from '../utils/request-context'
 
 // 默认 0：rate-limit 中间件已用精确的滑动窗口限流，无需额外人为延迟。
 // 如需防爬可显式设置 TAKOIO_THROTTLE=250（毫秒）。
@@ -17,7 +18,7 @@ const THROTTLE_MS = TAKOIO_THROTTLE_MS
 const skipThrottle = isServerless()
 
 export default defineMiddleware(async (event) => {
-  const ip = await getClientIp(event)
+  const ip = await getClientIp(buildRequestContext(event))
 
   if (!await rateLimitStore.checkRateLimit(ip)) {
     // CRITICAL: keep response body identical to old Hono implementation

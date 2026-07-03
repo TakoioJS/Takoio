@@ -3,6 +3,7 @@
   "compilerOptions": {
     "baseUrl": "..",
     "paths": {
+      "#core": ["./core/index.ts"],
       "#core/*": ["./core/*"]
     }
   },

@@ -24,7 +24,7 @@
             Takoio
           </h1>
           <p class="login-subtitle">
-            {{ needSetup ? t('setupDesc') : '评论系统管理后台' }}
+            {{ needSetup ? t('setupDesc') : t('commentManagement') }}
           </p>
         </div>
 

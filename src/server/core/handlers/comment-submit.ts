@@ -1,5 +1,8 @@
 /**
  * Comment Submit — 评论提交（含审核、限流、通知）
+ *
+ * 主流程：校验 / 鉴权 / 限流 / 审核 / 持久化
+ * 副作用（缓存失效 / SSE / 邮件 / 推送）已抽出至 comment-submit-side-effects.ts（Phase 3 Task 3.5）
  */
 
 import * as crypto from 'node:crypto'
@@ -9,16 +12,16 @@ import type { SubmitCommentData } from '../schemas'
 import { commentStore } from '../store/index'
 import type { CommentInput } from '../store/index'
 import { getConfig } from '../config'
-import type { TakoioConfig, AppError } from '../config'
+import type { TakoioConfig } from '../config'
+import type { AppError } from '../errors'
 import { verifyCaptcha, requireAdmin } from '../auth'
 import { lookupIpRegion } from '../ip-region'
 import { renderComment } from '../utils/render'
-import { invalidateCommentListCache } from '../store/redis'
 import { logger } from '../utils/logger'
-import { AppError as AppErrorClass } from '../config'
-import { sendEmail } from '../email'
-import { sendNotification } from '../notify'
+import { AppError as AppErrorClass } from '../errors'
 import { verifyToken } from '../auth-social'
+import { invalidateAfterSubmit, notifyAfterSubmit } from './comment-submit-side-effects'
+import { COMMENT_WINDOW_MAX, COMMENT_WINDOW_MS, COMMENT_RATE_LIMIT_DEFAULT } from '../constants'
 
 // ========== Stage 1: Validate + auth + CAPTCHA ==========
 
@@ -60,10 +63,8 @@ async function moderateSubmit (newComment: CommentInput, cfg: TakoioConfig, _ip?
   const { commentStore: store } = await import('../store/index')
   const rawRecent = await store.getRawRecentComments(50)
 
-  // Rate limit — sliding window: max 3 comments per IP per 60s window
-  const COMMENT_WINDOW_MAX = 3
-  const COMMENT_WINDOW_MS = 60_000
-  const limit = typeof cfg.COMMENT_RATE_LIMIT === 'number' ? cfg.COMMENT_RATE_LIMIT : 30000
+  // Rate limit — sliding window: max 3 comments per IP per 60s window (constants from ../constants)
+  const limit = typeof cfg.COMMENT_RATE_LIMIT === 'number' ? cfg.COMMENT_RATE_LIMIT : COMMENT_RATE_LIMIT_DEFAULT
   if (limit > 0 && _ip && _ip !== 'unknown') {
     const myRecent = rawRecent.filter(c => c.ip === _ip || (mail && c.mail === mail))
     const windowComments = myRecent.filter(c => Date.now() - c.created < COMMENT_WINDOW_MS)
@@ -96,24 +97,6 @@ async function persistSubmit (newComment: CommentInput, _ip?: string) {
     logger.warn('[comment-submit] Comment rendering failed:', e)
   }
   return commentStore.addComment(newComment)
-}
-
-// ========== Notification helpers ==========
-
-async function sendEmailNotification (saved: any, cfg: TakoioConfig) {
-  if (!cfg.ENABLE_MAIL_NOTIFICATION || !cfg.SMTP_HOST) return
-  try {
-    const { sendEmail } = await import('../email')
-    await sendEmail(cfg, '新评论通知', `用户 ${saved.nick} 发表了评论`)
-  } catch { /* ignore */ }
-}
-
-async function sendPushNotification (saved: any, cfg: TakoioConfig) {
-  if (!cfg.PUSHOO_CHANNELS) return
-  try {
-    const { sendNotification } = await import('../notify')
-    await sendNotification(cfg, { title: '新评论', content: `${saved.nick}: ${saved.comment}` })
-  } catch { /* ignore */ }
 }
 
 // ========== Export ==========
@@ -159,34 +142,11 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   // 4. Persist
   const saved = await persistSubmit(newComment, _ip)
 
-  // 5. Send notifications (fire-and-forget)
-  sendEmailNotification(saved, cfg).catch(() => {})
-  sendPushNotification(saved, cfg).catch(() => {})
+  // 5. Send notifications (fire-and-forget) — email + push
+  notifyAfterSubmit(saved, cfg)
 
-  // 5. Invalidate comment list cache for this url (retry up to 3 times)
-  let cacheInvalidated = false
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      await invalidateCommentListCache(newComment.url)
-      cacheInvalidated = true
-      break
-    } catch (e) {
-      logger.warn(`[comment-submit] Cache invalidation attempt ${attempt} failed:`, e)
-      if (attempt < 3) {
-        await new Promise(r => setTimeout(r, 100 * attempt))
-      }
-    }
-  }
-  if (!cacheInvalidated) {
-    logger.error('[comment-submit] Cache invalidation failed after 3 attempts — data may be stale')
-  }
-
-  // 6. SSE real-time notification
-  import('../events').then(({ notifyComment }) => {
-    notifyComment(newComment.url, 'comment:new', {
-      comment: { id: saved.id, nick: saved.nick, comment: saved.comment, created: saved.created, url: saved.url },
-    })
-  }).catch(e => logger.error('[comment-submit] SSE notify failed:', e))
+  // 6. Invalidate comment list cache + SSE real-time notification
+  await invalidateAfterSubmit(newComment.url, saved)
 
   return { data: saved, moderated: modResult }
 }

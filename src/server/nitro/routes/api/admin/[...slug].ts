@@ -10,17 +10,18 @@ import {
   handleConfigReset, handlePasswordSet, handleCheckSetup,
   handleTypeSet, handlePrivateKeyGet, handlePrivateKeySet,
   handleSendNotification, handleEmailTest,
-} from '#core/handlers/admin'
-import { handleImport, handleExport } from '#core/handlers/import-export'
-import { handleDashboardStats, handleDashboardTrend } from '#core/handlers/comment'
-import { sessionStore } from '#core/store/index'
-import { AppError } from '#core/config'
-import { requireAdmin, validateOrigin } from '#core/auth'
-import { getClientIp } from '#core/utils/ip'
-import { isRedisAvailable, listSummaryCaches } from '#core/store/redis'
-import { isDev } from '#core/env'
+} from '#core'
+import { handleImport, handleExport } from '#core'
+import { handleDashboardStats, handleDashboardTrend } from '#core'
+import { sessionStore } from '#core'
+import { AppError } from '#core'
+import { requireAdmin, validateOrigin } from '#core'
+import { getClientIp } from '#core'
+import { isRedisAvailable, listSummaryCaches } from '#core'
+import { isDev } from '#core'
+import { buildRequestContext } from '../../../utils/request-context'
 // validateBody, getToken — auto-imported from nitro/utils/ by Nitro
-import { LoginSchema, PasswordSetSchema, TypeSetSchema, SetConfigSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema, DashboardTrendSchema } from '#core/schemas'
+import { LoginSchema, PasswordSetSchema, TypeSetSchema, SetConfigSchema, PrivateKeySetSchema, SendNotificationSchema, EmailTestSchema, ImportSchema, DashboardTrendSchema } from '#core'
 
 export default defineHandler(async (event) => {
   const path = (event.context.params?.slug as string) || ''
@@ -35,7 +36,7 @@ export default defineHandler(async (event) => {
   // POST /api/admin/login (public — this IS the auth endpoint)
   if (segments[0] === 'login' && method === 'POST') {
     const data = await validateBody(event, LoginSchema)
-    return handleLogin(data, await getClientIp(event))
+    return handleLogin(data, await getClientIp(buildRequestContext(event)))
   }
 
   // POST /api/admin/logout — allow logout even with expired/invalid token
@@ -61,7 +62,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'config' && method === 'GET') {
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     return handleGetConfig()
   }
 
@@ -69,16 +70,16 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'config' && method === 'PUT') {
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     const data = await validateBody(event, SetConfigSchema)
-    return handleSetConfig({ ...data, _ip: await getClientIp(event) })
+    return handleSetConfig({ ...data, _ip: await getClientIp(buildRequestContext(event)) })
   }
 
   // DELETE /api/admin/config
   if (segments[0] === 'config' && method === 'DELETE') {
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     return handleConfigReset()
   }
 
@@ -111,7 +112,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'type' && method === 'PUT') {
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     const data = await validateBody(event, TypeSetSchema)
     return handleTypeSet(data)
   }
@@ -129,7 +130,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'private-key' && method === 'PUT') {
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     const data = await validateBody(event, PrivateKeySetSchema)
     return handlePrivateKeySet(data)
   }
@@ -138,7 +139,7 @@ export default defineHandler(async (event) => {
   if (segments[0] === 'notification' && method === 'POST') {
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     const data = await validateBody(event, SendNotificationSchema)
     return handleSendNotification(data)
   }
@@ -172,7 +173,7 @@ export default defineHandler(async (event) => {
     const source = segments[1]
     const token = getToken(event)
     await requireAdmin({ token })
-    await validateOrigin(event)
+    await validateOrigin(buildRequestContext(event))
     const body = await validateBody(event, ImportSchema)
     return handleImport(source, body)
   }

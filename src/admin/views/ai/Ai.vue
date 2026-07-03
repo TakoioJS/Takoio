@@ -329,9 +329,9 @@ const onFetchModels = async (idx: number) => {
     const fromModels = (json.models ?? []).map((m: { name?: string }) => String(m.name).replace(/^models\//, '')).filter(Boolean) as string[]
     const models = (fromData.length ? fromData : fromModels).sort()
     p.modelOptions = models.map((m: string) => ({ label: m, value: m }))
-    message.success(`拉取成功：${models.length} 个模型`)
+    message.success(t('fetchModelsSuccess').replace('NUM', String(models.length)))
   } catch (e: any) {
-    message.error(`拉取失败：${e.message || e}`)
+    message.error(t('fetchModelsFailed') + ': ' + (e.message || e))
   } finally {
     p.fetching = false
   }
@@ -423,7 +423,7 @@ const onSave = async () => {
     await loadConfig()
     if (result.skipped && Object.keys(result.skipped).length > 0) {
       const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
-      message.warning(`部分配置项未保存：${details}`)
+        message.warning(t('unsavedConfigWarning') + '：' + details)
     } else {
       message.success(t('configSuccess'))
     }

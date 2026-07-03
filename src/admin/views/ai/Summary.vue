@@ -329,7 +329,7 @@ const onTestGenerate = async () => {
     })
     testResult.value = r
   } catch (e: any) {
-    testResult.value = { success: false, message: e.message || '请求失败' }
+    testResult.value = { success: false, message: e.message || t('requestFailed') }
   } finally {
     testing.value = false
   }

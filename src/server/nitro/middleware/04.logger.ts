@@ -6,7 +6,7 @@
  * Serverless environments skip finish logging.
  */
 
-import { logger } from '#core/utils/logger'
+import { logger } from '#core'
 
 export default defineMiddleware((event) => {
   const start = Date.now()

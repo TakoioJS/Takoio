@@ -1,87 +1,112 @@
 /**
- * Summary routes — /api/ai/summary/*
+ * AI Article — POST /api/ai/article
  *
- * Admin-only routes for summary generation, testing, and cache management.
+ * Public (no auth) endpoint for blog visitors.
+ * Accepts article content + URL, returns AI-generated summary with caching.
+ *
+ * Requires AI_SUMMARY_ENABLED to be true.
  */
 
-import { handleArticleSummary } from '#core/handlers/summary'
-import { requireAdmin } from '#core/auth'
-import {
-  listSummaryCaches,
-  deleteSummaryCacheByUrl,
-  clearAllSummaryCaches,
-  updateSummaryCache,
-} from '#core/store/redis'
-import { isRedisAvailable } from '#core/store/redis'
-// getToken, validateBody, validateQuery — auto-imported
+import { handleArticleSummary } from '#core'
+import { getConfig } from '#core'
+import { getSummaryCache, setSummaryCache, redisRateLimit } from '#core'
+import { getClientIp } from '#core'
+import { isDev } from '#core'
+import { buildRequestContext } from '../../../../utils/request-context'
+import { createError } from 'h3'
+
+const MAX_CONTENT_LEN = 20_000
+const MAX_TITLE_LEN = 200
+
+const ARTICLE_RATE_MAX = 5
+const ARTICLE_RATE_WINDOW = 60_000
+
+function isSafeUrlPath (str: string): boolean {
+  try {
+    const u = new URL(str)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return str.startsWith('/') && !/[*?{}[\]]/.test(str)
+  }
+}
 
 export default defineHandler(async (event) => {
-  const path = (event.context.params?.slug as string) || ''
-  const segments = path.split('/').filter(Boolean)
-  const method = event.method
+  if (event.method !== 'POST') {
+    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
+  }
 
-  // All summary routes require admin auth
-  await requireAdmin({ token: getToken(event) })
+  const cfg = await getConfig()
+  if (!cfg.AI_SUMMARY_ENABLED) {
+    throw createError({ statusCode: 403, statusMessage: 'AI 摘要功能未启用' })
+  }
 
-  // ── POST /api/ai/summary (original: generate summary, no cache) ──
-  // ── POST /api/ai/summary/test (alias: test generate, no cache) ──
-  if ((segments.length === 0 || segments[0] === 'test') && method === 'POST') {
-    const body = await readBody(event).catch(() => null)
-    if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
-    if (!body.content || typeof body.content !== 'string') {
-      throw createError({ statusCode: 400, statusMessage: 'Missing required field: content' })
+  const body = await readBody(event).catch(() => null)
+  if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
+
+  // H1: content length caps
+  if (!body.content || typeof body.content !== 'string' || body.content.trim().length < 10) {
+    throw createError({ statusCode: 400, statusMessage: 'Missing or too short: content' })
+  }
+  if (body.content.length > MAX_CONTENT_LEN) {
+    throw createError({ statusCode: 413, statusMessage: 'Content too long' })
+  }
+
+  // C1: url must be a safe path — prevents glob injection into Redis KEYS
+  if (!body.url || typeof body.url !== 'string' || !isSafeUrlPath(body.url)) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid url' })
+  }
+
+  if (body.title && typeof body.title === 'string' && body.title.length > MAX_TITLE_LEN) {
+    body.title = body.title.slice(0, MAX_TITLE_LEN)
+  }
+
+  const ip = await getClientIp(buildRequestContext(event))
+  // Dev mode: skip rate limiting for testing
+  if (!isDev()) {
+    const allowed = await redisRateLimit(`article:${ip}`, ARTICLE_RATE_MAX, ARTICLE_RATE_WINDOW)
+    if (!allowed) {
+      throw createError({ statusCode: 429, statusMessage: '请求过于频繁，请稍后再试' })
     }
-    return handleArticleSummary({
-      content: body.content,
-      url: body.url,
-      title: body.title,
-      provider: body.provider,
-      model: body.model,
-    })
   }
 
-  // ── GET /api/ai/summary/list — list all cached summaries ──
-  if (segments[0] === 'list' && method === 'GET') {
-    // 不再依赖 isDev() 判断 Redis 状态：
-    // 云函数平台 NODE_ENV=development 会让 import.meta.dev polyfill 为 true，误判为 dev
-    // 直接检查 Redis 是否可用（基于 REDIS_URL 是否设置 + 连接是否成功）
-    const redisOk = await isRedisAvailable()
-    if (!redisOk) {
-      return { success: true, summaries: [], redisAvailable: false, dev: false }
+  const url = body.url as string
+  const title = body.title as string | undefined
+  const content = body.content as string
+
+  // 1. Check cache (C3: cache key is bound to content hash, so poisoned content can't overwrite legit entry)
+  // Dev 下 Redis 不可用，getSummaryCache 自动走内存缓存兜底；生产走 Redis
+  const cached = await getSummaryCache(url, content)
+  if (cached) {
+    return {
+      success: true,
+      message: '摘要来自缓存',
+      summary: cached.summary,
+      keywords: cached.keywords,
+      cached: true,
     }
-    const summaries = await listSummaryCaches()
-    return { success: true, summaries, redisAvailable: true, dev: false }
   }
 
-  // ── PUT /api/ai/summary — edit a cached summary by key (content/keywords/title) ──
-  if (segments.length === 0 && method === 'PUT') {
-    const body = await readBody(event).catch(() => null)
-    if (!body || typeof body !== 'object' || !body.key || typeof body.key !== 'string') {
-      throw createError({ statusCode: 400, statusMessage: 'Missing required field: key' })
-    }
-    const patch: { summary?: string; keywords?: string[]; title?: string } = {}
-    if (typeof body.summary === 'string') patch.summary = body.summary
-    if (Array.isArray(body.keywords)) patch.keywords = body.keywords.map((k: any) => String(k)).filter(Boolean)
-    if (typeof body.title === 'string') patch.title = body.title
-    const ok = await updateSummaryCache(body.key, patch)
-    if (!ok) throw createError({ statusCode: 404, statusMessage: '摘要不存在或已过期' })
-    return { success: true, message: '摘要已更新' }
+  // 2. Generate summary
+  const result = await handleArticleSummary({ content, url, title })
+  if (!result.success) {
+    return { ...result, cached: false }
   }
 
-  // ── DELETE /api/ai/summary — delete cached summaries for a specific URL ──
-  if (segments.length === 0 && method === 'DELETE') {
-    const query = getQuery(event)
-    const url = query.url as string
-    if (!url) throw createError({ statusCode: 400, statusMessage: 'Missing url parameter' })
-    const deleted = await deleteSummaryCacheByUrl(url)
-    return { success: true, deleted, message: `已删除 ${deleted} 条摘要缓存` }
-  }
+  // 3. Write cache (bound to url + content hash)
+  // Dev 下写入内存缓存，后续访问命中缓存，不再重复调用 LLM
+  await setSummaryCache(url, content, {
+    url,
+    summary: result.summary,
+    keywords: result.keywords,
+    title,
+    created: Date.now(),
+  })
 
-  // ── DELETE /api/ai/summary/all — clear all cached summaries ──
-  if (segments[0] === 'all' && method === 'DELETE') {
-    const deleted = await clearAllSummaryCaches()
-    return { success: true, deleted, message: `已清空 ${deleted} 条摘要缓存` }
+  return {
+    success: true,
+    message: result.message,
+    summary: result.summary,
+    keywords: result.keywords,
+    cached: false,
   }
-
-  throw createError({ statusCode: 404, statusMessage: 'Not Found' })
 })

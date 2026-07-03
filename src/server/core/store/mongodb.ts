@@ -25,14 +25,11 @@ import type {
   SessionStore,
   ReactionStore,
 } from './index'
+import { COMMENT_STATE } from './utils'
 
 type Col = Collection<any>
 
 const col = (db: Db, name: string): Col => db.collection<any>(name)
-
-export const COMMENT_STATE = {
-  VISIBLE: 'visible', HIDDEN: 'hidden', SPAM: 'spam', PENDING: 'pending',
-} as const
 
 let _client: MongoClient | null = null
 let _db: Db | null = null

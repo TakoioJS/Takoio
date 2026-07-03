@@ -4,8 +4,10 @@
 
 import { logger } from './utils/logger'
 import { configStore, sessionStore } from './store/index'
-import { type TakoioConfig, AppError, getConfig } from './config'
-import { getRequestHeader } from 'h3'
+import { type TakoioConfig, getConfig } from './config'
+import { AppError } from './errors'
+import type { RequestContext } from './ports'
+import { LOGIN_MAX_FAILURES, LOGIN_LOCKOUT_MS } from './constants'
 
 // ========== Password Hash Cache ==========
 
@@ -70,8 +72,6 @@ export const initPassword = async (): Promise<{ hasPassword: boolean }> => {
 // On cold start / serverless restart, Redis-attempts survive while the in-memory Map resets.
 interface LoginAttempt { failures: number; lockedUntil: number }
 const loginAttempts = new Map<string, LoginAttempt>()
-const LOGIN_MAX_FAILURES = 5
-const LOGIN_LOCKOUT_MS = 15 * 60 * 1000 // 15 minutes
 const REDIS_LOCKOUT_PREFIX = 'takoio:login-lockout:'
 const REDIS_LOGIN_ATTEMPTS_PREFIX = 'takoio:login-attempts:'
 
@@ -254,26 +254,26 @@ const parseOrigins = (value: string | string[] | undefined): string[] => {
   return String(value || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean)
 }
 
-export const validateOrigin = async (event: any): Promise<void> => {
-  const method = event.method || 'GET'
+export const validateOrigin = async (ctx: RequestContext): Promise<void> => {
+  const method = ctx.method || 'GET'
   // Only validate state-changing methods
   if (method === 'GET' || method === 'HEAD') return
 
-  const cfg = await getConfig(event)
+  const cfg = await getConfig(ctx)
   const allowedOrigins = [
     ...parseOrigins(cfg.CORS_ORIGINS),
     ...(cfg.SITE_URL ? [cfg.SITE_URL] : []),
   ].filter(Boolean)
   if (allowedOrigins.length === 0) return // No allowed origins configured = skip validation
 
-  const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer') || ''
+  const origin = ctx.headers['origin'] || ctx.headers['referer'] || ''
   if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)
 
   const originHost = new URL(origin).hostname
 
   // Same-origin request: allow if origin host matches the request's host header.
   // Browsers do not let attackers forge Origin to match the target host on cross-site requests.
-  const requestHost = getRequestHeader(event, 'host')?.split(':')[0]
+  const requestHost = ctx.headers['host']?.split(':')[0]
   if (requestHost && originHost === requestHost) return
 
   const isAllowed = allowedOrigins.some((allowed) => {

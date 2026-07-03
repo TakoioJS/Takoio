@@ -2,6 +2,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { resolve } from 'node:path'
 import * as schema from './schema'
+import { columnMigrations } from './migrations'
 import { LIBSQL_URL, LIBSQL_AUTH_TOKEN, LIBSQL_DATA_DIR } from '../env'
 
 export type DbClient = ReturnType<typeof drizzle<typeof schema>>
@@ -99,21 +100,12 @@ export async function initDb () {
   const existingColumns = await _raw.execute('PRAGMA table_info(comments)')
   const existingColumnNames = new Set(existingColumns.rows.map((r: any) => r.name))
 
-  const columnMigrations: [string, string, string][] = [
-    // v1.0 — ensure optional columns exist for databases created before they were added
-    ['add_comments_image', 'image', 'ALTER TABLE comments ADD COLUMN image TEXT'],
-    ['add_comments_sticker', 'sticker', 'ALTER TABLE comments ADD COLUMN sticker TEXT'],
-    ['add_comments_ip_region', 'ip_region', 'ALTER TABLE comments ADD COLUMN ip_region TEXT'],
-    ['add_comments_tags', 'tags', 'ALTER TABLE comments ADD COLUMN tags TEXT'],
-    ['add_comments_rendered', 'rendered_comment', 'ALTER TABLE comments ADD COLUMN rendered_comment TEXT'],
-  ]
-
-  for (const [name, column, sql] of columnMigrations) {
-    if (!appliedNames.has(name)) {
-      if (!existingColumnNames.has(column)) {
-        await _raw.execute(sql)
+  for (const m of columnMigrations) {
+    if (!appliedNames.has(m.name)) {
+      if (!existingColumnNames.has(m.column)) {
+        await _raw.execute(m.sql)
       }
-      await _raw.execute({ sql: 'INSERT INTO migrations (name, applied_at) VALUES (?, ?)', args: [name, Date.now()] })
+      await _raw.execute({ sql: 'INSERT INTO migrations (name, applied_at) VALUES (?, ?)', args: [m.name, Date.now()] })
     }
   }
 }

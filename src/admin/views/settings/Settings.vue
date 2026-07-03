@@ -494,7 +494,7 @@ const onTestEmail = async () => {
       message.error(result.message)
     }
   } catch (e: any) {
-    emailTestLog.value = `错误: ${e.message || '请求失败'}`
+    emailTestLog.value = `错误: ${e.message || t('requestFailed')}`
     message.error(t('emailTestFailed'))
   } finally {
     emailTesting.value = false
@@ -810,7 +810,7 @@ const onSave = async () => {
     await loadConfig()
     if (result.skipped && Object.keys(result.skipped).length > 0) {
       const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
-      message.warning(`部分配置项未保存：${details}`)
+      message.warning(t('unsavedConfigWarning') + '：' + details)
     } else {
       message.success(t('configSuccess'))
     }
