@@ -1,11 +1,21 @@
 /**
  * Config management — defaults, retrieval, caching, masking.
  *
- * ponytail: removed config-meta.ts, config-ns.ts, and config subscription system.
- * All defaults are now inline. HIDDEN_KEYS and MASKED_KEYS are static Sets.
+ * 设计原则：
+ * 1. 单一来源：config-meta.ts 的 CONFIG_META 是配置的唯一真实来源
+ * 2. 自动同步：ALLOWED_CONFIG_KEYS / HIDDEN_KEYS / MASKED_KEYS / PUBLIC_KEYS 从 CONFIG_META 自动生成
+ * 3. 分层暴露：公开配置 → 掩码配置 → 完整配置，逐级增加权限
+ *
+ * 新增配置键只需编辑 config-meta.ts 一个文件。
  */
 
 import { configStore } from './store/index'
+import {
+  buildDefaults, buildHiddenKeys,
+  buildMaskedKeys, buildPublicKeys,
+} from './config-meta'
+
+const PUBLIC_KEYS = buildPublicKeys()
 
 // ========== Error Types ==========
 
@@ -163,65 +173,16 @@ export interface TakoioConfig {
   SOCIAL_AUTH_GOOGLE_CLIENT_SECRET: string
 }
 
-// ========== Default Config ==========
+// ========== Default Config (auto-generated from CONFIG_META) ==========
 
-export const DEFAULT_CONFIG: TakoioConfig = {
-  SITE_NAME: 'My Blog',
-  MASTER_NAME: '',
-  GLOBAL_COLOR: '',
-  PAGE_SIZE: 10,
-  COMMENT_SORT: 'newest',
-  COMMENT_LENGTH_MAX: 500,
-  REQUIRED_FIELDS: ['nick'],
-  COMMENT_NICK_REQUIRED: true,
-  COMMENT_PAGINATION_MODE: 'pagination',
-  COMMENT_RATE_LIMIT: 30000,
-  GRAVATAR_URL: 'https://weavatar.com/avatar/',
-  GRAVATAR_DEFAULT: 'identicon',
-  ENABLE_VISITOR_COUNTER: true,
-  ENABLE_LIKE: true,
-  ENABLE_DISLIKE: true,
-  ENABLE_EMOTION: true,
-  ENABLE_LINK_INPUT: true,
-  COMMENT_LINK_REQUIRED: false,
-  ENABLE_ADMIN_KEYWORD: false,
-  ADMIN_KEYWORD: '#admin',
-  ENABLE_CODE_HIGHLIGHT: true,
-  CODE_HIGHLIGHT_THEME: 'one-dark-pro',
-  CODE_SHOW_LANGUAGE: true,
-  CODE_SHOW_COPY: true,
-  ENABLE_CAPTCHA: false,
-  CAPTCHA_PROVIDER: 'turnstile',
-  CAPTCHA_TYPE: 'checkbox',
-  ENABLE_IMAGE_UPLOAD: false,
-  ENABLE_NSFW_DETECTION: false,
-  NSFW_SERVICE: 'self',
-  NSFW_THRESHOLD: 0.5,
-  AUDIT_MODE: false,
-  BLOCKED_KEYWORDS: '赌博,博彩,外围,买分,卖分,刷分,代发,推广,SEO,裸聊,约炮,成人,刷屏,恶意攻击,小姐,招嫖',
-  IP_REGION_ENABLED: true,
-  IP_PROXY_HEADER: '',
-  TRUSTED_PROXIES: '',
-  SHOW_IP_REGION: 'all',
-  SHOW_UA_INFO: true,
-  ENABLE_MAIL_NOTIFICATION: false,
-  SMTP_PORT: 587,
-  SMTP_TLS: false,
-  SENDER_NAME: '',
-  MAIL_SUBJECT: '有人在 {title} 中回复了你',
-  MAIL_SUBJECT_ADMIN: '新的评论：{nick} 在 {title}',
-  PUSHOO_CHANNELS: '',
-  AI_PROVIDERS: '[]',
-  AI_SUMMARY_ENABLED: true,
-  ENABLE_SUMMARY: true,
-  CORS_ORIGINS: '',
-  SOCIAL_AUTH_EMAIL_ENABLED: true,
-  SOCIAL_AUTH_GITHUB_ENABLED: false,
-  SOCIAL_AUTH_GOOGLE_ENABLED: false,
-} as unknown as TakoioConfig
+export const DEFAULT_CONFIG: TakoioConfig = buildDefaults() as unknown as TakoioConfig
 
-// ========== Allowed Keys ==========
+// ========== Auto-Generated Allowed Keys ==========
 
+/**
+ * 从 DEFAULT_CONFIG 的 keys 自动生成允许修改的配置键白名单。
+ * 确保新增配置项时自动包含，无需手动同步。
+ */
 export const ALLOWED_CONFIG_KEYS = Object.keys(DEFAULT_CONFIG) as (keyof TakoioConfig)[]
 
 // ========== Config Validation (Zod) ==========
@@ -280,24 +241,10 @@ export function validateConfigBatch (
   return { valid, skipped }
 }
 
-// ========== Config Classification ==========
+// ========== Config Classification (auto-generated from CONFIG_META) ==========
 
-const HIDDEN_KEYS = new Set([
-  'MASTER', 'SMTP_PASS', 'SMTP_USER', 'SMTP_FROM', 'SMTP_TO', 'SMTP_HOST',
-  'CAPTCHA_SECRET_KEY', 'IMAGE_HOSTING_TOKEN', 'IMAGE_HOSTING_ACCESS_KEY',
-  'IMAGE_HOSTING_SECRET_KEY', 'NSFW_API_KEY', 'AI_PROVIDERS', 'AI_SUMMARY_PROVIDER',
-  'AI_SUMMARY_MODEL', 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET', 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET',
-  'SOCIAL_AUTH_GITHUB_CLIENT_ID', 'SOCIAL_AUTH_GOOGLE_CLIENT_ID', 'ADMIN_KEYWORD',
-  'ENABLE_ADMIN_KEYWORD', 'PUSHOO_CHANNELS', 'AKISMET_KEY', 'ENABLE_ANTI_SPAM',
-  'AUTO_AUDIT_METHOD', 'AUTO_AUDIT_AI_PROVIDER', 'AUTO_AUDIT_AI_MODEL', 'AUTO_AUDIT_AI_PROMPT',
-  'CORS_ORIGINS', 'IP_PROXY_HEADER', 'TRUSTED_PROXIES', 'SHOW_UA_INFO',
-])
-
-const MASKED_KEYS = new Set([
-  'SMTP_PASS', 'CAPTCHA_SECRET_KEY', 'IMAGE_HOSTING_TOKEN', 'IMAGE_HOSTING_ACCESS_KEY',
-  'IMAGE_HOSTING_SECRET_KEY', 'NSFW_API_KEY', 'SOCIAL_AUTH_GITHUB_CLIENT_SECRET',
-  'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET',
-])
+const HIDDEN_KEYS = buildHiddenKeys()
+const MASKED_KEYS = buildMaskedKeys()
 
 /** 敏感配置键集合（用于掩码处理） */
 export const SENSITIVE_CONFIG_KEYS = MASKED_KEYS
