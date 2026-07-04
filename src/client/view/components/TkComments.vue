@@ -102,6 +102,38 @@
       v-else
       class="tk-thread-card"
     >
+      <div
+        v-if="currentUser"
+        class="tk-auth-bar"
+      >
+        <div class="tk-auth-bar-left">
+          <span class="tk-auth-bar-avatar">
+            <img
+              v-if="currentUser.avatar"
+              :src="currentUser.avatar"
+              :alt="currentUser.name"
+              referrerpolicy="no-referrer"
+            >
+            <span
+              v-else
+              class="tk-auth-bar-avatar-placeholder"
+            >{{ (currentUser.name || '?')[0] }}</span>
+          </span>
+          <div class="tk-auth-bar-info">
+            <span class="tk-auth-bar-name">{{ currentUser.name }}</span>
+            <span class="tk-auth-bar-provider">
+              {{ ({ github: 'GitHub', google: 'Google', email: '邮箱' } as Record<string, string>)[currentUser.provider] || currentUser.provider }}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="tk-auth-bar-logout"
+          @click="onLogout"
+        >
+          {{ t('logout') || '退出' }}
+        </button>
+      </div>
       <div class="tk-comments-list">
         <TransitionGroup name="tk-comment-list">
           <TkComment
@@ -145,6 +177,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed, onBeforeUnmount, inject, type Ref } from 'vue'
 import { t, getComments, getUrl, normalizePath, type NormalizePathOpts } from '../../utils'
+import { onAuthChange, getAuthState, logout, type AuthUser } from '../../utils/auth'
 import type { Comment, TakoioConfig } from '../../types'
 import TkSubmit from './TkSubmit.vue'
 import TkComment from './TkComment.vue'
@@ -261,6 +294,14 @@ const loadingMore = ref(false)
 const allComments = ref<Comment[]>([])
 const sentinelRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
+
+// 当前登录用户状态（社交登录后填充）
+const currentUser = ref<AuthUser | null>(getAuthState()?.user || null)
+let unsubscribeAuth: (() => void) | null = null
+const onLogout = async () => {
+  await logout()
+  // onAuthChange 会自动触发 currentUser = null
+}
 
 // 组件级 AbortController：防止快速切换排序/翻页时的竞态请求
 let fetchController: AbortController | null = null
@@ -426,8 +467,8 @@ const setupInfiniteObserver = (): void => {
   if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 watch(sentinelRef, (el) => { if (el && infiniteMode.value) { observer?.disconnect(); setupInfiniteObserver() } })
-onMounted(() => { fetchComments(); if (infiniteMode.value) setupInfiniteObserver() })
-onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch() })
+onMounted(() => { fetchComments(); if (infiniteMode.value) setupInfiniteObserver(); unsubscribeAuth = onAuthChange((state) => { currentUser.value = state?.user || null }) })
+onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch(); if (unsubscribeAuth) unsubscribeAuth() })
 </script>
 
 <style scoped>
@@ -471,4 +512,40 @@ onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch() })
 .tk-error-state p, .tk-empty-state p { margin: 0; }
 .tk-btn-retry { margin-top: 12px; padding: 6px 20px; background: var(--tk-brand); color: #fff; border: none; border-radius: var(--tk-r-input); cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 600; }
 .tk-btn-retry:hover { filter: brightness(1.1); }
+
+/* 当前登录身份状态条（社交登录用户可见） */
+.tk-auth-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: var(--tk-bg-muted, #f5f5f5);
+  border: 1px solid var(--tk-border, #e5e5e5);
+  border-radius: var(--tk-r-input, 8px);
+}
+.tk-auth-bar-left {
+  display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;
+}
+.tk-auth-bar-avatar {
+  width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--tk-brand, #fbbf24); color: #fff; flex-shrink: 0;
+}
+.tk-auth-bar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.tk-auth-bar-avatar-placeholder { font-size: 14px; font-weight: 600; }
+.tk-auth-bar-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.tk-auth-bar-name { font-size: 14px; font-weight: 500; }
+.tk-auth-bar-provider {
+  display: inline-block; align-self: flex-start;
+  padding: 1px 8px; background: var(--tk-bg-hover, #e5e5e5);
+  border-radius: 9999px; font-size: 10px; text-transform: uppercase;
+  color: var(--tk-text-tertiary, #999); font-weight: 500;
+}
+.tk-auth-bar-logout {
+  padding: 4px 12px; background: transparent;
+  border: 1px solid var(--tk-border, #e5e5e5);
+  border-radius: var(--tk-r-input, 8px);
+  font-size: 12px; color: var(--tk-text-secondary, #666);
+  cursor: pointer; font-family: inherit; transition: all .15s;
+  flex-shrink: 0;
+}
+.tk-auth-bar-logout:hover { border-color: var(--tk-danger, #ef4444); color: var(--tk-danger, #ef4444); }
 </style>

@@ -27,5 +27,6 @@ export default defineConfig({
   projects: [
     { name: 'api', testMatch: /api\.spec\.ts/ },
     { name: 'ui', testMatch: /ui\.spec\.ts/ },
+    { name: 'social-auth', testMatch: /social-auth\.spec\.ts/ },
   ],
 })

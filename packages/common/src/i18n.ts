@@ -454,6 +454,16 @@ export const messages: Record<string, Record<string, string>> = {
     fetchModelsSuccess: '拉取成功：NUM 个模型',
     fetchModelsFailed: '拉取失败',
     unsavedConfigWarning: '部分配置项未保存',
+    // Email login
+    emailLoginTitle: '邮箱登录',
+    emailLoginHint: '输入邮箱，我们会发送 6 位验证码',
+    emailCodeSent: '验证码已发送至 {email}',
+    emailCodeInvalid: '验证码错误或已过期',
+    emailCodeRequired: '请输入 6 位验证码',
+    emailCodeResend: '重新发送 ({seconds}s)',
+    emailCodeExpired: '验证码已过期，请重新发送',
+    emailLoginSuccess: '登录成功',
+    emailLoginFailed: '登录失败：{reason}',
   },
   'zh-TW': {
     placeholder: '說點什麼…',
@@ -850,6 +860,16 @@ export const messages: Record<string, Record<string, string>> = {
     fetchModelsSuccess: '拉取成功：NUM 個模型',
     fetchModelsFailed: '拉取失敗',
     unsavedConfigWarning: '部分配置項未保存',
+    // Email login
+    emailLoginTitle: '郵箱登入',
+    emailLoginHint: '輸入郵箱，我們會發送 6 位驗證碼',
+    emailCodeSent: '驗證碼已發送至 {email}',
+    emailCodeInvalid: '驗證碼錯誤或已過期',
+    emailCodeRequired: '請輸入 6 位驗證碼',
+    emailCodeResend: '重新發送 ({seconds}s)',
+    emailCodeExpired: '驗證碼已過期，請重新發送',
+    emailLoginSuccess: '登入成功',
+    emailLoginFailed: '登入失敗：{reason}',
   },
   en: {
     placeholder: 'Say something…',
@@ -1287,6 +1307,16 @@ export const messages: Record<string, Record<string, string>> = {
     fetchModelsSuccess: 'Fetched NUM models',
     fetchModelsFailed: 'Failed to fetch models',
     unsavedConfigWarning: 'Some config items were not saved',
+    // Email login
+    emailLoginTitle: 'Email Login',
+    emailLoginHint: 'Enter your email, we will send a 6-digit code',
+    emailCodeSent: 'Code sent to {email}',
+    emailCodeInvalid: 'Invalid or expired code',
+    emailCodeRequired: 'Please enter the 6-digit code',
+    emailCodeResend: 'Resend ({seconds}s)',
+    emailCodeExpired: 'Code expired, please resend',
+    emailLoginSuccess: 'Login successful',
+    emailLoginFailed: 'Login failed: {reason}',
   }
 }
 

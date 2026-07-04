@@ -4,16 +4,34 @@
  * JWT-based sessions (no DB storage). Token payload is self-contained
  * and verifiable without DB lookup. 30-day expiry.
  *
+ * Uses `./store/oauth-cache` (Redis + in-memory LRU) for state and
+ * verify-code storage, so callbacks work across serverless instances
+ * or when Redis is down.
+ *
  * Config keys (set in admin panel):
  *   SOCIAL_AUTH_GITHUB_ENABLED / _CLIENT_ID / _CLIENT_SECRET
  *   SOCIAL_AUTH_GOOGLE_ENABLED / _CLIENT_ID / _CLIENT_SECRET
  *   SOCIAL_AUTH_EMAIL_ENABLED
  *
  * Falls back to env vars if config is not set (backward compat).
+ *
+ * Fire-and-forget pattern for `authUrl`:
+ *   `authUrl` is synchronous (called from renderers / redirect
+ *   responses) so it cannot `await` the async `setState`. It
+ *   schedules `setState` in a detached promise and returns the
+ *   URL immediately. The state cache has a 5-minute TTL which is
+ *   far longer than the typical OAuth roundtrip (<30s), so the
+ *   write always lands before the callback arrives. The callback
+ *   handler awaits `consumeState` to defeat replays.
  */
 
 import * as crypto from 'node:crypto'
 import type { TakoioConfig } from './config'
+import { setState, getState, consumeState, setVerifyCode, consumeVerifyCode } from './store/oauth-cache'
+
+// Re-export cache primitives so route handlers can call them directly
+// (replaces the old in-Map `verifyState` / `storeVerifyCode` / `verifyEmailCode`).
+export { setState, getState, consumeState, setVerifyCode, consumeVerifyCode }
 
 // ========== JWT ==========
 
@@ -102,28 +120,8 @@ function generateState (): string {
   return crypto.randomBytes(16).toString('hex')
 }
 
-function storeState (state: string): void {
-  // Store in memory with 5min TTL
-  stateCache.set(state, Date.now())
-  // Cleanup old states
-  for (const [s, t] of stateCache) {
-    if (Date.now() - t > 300_000) stateCache.delete(s)
-  }
-}
-
-function verifyState (state: string): boolean {
-  return stateCache.has(state)
-}
-
-const stateCache = new Map<string, number>()
-
-export function createOAuthProviders (siteUrl: string, cfg: Record<string, any>): Record<string, OAuthProvider> {
+export function createOAuthProviders (siteUrl: string, cfg: TakoioConfig): Record<string, OAuthProvider> {
   const providers: Record<string, OAuthProvider> = {}
-
-  let authConfig: Record<string, any> = {}
-  try {
-    authConfig = JSON.parse(cfg?.SOCIAL_AUTH_CONFIG || '{}')
-  } catch { /* use defaults */ }
 
   // GitHub: config key or env var
   const githubId = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_ID
@@ -132,7 +130,7 @@ export function createOAuthProviders (siteUrl: string, cfg: Record<string, any>)
     providers.github = {
       name: 'GitHub',
       authUrl: (state) => {
-        storeState(state)
+        void setState(state).catch(() => {})
         return `https://github.com/login/oauth/authorize?client_id=${githubId}&redirect_uri=${encodeURIComponent(siteUrl + '/api/auth/github/callback')}&scope=user:email&state=${state}`
       },
       getToken: async (code) => {
@@ -171,7 +169,7 @@ export function createOAuthProviders (siteUrl: string, cfg: Record<string, any>)
     providers.google = {
       name: 'Google',
       authUrl: (state) => {
-        storeState(state)
+        void setState(state).catch(() => {})
         return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleId}&redirect_uri=${encodeURIComponent(siteUrl + '/api/auth/google/callback')}&response_type=code&scope=openid+profile+email&state=${state}`
       },
       getToken: async (code) => {
@@ -211,27 +209,35 @@ export function createOAuthProviders (siteUrl: string, cfg: Record<string, any>)
 
 // ========== Email Verification ==========
 
-const verifyCodes = new Map<string, { code: string; user: AuthUser; expires: number }>()
-
 export function generateVerifyCode (): string {
-  return String(Math.floor(100000 + Math.random() * 900000))
+  return String(crypto.randomInt(100000, 1000000))
 }
 
-export function storeVerifyCode (uuid: string, code: string, user: AuthUser): void {
-  verifyCodes.set(uuid, { code, user, expires: Date.now() + 300_000 })
-  // Cleanup expired
-  for (const [k, v] of verifyCodes) {
-    if (Date.now() > v.expires) verifyCodes.delete(k)
+// ========== Request Helper ==========
+
+/**
+ * 从 H3Event 提取 token（Authorization 头 或 ?token= query）并 verifyToken。
+ * @returns AuthUser or null
+ */
+export function getAuthUserFromRequest (event: any): AuthUser | null {
+  // 1. Authorization: Bearer <token>
+  const authHeader = event.headers?.get?.('authorization') || ''
+  let token = ''
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7)
   }
+  // 2. ?token=xxx query (for OAuth callback page)
+  if (!token) {
+    const url = event.node?.req?.url || ''
+    try {
+      const u = new URL(url, 'http://localhost')
+      token = u.searchParams.get('token') || ''
+    } catch { /* ignore */ }
+  }
+  if (!token) return null
+  return verifyToken(token)
 }
 
-export function verifyEmailCode (uuid: string, code: string): AuthUser | null {
-  const entry = verifyCodes.get(uuid)
-  if (!entry || entry.expires < Date.now() || entry.code !== code) return null
-  verifyCodes.delete(uuid)
-  return entry.user
-}
+// ========== generateState export (per spec) ==========
 
-// ========== Auth State Helper ==========
-
-export { generateState, verifyState }
+export { generateState }

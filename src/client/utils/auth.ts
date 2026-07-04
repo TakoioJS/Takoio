@@ -2,50 +2,58 @@
  * Social Auth Token Manager — client-side
  *
  * Handles:
- *   1. OAuth callback: URL contains ?token=xxx after redirect, store it
- *   2. Token persistence: localStorage, auto-attach to comment submissions
- *   3. Login UI trigger: expose to Vue components
+ *   1. OAuth callback: URL contains ?token=xxx after redirect, fetch /api/auth/me to get user, store
+ *   2. Token persistence: localStorage, auto-expire check
+ *   3. Auth state subscription: onAuthChange() for components to react to login/logout
+ *   4. Logout: clear local + notify subscribers
  */
 
 const AUTH_STORAGE_KEY = 'takoio_auth'
+const AUTH_CHANGE_EVENT = 'takoio:auth-change'
+
+export interface AuthUser {
+  provider: 'github' | 'google' | 'email'
+  id: string
+  name: string
+  email?: string
+  avatar?: string
+}
 
 export interface AuthState {
   token: string
-  user: { name: string; email?: string; avatar?: string; provider: string }
+  user: AuthUser
 }
 
-/** Check if current URL is an auth callback and extract token */
-export function checkAuthCallback (): AuthState | null {
-  if (typeof window === 'undefined') return null
-
-  const url = new URL(window.location.href)
-  const token = url.searchParams.get('token')
-  if (!token) return null
-
-  const name = url.searchParams.get('name') || ''
-  const avatar = url.searchParams.get('avatar') || ''
-  const provider = '' // will be determined by /api/auth/me
-
-  const state: AuthState = {
-    token,
-    user: { name, avatar, provider: 'oauth' },
+/** Check if JWT token is expired (parse exp from payload locally) */
+export function isTokenExpired (token: string): boolean {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return true
+    // base64url decode payload (atob requires standard base64, must re-pad)
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4)
+    const payload = JSON.parse(atob(padded))
+    if (typeof payload.exp !== 'number') return false
+    // JWT exp is in seconds; Date.now() is in milliseconds
+    return Date.now() >= payload.exp * 1000
+  } catch {
+    return true
   }
-
-  // Store and clean URL
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state))
-  const cleanUrl = url.origin + url.pathname
-  window.history.replaceState({}, '', cleanUrl)
-
-  return state
 }
 
-/** Get stored auth state */
+/** Get stored auth state, returns null if missing or expired */
 export function getAuthState (): AuthState | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as AuthState
+    const state = JSON.parse(raw) as AuthState
+    if (!state.token || !state.user) return null
+    if (isTokenExpired(state.token)) {
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+      return null
+    }
+    return state
   } catch {
     return null
   }
@@ -53,15 +61,117 @@ export function getAuthState (): AuthState | null {
 
 /** Store auth state */
 export function setAuthState (state: AuthState): void {
+  if (typeof window === 'undefined') return
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state))
+  window.dispatchEvent(new CustomEvent(AUTH_CHANGE_EVENT, { detail: state }))
 }
 
-/** Clear auth state (logout) */
+/** Clear auth state and notify subscribers */
 export function clearAuthState (): void {
+  if (typeof window === 'undefined') return
   localStorage.removeItem(AUTH_STORAGE_KEY)
+  window.dispatchEvent(new CustomEvent(AUTH_CHANGE_EVENT, { detail: null }))
 }
 
-/** Get login URL for a provider */
+/** Check if current URL is an auth callback and extract token.
+ *  Now REAL: fetches /api/auth/me?token=xxx to get actual user info.
+ *  Returns the auth state on success, or null on failure/missing.
+ */
+export async function checkAuthCallback (): Promise<AuthState | null> {
+  if (typeof window === 'undefined') return null
+
+  const url = new URL(window.location.href)
+  const token = url.searchParams.get('token')
+  if (!token) return null
+
+  try {
+    // Fetch /me to get actual user info (not just hardcode 'oauth')
+    const res = await fetch(
+      `${url.origin}/api/auth/me?token=${encodeURIComponent(token)}`
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!data.user) return null
+
+    const state: AuthState = {
+      token,
+      user: {
+        provider: data.user.provider,
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        avatar: data.user.avatar,
+      },
+    }
+
+    setAuthState(state)
+    // Clean URL
+    window.history.replaceState({}, '', url.origin + url.pathname)
+    return state
+  } catch {
+    return null
+  }
+}
+
+/** Get current user from server (re-validate token).
+ *  Returns null if no auth or server rejects token.
+ */
+export async function getCurrentUser (): Promise<AuthUser | null> {
+  const state = getAuthState()
+  if (!state) return null
+  try {
+    const envId = (typeof window !== 'undefined' && (window as any).__TAKOIO_ENV_ID__) || ''
+    const base = envId.replace(/\/$/, '') || window.location.origin
+    const res = await fetch(`${base}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${state.token}` }
+    })
+    if (!res.ok) {
+      clearAuthState()
+      return null
+    }
+    const data = await res.json()
+    if (!data.user) {
+      clearAuthState()
+      return null
+    }
+    // Update local cache with fresh user info
+    setAuthState({ token: state.token, user: data.user })
+    return data.user as AuthUser
+  } catch {
+    return null
+  }
+}
+
+/** Logout: call server + clear local + notify subscribers */
+export async function logout (): Promise<void> {
+  const state = getAuthState()
+  if (state) {
+    try {
+      const envId = (typeof window !== 'undefined' && (window as any).__TAKOIO_ENV_ID__) || ''
+      const base = envId.replace(/\/$/, '') || window.location.origin
+      await fetch(`${base}/api/auth/logout`, { method: 'POST' })
+    } catch { /* best-effort */ }
+  }
+  clearAuthState()
+}
+
+/** Subscribe to auth state changes.
+ *  Returns an unsubscribe function.
+ *  Callback receives the new state (or null if logged out).
+ */
+export function onAuthChange (callback: (state: AuthState | null) => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const handler = (e: Event) => {
+    const detail = (e as CustomEvent<AuthState | null>).detail
+    callback(detail ?? null)
+  }
+  window.addEventListener(AUTH_CHANGE_EVENT, handler)
+  return () => window.removeEventListener(AUTH_CHANGE_EVENT, handler)
+}
+
+/** Get login URL for a provider.
+ *  Constructs from envId (which is the takoio server base URL).
+ */
 export function getLoginUrl (envId: string, provider: 'github' | 'google' | 'email'): string {
   if (provider === 'email') return '' // handled in UI
   const base = envId.replace(/\/$/, '')

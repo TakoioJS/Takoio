@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, getUrl, getHref, getUserAgent } from '../../utils'
 import { submitComment } from '../../utils'
-import { getAuthState } from '../../utils/auth'
+import { getAuthState, onAuthChange } from '../../utils/auth'
 import { renderMarkdown } from '../../utils/marked'
 import { toast, renderTex } from '../../utils'
 import type { TakoioConfig, Comment } from '../../types'
@@ -20,6 +20,7 @@ import CaptchaWidget from './submit/components/CaptchaWidget.vue'
 import MarkdownToolbar from './submit/components/MarkdownToolbar.vue'
 import LoginDropdown from './submit/components/LoginDropdown.vue'
 import PrivacyToggle from './submit/components/PrivacyToggle.vue'
+import EmailLoginDialog from './submit/components/EmailLoginDialog.vue'
 
 interface Props { options: TakoioConfig; siteConfig?: Record<string, any>; replyTo?: Comment | null }
 const props = defineProps<Props>()
@@ -95,7 +96,20 @@ const captchaError = ref('')
 
 // --- 设计稿新增：免登录 / 登录下拉 / 公开-私密切换 ---
 // 1) 登录下拉：仅当未登录 + 启用登录 + 至少一个 provider 时显示
-const isLoggedIn = computed(() => !!getAuthState()?.token)
+const isLoggedIn = ref(!!getAuthState()?.token)
+const currentUser = ref(getAuthState()?.user || null)
+
+// 邮箱登录弹窗
+const emailDialogOpen = ref(false)
+const onSelectProvider = (provider: 'github' | 'google' | 'email') => {
+  if (provider === 'email') {
+    emailDialogOpen.value = true
+  }
+  // github/google 由 LoginDropdown 内部直接跳转，无需处理
+}
+
+// 订阅 auth 变化（保持 isLoggedIn / currentUser 同步）
+let unsubscribeAuth: (() => void) | null = null
 const loginProviders = computed<Array<'github' | 'google' | 'email'>>(() => {
   const raw = (props.siteConfig?.LOGIN_PROVIDERS || props.options.loginProviders) as
     | string | string[] | undefined
@@ -151,8 +165,8 @@ const onSubmit = async (): Promise<void> => {
 }
 
 // --- Lifecycle ---
-onMounted(() => { fetchReactions(); loadDraft() })
-onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as any) })
+onMounted(() => { fetchReactions(); loadDraft(); unsubscribeAuth = onAuthChange((state) => { isLoggedIn.value = !!state; currentUser.value = state?.user || null }) })
+onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as any); if (unsubscribeAuth) unsubscribeAuth() })
 </script>
 
 <template>
@@ -212,9 +226,23 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
       class="tk-submit-form"
       @submit.prevent="onSubmit"
     >
-      <!-- 顶部 meta-row：登录态默认显示 nickname / email -->
+      <!-- 已登录：显示用户信息（替代 3 个 input） -->
       <div
-        v-if="!showGuestInfo"
+        v-if="isLoggedIn"
+        class="tk-auth-meta"
+      >
+        <span class="tk-auth-avatar">
+          <img v-if="currentUser?.avatar" :src="currentUser.avatar" :alt="currentUser.name" referrerpolicy="no-referrer">
+          <span v-else class="tk-auth-avatar-placeholder">{{ (currentUser?.name || '?')[0] }}</span>
+        </span>
+        <span class="tk-auth-name">{{ currentUser?.name }}</span>
+        <span v-if="currentUser?.email" class="tk-auth-email">{{ currentUser.email }}</span>
+        <span class="tk-auth-provider">{{ currentUser?.provider }}</span>
+      </div>
+
+      <!-- 顶部 meta-row：未登录态显示 nickname / email（已登录由 tk-auth-meta 替代） -->
+      <div
+        v-if="!showGuestInfo && !isLoggedIn"
         class="tk-meta-row"
       >
         <div class="tk-meta-item">
@@ -482,6 +510,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
             :providers="loginProviders"
             :env-id="options.envId"
             class="tk-toolbar-login"
+            @select="onSelectProvider"
           />
         </div>
 
@@ -515,6 +544,12 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
     :model-value="captchaToken"
     @update:model-value="captchaToken = $event"
     @error="captchaError = $event"
+  />
+  <!-- Email login dialog -->
+  <EmailLoginDialog
+    v-model="emailDialogOpen"
+    :env-id="options.envId"
+    @success="() => { /* onAuthChange 自动触发，UI 已登录态自动切换 */ }"
   />
 </template>
 
@@ -648,5 +683,24 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   .tk-toolbar-right { flex-shrink: 0; }
   .tk-btn-send-text { display: none; } /* 窄屏：发送按钮只显示图标 */
   .tk-submit-card { padding: 10px; }
+}
+.tk-auth-meta {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; background: var(--tk-bg-muted, #f5f5f5);
+  border-radius: var(--tk-r-input, 8px); font-size: 13px;
+}
+.tk-auth-avatar {
+  width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--tk-brand, #fbbf24); color: #fff; flex-shrink: 0;
+}
+.tk-auth-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.tk-auth-avatar-placeholder { font-size: 12px; font-weight: 600; }
+.tk-auth-name { font-weight: 500; }
+.tk-auth-email { color: var(--tk-text-tertiary, #999); font-size: 12px; }
+.tk-auth-provider {
+  padding: 1px 6px; background: var(--tk-bg-hover, #e5e5e5);
+  border-radius: 9999px; font-size: 10px; text-transform: uppercase;
+  color: var(--tk-text-tertiary, #999);
 }
 </style>

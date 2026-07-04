@@ -31,13 +31,14 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
 
   const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token } = validation.data
 
-  // Social auth: if token is valid, auto-populate user info and skip CAPTCHA
+  // Social auth: if token is provided but invalid, reject. Valid token auto-populates user info.
   let authUser = null
   if (token) {
     authUser = verifyToken(token)
-    if (authUser) {
-      logger.info({ provider: authUser.provider, name: authUser.name }, 'Authenticated comment')
+    if (!authUser) {
+      throw new AppErrorClass('AUTH_INVALID', '登录已过期，请重新登录', 401)
     }
+    logger.info({ provider: authUser.provider, name: authUser.name }, 'Authenticated comment')
   }
 
   // Impersonation protection

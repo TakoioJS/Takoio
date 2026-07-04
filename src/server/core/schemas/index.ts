@@ -290,3 +290,6 @@ export type PrivateKeyGetData = z.infer<typeof PrivateKeyGetSchema>
 export type PrivateKeySetData = z.infer<typeof PrivateKeySetSchema>
 export type SendNotificationData = z.infer<typeof SendNotificationSchema>
 export type EmailTestData = z.infer<typeof EmailTestSchema>
+export type { EmailSendData, EmailVerifyData, OAuthCallbackData } from './email'
+
+export * from './email'
