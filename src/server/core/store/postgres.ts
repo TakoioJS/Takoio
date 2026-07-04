@@ -480,6 +480,7 @@ export async function importStore (data: StoreImportData): Promise<void> {
           isSpam: c.isSpam ?? false,
           isTop: c.isTop ?? false,
           isPinned: c.isPinned ?? false,
+          isPrivate: c.isPrivate ?? false,
           image: c.image,
           sticker: c.sticker,
           ipRegion: c.ipRegion,

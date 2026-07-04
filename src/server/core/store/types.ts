@@ -42,6 +42,7 @@ export interface Comment {
   isSpam: boolean
   isTop: boolean
   isPinned: boolean
+  isPrivate: boolean
   image?: string | null
   sticker?: string | null
   ipRegion?: string | null
@@ -80,6 +81,7 @@ export interface CommentUpdate {
   isSpam?: boolean
   isTop?: boolean
   isPinned?: boolean
+  isPrivate?: boolean
   ipRegion?: string
   tags?: string
 }

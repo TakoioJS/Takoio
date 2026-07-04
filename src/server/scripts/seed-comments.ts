@@ -134,6 +134,7 @@ interface SeedRow {
   isSpam: number
   isTop: number
   isPinned: number
+  isPrivate: number
   image: string | null
   sticker: string | null
   ipRegion: string | null
@@ -185,6 +186,7 @@ function buildRow (opts: {
     isSpam: 0,
     isTop: opts.isTop ? 1 : 0,
     isPinned: 0,
+    isPrivate: 0,
     image: null,
     sticker: null,
     ipRegion: u.region,
@@ -295,6 +297,7 @@ async function main () {
       isSpam: !!r.isSpam,
       isTop: !!r.isTop,
       isPinned: !!r.isPinned,
+      isPrivate: !!r.isPrivate,
       image: r.image,
       ipRegion: r.ipRegion,
       tags: r.tags,

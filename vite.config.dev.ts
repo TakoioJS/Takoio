@@ -112,8 +112,18 @@ export default defineConfig(({ mode }) => {
       watch: {
         ignored: ['**/src/server/**'],
       },
+      // 强制 IPv4：Windows 上 'localhost' 经常被解析为 ::1（IPv6），但 nitro devServer
+      // 监听 0.0.0.0 (IPv4 only)，会导致 vite proxy 解析到 IPv6 后连接超时，
+      // 表现为 admin 加载后调 /api/* 超时、白屏。
+      // 统一用 127.0.0.1 强制走 IPv4，避开 localhost 解析差异。
       proxy: {
-        '/api': 'http://localhost:8080',
+        '/api': {
+          target: 'http://127.0.0.1:8080',
+          changeOrigin: true,
+          // 后端未启动时给前端一个明确错误（默认会卡到 socket timeout）
+          proxyTimeout: 3000,
+          timeout: 3000,
+        },
       },
     },
 

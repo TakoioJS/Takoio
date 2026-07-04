@@ -29,7 +29,7 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
   const validation = safeValidate(SubmitCommentSchema, data)
   if (!validation.success) throw new AppErrorClass('INVALID_INPUT', validation.error, 400)
 
-  const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token } = validation.data
+  const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token, isPrivate } = validation.data
 
   // Social auth: if token is provided but invalid, reject. Valid token auto-populates user info.
   let authUser = null
@@ -40,6 +40,9 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
     }
     logger.info({ provider: authUser.provider, name: authUser.name }, 'Authenticated comment')
   }
+
+  // 博主视角的 token 视为已认证身份：开启私密评论不需要 CAPTCHA 也允许
+  // （避免已登录博主评论自己博客时反复验证）
 
   // Impersonation protection
   const masterNameLower = cfg.MASTER_NAME?.toLowerCase() || ''
@@ -55,7 +58,7 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
     await verifyCaptcha(captchaToken, cfg)
   }
 
-  return { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token, authUser }
+  return { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token, isPrivate, authUser }
 }
 
 // ========== Stage 2: Rate limit (core infrastructure) ==========
@@ -107,7 +110,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const cfg = await getConfig()
 
   // 1. Validate
-  const { url, nick, mail, link, comment, pid, rid, ua, image, title, authUser } = await validateSubmit(data, cfg)
+  const { url, nick, mail, link, comment, pid, rid, ua, image, title, authUser, isPrivate } = await validateSubmit(data, cfg)
 
   // 2. Build comment object
   const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''
@@ -132,6 +135,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     isSpam: false,
     isTop: false,
     isPinned: false,
+    isPrivate: !!isPrivate,
     image: image || null,
     ipRegion: null,
     renderedComment: null,

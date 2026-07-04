@@ -37,6 +37,7 @@ function _buildSqliteSchema () {
     isSpam: integer('is_spam').notNull().default(0),
     isTop: integer('is_top').notNull().default(0),
     isPinned: integer('is_pinned').notNull().default(0),
+    isPrivate: integer('is_private').notNull().default(0), // 私密评论：仅博主与作者可见
     image: text('image'),
     sticker: text('sticker'),
     ipRegion: text('ip_region'),
@@ -50,6 +51,7 @@ function _buildSqliteSchema () {
     // 复合索引：评论列表主查询 WHERE url=? AND state IN(...) AND pid IS NULL ORDER BY created
     index('idx_comments_url_state_created').on(table.url, table.state, table.created),
     index('idx_comments_is_spam').on(table.isSpam),
+    index('idx_comments_is_private').on(table.isPrivate),
   ])
 
   const configs = sqliteTable('configs', {
@@ -125,6 +127,7 @@ function _buildPgSchema () {
     isSpam: boolean('is_spam').notNull().default(false),
     isTop: boolean('is_top').notNull().default(false),
     isPinned: boolean('is_pinned').notNull().default(false),
+    isPrivate: boolean('is_private').notNull().default(false), // 私密评论：仅博主与作者可见
     image: pgText('image'),
     sticker: pgText('sticker'),
     ipRegion: pgText('ip_region'),
@@ -138,6 +141,7 @@ function _buildPgSchema () {
     // 复合索引：评论列表主查询 WHERE url=? AND state IN(...) AND pid IS NULL ORDER BY created
     pgIndex('idx_comments_url_state_created').on(table.url, table.state, table.created),
     pgIndex('idx_comments_is_spam').on(table.isSpam),
+    pgIndex('idx_comments_is_private').on(table.isPrivate),
   ])
 
   const configs = pgTable('configs', {

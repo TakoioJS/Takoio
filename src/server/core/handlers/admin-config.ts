@@ -28,9 +28,9 @@ export const handleSetConfig = async (data: { _ip?: string; config?: Record<stri
   const filtered: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(valid)) {
-    // C2: reject masked values for sensitive keys
+    // 掩码值（前端回显的 `xxx****yyy`）静默忽略：相当于"未修改"，不写入也不计入 skipped
+    // 这样前端保存时不必追踪哪些字段被改动，避免"部分设置项未保存"的误报
     if (SENSITIVE_CONFIG_KEYS.has(key) && typeof value === 'string' && value.includes('****')) {
-      skipped[key] = 'masked value ignored'
       continue
     }
     // AI_PROVIDERS: special case — array from frontend, serialize to JSON

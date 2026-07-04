@@ -675,23 +675,33 @@ const loadConfig = async () => {
     }
     activePushKeys.value = activeKeys
 
-    // Convert CODE_SHOW_LANGUAGE/CODE_SHOW_COPY booleans to CODE_FEATURES array
-    const codeFeatures: string[] = []
-    if (data.CODE_SHOW_LANGUAGE) codeFeatures.push('language')
-    if (data.CODE_SHOW_COPY) codeFeatures.push('copy')
+    // Build CODE_FEATURES array from data (configStore.getConfig already JSON-parsed).
+    // 之前无条件覆写为从 boolean 推导的数组，会丢失 data.CODE_FEATURES 中已存在的值。
+    // 现在直接信任 data.CODE_FEATURES，缺失时再回退到 boolean 字段（向后兼容）。
+    let codeFeatures: string[] = []
+    if (Array.isArray(data.CODE_FEATURES)) {
+      codeFeatures = data.CODE_FEATURES as string[]
+    } else if (typeof data.CODE_FEATURES === 'string' && data.CODE_FEATURES) {
+      try { codeFeatures = JSON.parse(data.CODE_FEATURES) } catch { codeFeatures = [] }
+    }
+    if (codeFeatures.length === 0) {
+      if (data.CODE_SHOW_LANGUAGE) codeFeatures.push('language')
+      if (data.CODE_SHOW_COPY) codeFeatures.push('copy')
+    }
     config.CODE_FEATURES = codeFeatures
 
-    // Build COMMENT_FEATURES array from stored JSON string or fallback to boolean fields
+    // Build COMMENT_FEATURES array from data (configStore.getConfig already JSON-parsed).
+    // 之前这里用 string 类型判断 + boolean 字段 fallback，导致 JSON.parse 之后又被覆写成空数组，
+    // 'commentReaction'（无对应 boolean 字段）会丢失。
+    // 现在直接信任 data.COMMENT_FEATURES（已 parse），如缺失再从 boolean 字段恢复（向后兼容）。
     let commentFeatures: string[] = []
-    if (data.COMMENT_FEATURES && typeof data.COMMENT_FEATURES === 'string') {
-      try {
-        commentFeatures = JSON.parse(data.COMMENT_FEATURES)
-      } catch {
-        commentFeatures = []
-      }
+    if (Array.isArray(data.COMMENT_FEATURES)) {
+      commentFeatures = data.COMMENT_FEATURES as string[]
+    } else if (typeof data.COMMENT_FEATURES === 'string' && data.COMMENT_FEATURES) {
+      try { commentFeatures = JSON.parse(data.COMMENT_FEATURES) } catch { commentFeatures = [] }
     }
-    // Fallback: derive from boolean fields for backward compatibility
     if (commentFeatures.length === 0) {
+      if (data.ENABLE_COMMENT_REACTION) commentFeatures.push('commentReaction')
       if (data.ENABLE_ARTICLE_REACTION) commentFeatures.push('articleReaction')
       if (data.ENABLE_LINK_INPUT) commentFeatures.push('linkInput')
       if (data.SHOW_UA_INFO) commentFeatures.push('uaInfo')

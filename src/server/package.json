@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "nitro dev",
     "prepare": "nitro prepare",
-    "build": "nitro build",
-    "build:vercel": "NITRO_PRESET=vercel nitro build",
-    "build:netlify": "NITRO_PRESET=netlify nitro build",
+    "build": "nitro build && node scripts/copy-xdb.mjs .output/server",
+    "build:vercel": "NITRO_PRESET=vercel nitro build && node scripts/copy-xdb.mjs .vercel/output/functions/__server.func",
+    "build:netlify": "NITRO_PRESET=netlify nitro build && node scripts/copy-xdb.mjs .output/server",
     "start": "PORT=8080 node .output/server/index.mjs",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",

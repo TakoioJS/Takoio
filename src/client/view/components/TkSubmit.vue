@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, getUrl, getHref, getUserAgent } from '../../utils'
 import { submitComment } from '../../utils'
-import { getAuthState, onAuthChange } from '../../utils/auth'
+import { getAuthState, onAuthChange, getAvailableProviders, type AvailableProviders } from '../../utils/auth'
 import { renderMarkdown } from '../../utils/marked'
 import { toast, renderTex } from '../../utils'
 import type { TakoioConfig, Comment } from '../../types'
@@ -110,12 +110,41 @@ const onSelectProvider = (provider: 'github' | 'google' | 'email') => {
 
 // 订阅 auth 变化（保持 isLoggedIn / currentUser 同步）
 let unsubscribeAuth: (() => void) | null = null
+
+// 后端自动发现的可用 provider（onMounted 拉取）
+const availableProviders = ref<AvailableProviders | null>(null)
+
+// 合并三个数据源（按优先级）：
+//   1) 用户 init 时显式传入 options.loginProviders
+//   2) siteConfig.LOGIN_PROVIDERS（预留扩展点，暂未实现）
+//   3) /api/auth/providers 自动发现结果
 const loginProviders = computed<Array<'github' | 'google' | 'email'>>(() => {
-  const raw = (props.siteConfig?.LOGIN_PROVIDERS || props.options.loginProviders) as
-    | string | string[] | undefined
-  const list = Array.isArray(raw) ? raw : (typeof raw === 'string' ? raw.split(',') : [])
-  const allow = new Set(['github', 'google', 'email'])
-  return list.filter((p): p is 'github' | 'google' | 'email' => allow.has(String(p).toLowerCase().trim()))
+  // 1) 最高优先级：用户显式配置
+  const explicit = props.options.loginProviders
+  if (Array.isArray(explicit) && explicit.length > 0) {
+    const allow = new Set(['github', 'google', 'email'])
+    return explicit.filter((p): p is 'github' | 'google' | 'email' => allow.has(String(p).toLowerCase().trim()))
+  }
+  // 2) siteConfig.LOGIN_PROVIDERS（字符串或数组）
+  const fromConfig = props.siteConfig?.LOGIN_PROVIDERS
+  if (fromConfig) {
+    const list = Array.isArray(fromConfig) ? fromConfig : String(fromConfig).split(',')
+    const allow = new Set(['github', 'google', 'email'])
+    const filtered = list
+      .map(s => String(s).toLowerCase().trim())
+      .filter((p): p is 'github' | 'google' | 'email' => allow.has(p))
+    if (filtered.length > 0) return filtered
+  }
+  // 3) 默认：自动发现
+  if (availableProviders.value) {
+    const ap = availableProviders.value
+    const out: Array<'github' | 'google' | 'email'> = []
+    if (ap.github) out.push('github')
+    if (ap.google) out.push('google')
+    if (ap.email) out.push('email')
+    return out
+  }
+  return []
 })
 const showLogin = computed(() =>
   !isLoggedIn.value &&
@@ -155,6 +184,7 @@ const onSubmit = async (): Promise<void> => {
       pid: props.replyTo?.pid || props.replyTo?.id || undefined,
       rid: props.replyTo?.id || undefined,
       token: getAuthState()?.token || undefined,
+      isPrivate: privateComment.value || undefined,
     })
     emit('posted', result.data)
     form.comment = ''
@@ -165,7 +195,19 @@ const onSubmit = async (): Promise<void> => {
 }
 
 // --- Lifecycle ---
-onMounted(() => { fetchReactions(); loadDraft(); unsubscribeAuth = onAuthChange((state) => { isLoggedIn.value = !!state; currentUser.value = state?.user || null }) })
+onMounted(async () => {
+  fetchReactions()
+  loadDraft()
+  unsubscribeAuth = onAuthChange((state) => { isLoggedIn.value = !!state; currentUser.value = state?.user || null })
+  // 拉取后端实际启用的 provider 列表（无 options.loginProviders 时回退）
+  if (props.options.envId) {
+    try {
+      availableProviders.value = await getAvailableProviders(props.options.envId)
+    } catch {
+      availableProviders.value = { github: false, google: false, email: false }
+    }
+  }
+})
 onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as any); if (unsubscribeAuth) unsubscribeAuth() })
 </script>
 
@@ -559,12 +601,12 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
 /* =========================================================
  * 设计稿：单卡片容器 + 聚焦外发光
- * - 背景 var(--tk-bg-input)，边框 var(--tk-border-light)，圆角 12px
- * - 工具栏与上方内容之间 1px 顶部分隔
- * - :focus-within 时品牌色 1px box-shadow
+ * - 半透明背景（适配更多站点，融入页面主题）
+ * - 边框 1px，圆角 12px
+ * - :focus-within 时品牌色 box-shadow
  * ========================================================= */
 .tk-submit-card {
-  background: var(--tk-bg-input);
+  background: transparent;
   border: 1px solid var(--tk-border-light);
   border-radius: var(--tk-r-card);
   padding: var(--tk-space-md);
@@ -611,12 +653,11 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 .tk-error-msg { font-size: 12px; color: var(--tk-danger); line-height: 1.4; word-break: break-all; }
 .tk-avatar-preview { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 
-/* 设计稿：内嵌工具栏（textarea 与 toolbar 之间 1px border-top 分隔） */
+/* 设计稿：内嵌工具栏（textarea 与 toolbar 之间无视觉分隔，半透明融合） */
 .tk-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   flex-wrap: wrap;
   padding-top: var(--tk-space-sm);
-  border-top: 1px solid var(--tk-border-light);
 }
 .tk-toolbar-left { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .tk-toolbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }

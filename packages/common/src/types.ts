@@ -58,6 +58,8 @@ export interface CommentSubmit {
   isAdmin?: boolean
   password?: string
   token?: string
+  /** 私密评论：开启后只有博主和评论作者本人可见 */
+  isPrivate?: boolean
 }
 
 // ========== API Types ==========

@@ -84,7 +84,16 @@ const stripPrivate = (r: Comment | null): Omit<Comment, 'ip' | 'mail'> & { relat
 const normalizeDoc = (r: any): Comment | null => {
   if (!r) return r
   const { _id, ...rest } = r
-  return { id: _id, ...rest, like: r.like ?? 0, dislike: r.dislike ?? 0 } as Comment
+  return {
+    id: _id,
+    ...rest,
+    like: r.like ?? 0,
+    dislike: r.dislike ?? 0,
+    isSpam: !!r.isSpam,
+    isTop: !!r.isTop,
+    isPinned: !!r.isPinned,
+    isPrivate: !!r.isPrivate,
+  } as Comment
 }
 
 /** CommentInput → MongoDB 文档（addComment / addComments 共用） */
@@ -109,6 +118,7 @@ const commentToDoc = (data: CommentInput) => ({
   isSpam: !!data.isSpam,
   isTop: !!data.isTop,
   isPinned: !!data.isPinned,
+  isPrivate: !!data.isPrivate,
   image: data.image,
   sticker: data.sticker,
   ipRegion: data.ipRegion,
@@ -601,6 +611,7 @@ export async function importStore (data: StoreImportData): Promise<void> {
           isSpam: !!c.isSpam,
           isTop: !!c.isTop,
           isPinned: !!c.isPinned,
+          isPrivate: !!c.isPrivate,
           image: c.image,
           sticker: c.sticker,
           ipRegion: c.ipRegion,

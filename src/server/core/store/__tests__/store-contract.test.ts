@@ -74,6 +74,7 @@ function makeComment (overrides: Partial<CommentInput> = {}): CommentInput {
     isSpam: false,
     isTop: false,
     isPinned: false,
+    isPrivate: false,
     image: null,
     sticker: null,
     ipRegion: null,

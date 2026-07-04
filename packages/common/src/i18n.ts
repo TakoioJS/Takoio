@@ -464,6 +464,12 @@ export const messages: Record<string, Record<string, string>> = {
     emailCodeExpired: '验证码已过期，请重新发送',
     emailLoginSuccess: '登录成功',
     emailLoginFailed: '登录失败：{reason}',
+    // Login providers (设计稿 P1 补充)
+    loginWithGitHub: 'GitHub',
+    loginWithGoogle: 'Google',
+    loginWithEmail: '邮箱',
+    sendCode: '发送验证码',
+    guestInfoTitle: '免登录评论需要填写以下信息',
   },
   'zh-TW': {
     placeholder: '說點什麼…',
@@ -870,6 +876,12 @@ export const messages: Record<string, Record<string, string>> = {
     emailCodeExpired: '驗證碼已過期，請重新發送',
     emailLoginSuccess: '登入成功',
     emailLoginFailed: '登入失敗：{reason}',
+    // Login providers (設計稿 P1 補充)
+    loginWithGitHub: 'GitHub',
+    loginWithGoogle: 'Google',
+    loginWithEmail: '郵箱',
+    sendCode: '發送驗證碼',
+    guestInfoTitle: '免登入評論需要填寫以下資訊',
   },
   en: {
     placeholder: 'Say something…',
@@ -1317,6 +1329,12 @@ export const messages: Record<string, Record<string, string>> = {
     emailCodeExpired: 'Code expired, please resend',
     emailLoginSuccess: 'Login successful',
     emailLoginFailed: 'Login failed: {reason}',
+    // Login providers (P1 from design spec)
+    loginWithGitHub: 'GitHub',
+    loginWithGoogle: 'Google',
+    loginWithEmail: 'Email',
+    sendCode: 'Send code',
+    guestInfoTitle: 'Guest comments need the following info',
   }
 }
 

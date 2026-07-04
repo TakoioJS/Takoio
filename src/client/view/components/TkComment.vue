@@ -342,10 +342,20 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
   flex-wrap: wrap;
   row-gap: 6px;
 }
-.tk-meta-item { display: inline-flex; align-items: center; gap: 3px;
-  /* 设计稿 pill 化：与 .tk-tag 一致 */
-  padding: 2px 8px; border-radius: var(--tk-r-pill);
-  background: var(--tk-bg-hover); color: var(--tk-text-tertiary); }
+.tk-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* 移除背景填充以避免与浅色主题文字色对比不足，强化文字色对比度 */
+  padding: 2px 0;
+  background: transparent;
+  /* 强化日间模式可读性：使用次级文字色而非 tertiary */
+  color: var(--tk-text-2, #4b5563);
+  font-weight: 500;
+}
+html.dark .tk-meta-item {
+  color: var(--tk-text-2, #c9d1d9);
+}
 .tk-replies { margin-top: 8px; margin-left: -34px; padding-left: 60px; position: relative; }
 .tk-replies::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--tk-border-soft); border-radius: 1px; }
 @media (max-width: 640px) {

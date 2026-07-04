@@ -1,112 +1,90 @@
 /**
- * AI Article — POST /api/ai/article
+ * AI Summary admin routes — catch-all for /api/ai/summary/*
  *
- * Public (no auth) endpoint for blog visitors.
- * Accepts article content + URL, returns AI-generated summary with caching.
+ * Method × path 路由分发：
+ * - GET    /api/ai/summary/list   列出全部摘要缓存（后台编辑用）
+ * - POST   /api/ai/summary/test   临时生成摘要（不写入缓存）
+ * - PUT    /api/ai/summary        按 key 更新摘要（编辑保存）
+ * - DELETE /api/ai/summary?url=…  按 URL 删除某页面全部缓存
+ * - DELETE /api/ai/summary/all    清空全部摘要缓存
  *
- * Requires AI_SUMMARY_ENABLED to be true.
+ * 所有接口需 admin 鉴权。客户端调用方：src/admin/views/ai/Summary.vue
  */
 
-import { handleArticleSummary } from '#core'
-import { getConfig } from '#core'
-import { getSummaryCache, setSummaryCache, redisRateLimit } from '#core'
-import { getClientIp } from '#core'
-import { isDev } from '#core'
-import { buildRequestContext } from '../../../../utils/request-context'
-import { createError } from 'h3'
-
-const MAX_CONTENT_LEN = 20_000
-const MAX_TITLE_LEN = 200
-
-const ARTICLE_RATE_MAX = 5
-const ARTICLE_RATE_WINDOW = 60_000
-
-function isSafeUrlPath (str: string): boolean {
-  try {
-    const u = new URL(str)
-    return u.protocol === 'http:' || u.protocol === 'https:'
-  } catch {
-    return str.startsWith('/') && !/[*?{}[\]]/.test(str)
-  }
-}
+import {
+  listSummaryCaches,
+  updateSummaryCache,
+  deleteSummaryCacheByUrl,
+  clearAllSummaryCaches,
+  handleArticleSummary,
+  requireAdmin,
+} from '#core'
+import { getToken } from '../../../../utils/auth'
+import { createError, getQuery, readBody } from 'h3'
 
 export default defineHandler(async (event) => {
-  if (event.method !== 'POST') {
-    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
+  const slug = (event.context.params?.slug as string) || ''
+  const segments = slug.split('/').filter(Boolean)
+  const sub = segments[0] || ''
+  const method = event.method
+
+  // 统一鉴权（所有 summary admin 接口均需 admin 权限）
+  const token = getToken(event)
+  await requireAdmin({ token })
+
+  // GET /api/ai/summary/list
+  if (method === 'GET' && sub === 'list') {
+    const items = await listSummaryCaches()
+    return { success: true, summaries: items }
   }
 
-  const cfg = await getConfig()
-  if (!cfg.AI_SUMMARY_ENABLED) {
-    throw createError({ statusCode: 403, statusMessage: 'AI 摘要功能未启用' })
-  }
-
-  const body = await readBody(event).catch(() => null)
-  if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Invalid request body' })
-
-  // H1: content length caps
-  if (!body.content || typeof body.content !== 'string' || body.content.trim().length < 10) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing or too short: content' })
-  }
-  if (body.content.length > MAX_CONTENT_LEN) {
-    throw createError({ statusCode: 413, statusMessage: 'Content too long' })
-  }
-
-  // C1: url must be a safe path — prevents glob injection into Redis KEYS
-  if (!body.url || typeof body.url !== 'string' || !isSafeUrlPath(body.url)) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid url' })
-  }
-
-  if (body.title && typeof body.title === 'string' && body.title.length > MAX_TITLE_LEN) {
-    body.title = body.title.slice(0, MAX_TITLE_LEN)
-  }
-
-  const ip = await getClientIp(buildRequestContext(event))
-  // Dev mode: skip rate limiting for testing
-  if (!isDev()) {
-    const allowed = await redisRateLimit(`article:${ip}`, ARTICLE_RATE_MAX, ARTICLE_RATE_WINDOW)
-    if (!allowed) {
-      throw createError({ statusCode: 429, statusMessage: '请求过于频繁，请稍后再试' })
+  // POST /api/ai/summary/test — 临时生成摘要（不写入缓存）
+  if (method === 'POST' && sub === 'test') {
+    const body = await readBody(event).catch(() => null) as { content?: string; title?: string; url?: string } | null
+    if (!body || typeof body.content !== 'string' || body.content.trim().length < 10) {
+      throw createError({ statusCode: 400, statusMessage: 'Missing or too short: content' })
     }
+    // 用虚拟 url 避免污染真实缓存；handleArticleSummary 内部不写缓存，仅生成
+    const result = await handleArticleSummary({
+      content: body.content,
+      url: body.url || '/__admin_test__',
+      title: body.title,
+    })
+    return result
   }
 
-  const url = body.url as string
-  const title = body.title as string | undefined
-  const content = body.content as string
-
-  // 1. Check cache (C3: cache key is bound to content hash, so poisoned content can't overwrite legit entry)
-  // Dev 下 Redis 不可用，getSummaryCache 自动走内存缓存兜底；生产走 Redis
-  const cached = await getSummaryCache(url, content)
-  if (cached) {
-    return {
-      success: true,
-      message: '摘要来自缓存',
-      summary: cached.summary,
-      keywords: cached.keywords,
-      cached: true,
+  // PUT /api/ai/summary — 按 key 更新摘要
+  if (method === 'PUT' && !sub) {
+    const body = await readBody(event).catch(() => null) as { key?: string; summary?: string; keywords?: string[]; title?: string } | null
+    if (!body || typeof body.key !== 'string' || !body.key) {
+      throw createError({ statusCode: 400, statusMessage: 'Missing key' })
     }
+    const ok = await updateSummaryCache(body.key, {
+      summary: body.summary,
+      keywords: body.keywords,
+      title: body.title,
+    })
+    if (!ok) {
+      throw createError({ statusCode: 404, statusMessage: '摘要不存在或已过期' })
+    }
+    return { success: true }
   }
 
-  // 2. Generate summary
-  const result = await handleArticleSummary({ content, url, title })
-  if (!result.success) {
-    return { ...result, cached: false }
+  // DELETE /api/ai/summary/all — 清空全部
+  if (method === 'DELETE' && sub === 'all') {
+    const n = await clearAllSummaryCaches()
+    return { success: true, count: n }
   }
 
-  // 3. Write cache (bound to url + content hash)
-  // Dev 下写入内存缓存，后续访问命中缓存，不再重复调用 LLM
-  await setSummaryCache(url, content, {
-    url,
-    summary: result.summary,
-    keywords: result.keywords,
-    title,
-    created: Date.now(),
-  })
-
-  return {
-    success: true,
-    message: result.message,
-    summary: result.summary,
-    keywords: result.keywords,
-    cached: false,
+  // DELETE /api/ai/summary?url=… — 按 URL 删除
+  if (method === 'DELETE' && !sub) {
+    const url = getQuery(event).url
+    if (!url || typeof url !== 'string') {
+      throw createError({ statusCode: 400, statusMessage: 'Missing url query parameter' })
+    }
+    const n = await deleteSummaryCacheByUrl(url)
+    return { success: true, count: n }
   }
+
+  throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
 })

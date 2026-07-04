@@ -8,44 +8,15 @@
  */
 
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { logger } from './utils/logger'
 
 // ip2region-ts 的 searcher 类型（动态 import 后才可用）
 type IpSearcher = { search: (ip: string) => Promise<{ region: string | null }> }
 
-// Candidate xdb file paths, in priority order:
-//   1. ip2region-ts default (local dev: node_modules/ip2region-ts/data/ip2region.xdb
-//      resolved via __dirname of the package's dist/index.js)
-//   2. CWD-relative node_modules path (Vercel/Netlify after esbuild bundle:
-//      __dirname no longer points into node_modules, so use process.cwd())
-function xdbCandidates (defaultDbFile: string): string[] {
-  return [
-    defaultDbFile,
-    join(process.cwd(), 'node_modules/ip2region-ts/data/ip2region.xdb'),
-  ]
-}
-
 let ipSearcher: IpSearcher | null = null
-let _initStarted = false
-
-export const initIpSearcher = async (): Promise<void> => {
-  if (_initStarted) return
-  _initStarted = true
-  try {
-    const { loadContentFromFile, newWithBuffer, defaultDbFile } = await import('ip2region-ts')
-    const xdbFile = xdbCandidates(defaultDbFile).find(p => existsSync(p))
-    if (!xdbFile) {
-      logger.warn('ip2region.xdb not found in candidate paths, IP lookup disabled')
-      return
-    }
-    const buffer = loadContentFromFile(xdbFile)
-    ipSearcher = newWithBuffer(buffer) as IpSearcher
-    logger.info('IP region searcher initialized (ip2region)')
-  } catch (e: any) {
-    logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
-  }
-}
+let initDone = false
 
 const cleanRegion = (s: string): string =>
   s.split(' ').filter(p => p && p !== '0').join(' ')
@@ -66,33 +37,55 @@ const parseIpRegion = (region: string | null): string => {
   return cleanRegion(region)
 }
 
-// LRU 缓存：同一 IP 短时间内重复查询命中缓存，避免重复 ip2region 查询
-const _ipRegionCache = new Map<string, { region: string; expire: number }>()
-const IP_REGION_CACHE_TTL = 3600_000 // 1 小时
-const IP_REGION_CACHE_MAX = 5000
+/**
+ * 解析 xdb 文件路径，优先级：
+ * 1. IP2REGION_XDB_PATH 环境变量（自定义部署或调试）
+ * 2. 当前模块所在目录的上一级 ip2region.xdb（Nitro bundle 根目录，适用于云函数和自部署）
+ * 3. ip2region-ts 包内默认路径（本地 nitro dev）
+ */
+const resolveXdbPath = (defaultDbFile: string): string | undefined => {
+  if (process.env.IP2REGION_XDB_PATH) return process.env.IP2REGION_XDB_PATH
+
+  const bundled = join(dirname(fileURLToPath(import.meta.url)), '..', 'ip2region.xdb')
+  if (existsSync(bundled)) return bundled
+
+  if (existsSync(defaultDbFile)) return defaultDbFile
+
+  return undefined
+}
+
+export const initIpSearcher = async (): Promise<void> => {
+  if (initDone) return
+  initDone = true
+
+  try {
+    const { loadContentFromFile, newWithBuffer, defaultDbFile } = await import('ip2region-ts')
+    const xdbPath = resolveXdbPath(defaultDbFile)
+
+    if (!xdbPath) {
+      logger.warn('ip2region.xdb not found, IP lookup disabled')
+      return
+    }
+
+    const buffer = loadContentFromFile(xdbPath)
+    ipSearcher = newWithBuffer(buffer) as IpSearcher
+    logger.info('IP region searcher initialized')
+  } catch (e: any) {
+    logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
+  }
+}
 
 export const lookupIpRegion = async (ip: string): Promise<string> => {
-  if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|::ffff:127\.)/.test(ip)) return '内网IP'
-  if (!ipSearcher) return ''
-
-  // 命中缓存
-  const cached = _ipRegionCache.get(ip)
-  if (cached) {
-    if (cached.expire > Date.now()) return cached.region
-    _ipRegionCache.delete(ip)
+  if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|::ffff:127\.)/.test(ip)) {
+    return '内网IP'
   }
+  if (!ipSearcher) return ''
 
   try {
     const result = await ipSearcher.search(ip)
-    const region = parseIpRegion(result.region)
-    // 写入缓存，超容量时淘汰最旧
-    if (_ipRegionCache.size >= IP_REGION_CACHE_MAX) {
-      const firstKey = _ipRegionCache.keys().next().value
-      if (firstKey) _ipRegionCache.delete(firstKey)
-    }
-    _ipRegionCache.set(ip, { region, expire: Date.now() + IP_REGION_CACHE_TTL })
-    return region
-  } catch {
+    return parseIpRegion(result.region)
+  } catch (e: any) {
+    logger.debug({ ip, error: e.message }, 'IP region lookup failed')
     return ''
   }
 }

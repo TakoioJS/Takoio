@@ -52,6 +52,7 @@ export async function initDb () {
     is_spam INTEGER NOT NULL DEFAULT 0,
     is_top INTEGER NOT NULL DEFAULT 0,
     is_pinned INTEGER NOT NULL DEFAULT 0,
+    is_private INTEGER NOT NULL DEFAULT 0,
     image TEXT, sticker TEXT, ip_region TEXT, tags TEXT, rendered_comment TEXT
   )`)
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_url ON comments(url)')
@@ -61,6 +62,7 @@ export async function initDb () {
   // 复合索引：加速评论列表主查询 WHERE url=? AND state=? AND pid IS NULL ORDER BY created
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_url_state_created ON comments(url, state, created)')
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_is_spam ON comments(is_spam)')
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_is_private ON comments(is_private)')
 
   await _raw.execute(`CREATE TABLE IF NOT EXISTS configs (
     key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL
@@ -103,7 +105,8 @@ export async function initDb () {
   for (const m of columnMigrations) {
     if (!appliedNames.has(m.name)) {
       if (!existingColumnNames.has(m.column)) {
-        await _raw.execute(m.sql)
+        const migrationSql = m.sqliteSql ?? m.sql
+        if (migrationSql) await _raw.execute(migrationSql)
       }
       await _raw.execute({ sql: 'INSERT INTO migrations (name, applied_at) VALUES (?, ?)', args: [m.name, Date.now()] })
     }

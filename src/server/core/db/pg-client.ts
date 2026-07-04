@@ -51,6 +51,7 @@ export async function initDb (): Promise<void> {
     is_spam BOOLEAN NOT NULL DEFAULT FALSE,
     is_top BOOLEAN NOT NULL DEFAULT FALSE,
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    is_private BOOLEAN NOT NULL DEFAULT FALSE,
     image TEXT,
     sticker TEXT,
     ip_region TEXT,
@@ -64,6 +65,7 @@ export async function initDb (): Promise<void> {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_comments_state ON comments(state)`)
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_comments_url_state_created ON comments(url, state, created)`)
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_comments_is_spam ON comments(is_spam)`)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_comments_is_private ON comments(is_private)`)
 
   await db.execute(sql`CREATE TABLE IF NOT EXISTS configs (
     key TEXT PRIMARY KEY,
@@ -120,7 +122,8 @@ export async function initDb (): Promise<void> {
   for (const m of columnMigrations) {
     if (!appliedNames.has(m.name)) {
       if (!existingColumnNames.has(m.column)) {
-        await db.execute(sql.raw(m.sql))
+        const migrationSql = m.pgSql ?? m.sql
+        if (migrationSql) await db.execute(sql.raw(migrationSql))
       }
       await db.execute(sql`INSERT INTO migrations (name, applied_at) VALUES (${m.name}, ${Date.now()})`)
     }

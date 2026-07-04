@@ -40,6 +40,7 @@ export function fromRow (r: any): Comment {
     isSpam: !!r.isSpam,
     isTop: !!r.isTop,
     isPinned: !!r.isPinned,
+    isPrivate: !!r.isPrivate,
   }
 }
 
@@ -53,6 +54,7 @@ export function fromRowPg (r: any): Comment {
     isSpam: r.isSpam ?? false,
     isTop: r.isTop ?? false,
     isPinned: r.isPinned ?? false,
+    isPrivate: r.isPrivate ?? false,
   }
 }
 
@@ -65,6 +67,7 @@ export function commentToSqliteRow (data: CommentInput) {
     isSpam: data.isSpam ? 1 : 0,
     isTop: data.isTop ? 1 : 0,
     isPinned: data.isPinned ? 1 : 0,
+    isPrivate: data.isPrivate ? 1 : 0,
   }
 }
 
@@ -81,7 +84,16 @@ export function commentToPgRow (data: CommentInput) {
 export function normalizeDoc (r: any): Comment | null {
   if (!r) return r
   const { _id, ...rest } = r
-  return { id: _id, ...rest, like: r.like ?? 0, dislike: r.dislike ?? 0 } as Comment
+  return {
+    id: _id,
+    ...rest,
+    like: r.like ?? 0,
+    dislike: r.dislike ?? 0,
+    isSpam: !!r.isSpam,
+    isTop: !!r.isTop,
+    isPinned: !!r.isPinned,
+    isPrivate: !!r.isPrivate,
+  } as Comment
 }
 
 /** MongoDB CommentInput → 文档 */
@@ -107,6 +119,7 @@ export function commentToDoc (data: CommentInput) {
     isSpam: data.isSpam,
     isTop: data.isTop,
     isPinned: data.isPinned,
+    isPrivate: data.isPrivate,
     image: data.image,
     sticker: data.sticker,
     ipRegion: data.ipRegion,

@@ -95,7 +95,9 @@ export const submitComment = (envId: string, data: {
   title?: string;
   captchaToken?: string;
   href?: string;
-  token?: string
+  token?: string;
+  /** 私密评论：开启后只有博主和评论作者本人可见 */
+  isPrivate?: boolean
 }): Promise<any> =>
   request(`${baseUrl(envId)}/api/comments`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
@@ -107,12 +109,15 @@ export const getComments = (envId: string, params: {
   pageSize?: number;
   sort?: string
   signal?: AbortSignal
+  /** 当前用户的 viewer token（social auth）；服务端用于识别作者本人，让其能看到自己的私密评论 */
+  viewerToken?: string
 }): Promise<any> => {
   const qs = new URLSearchParams()
   if (params.url) qs.set('url', params.url)
   if (params.page) qs.set('page', String(params.page))
   if (params.pageSize) qs.set('pageSize', String(params.pageSize))
   if (params.sort) qs.set('sort', params.sort)
+  if (params.viewerToken) qs.set('viewerToken', params.viewerToken)
   return request(`${baseUrl(envId)}/api/comments?${qs}`, { externalSignal: params.signal })
 }
 

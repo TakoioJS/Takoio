@@ -6,6 +6,9 @@
 
 [English](./README.en.md) | **中文**
 
+> [!WARNING]
+> 本项目目前不推荐生产部署使用，Main 仍处于迭代和问题修复阶段。
+
 简洁、免费的评论系统。Vue 3 + Nitro 3 构建，支持自托管与 Serverless 部署。
 
 基于 [Twikoo](https://github.com/twikoojs/twikoo) 重写。

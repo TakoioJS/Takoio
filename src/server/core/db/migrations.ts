@@ -1,13 +1,17 @@
 /**
  * 列迁移清单 — SQLite 与 PostgreSQL 共享。
  *
- * 这 5 项 ALTER TABLE ... ADD COLUMN 语句在两个方言下语法完全一致
- * （均为 `ALTER TABLE comments ADD COLUMN <column> TEXT`），因此只存一份纯字符串：
- * - SQLite (client.ts)：直接传给 `_raw.execute(string)`
- * - PostgreSQL (pg-client.ts)：用 `sql.raw(string)` 包装后传给 `db.execute()`
+ * 早期迁移（image/sticker/ip_region/tags/rendered_comment）的列类型在两方言
+ * 下均为 TEXT，SQL 完全一致，使用单一 `sql` 字段即可。
  *
- * `sql.raw` 不接受参数插值，但本清单的 SQL 全部为静态字符串（列名与类型硬编码），
- * 无注入风险，因此可安全使用。
+ * `is_private` 在两方言下类型不同：
+ * - SQLite: `INTEGER NOT NULL DEFAULT 0`
+ * - PostgreSQL: `BOOLEAN NOT NULL DEFAULT FALSE`
+ * 因此需要分别提供 `sqliteSql` 与 `pgSql`。
+ *
+ * 调用方：
+ * - SQLite (client.ts)：使用 `m.sqliteSql ?? m.sql`
+ * - PostgreSQL (pg-client.ts)：使用 `m.pgSql ?? m.sql`
  */
 
 export interface ColumnMigration {
@@ -15,8 +19,12 @@ export interface ColumnMigration {
   name: string
   /** 列名（用于 information_schema / PRAGMA table_info 检查列是否已存在） */
   column: string
-  /** ALTER TABLE SQL 字符串（dialect-agnostic，sqlite 与 pg 均适用） */
-  sql: string
+  /** dialect-agnostic SQL（可选；当 sqliteSql/pgSql 未提供时使用） */
+  sql?: string
+  /** SQLite 专用 SQL（覆盖 sql） */
+  sqliteSql?: string
+  /** PostgreSQL 专用 SQL（覆盖 sql） */
+  pgSql?: string
 }
 
 export const columnMigrations: ColumnMigration[] = [
@@ -26,4 +34,11 @@ export const columnMigrations: ColumnMigration[] = [
   { name: 'add_comments_ip_region', column: 'ip_region', sql: 'ALTER TABLE comments ADD COLUMN ip_region TEXT' },
   { name: 'add_comments_tags', column: 'tags', sql: 'ALTER TABLE comments ADD COLUMN tags TEXT' },
   { name: 'add_comments_rendered', column: 'rendered_comment', sql: 'ALTER TABLE comments ADD COLUMN rendered_comment TEXT' },
+  // 私密评论：仅博主与作者本人可见
+  {
+    name: 'add_comments_is_private',
+    column: 'is_private',
+    sqliteSql: 'ALTER TABLE comments ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0',
+    pgSql: 'ALTER TABLE comments ADD COLUMN is_private BOOLEAN NOT NULL DEFAULT FALSE',
+  },
 ]

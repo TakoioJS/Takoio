@@ -177,3 +177,61 @@ export function getLoginUrl (envId: string, provider: 'github' | 'google' | 'ema
   const base = envId.replace(/\/$/, '')
   return `${base}/api/auth/${provider}`
 }
+
+// ========== Available Providers Discovery ==========
+
+export interface AvailableProviders {
+  github: boolean
+  google: boolean
+  email: boolean
+}
+
+interface ProvidersCache {
+  value: AvailableProviders
+  ts: number
+  envId: string
+}
+
+let _providersCache: ProvidersCache | null = null
+const PROVIDERS_TTL = 60_000 // 60s 内存缓存，避免每次渲染都请求
+
+/**
+ * 从 /api/auth/providers 拉取后端实际启用的 provider 列表。
+ *
+ * 数据源优先级（前端 loginProviders 计算属性会按此顺序合并）：
+ *   1) 用户在 init 时显式传入 options.loginProviders
+ *   2) 后端 publicConfigSubset 暴露的 LOGIN_PROVIDERS 字段（预留扩展点）
+ *   3) 本接口返回的自动发现结果
+ *
+ * 失败时返回全 false（不影响 UI，只是下拉不显示）。
+ */
+export async function getAvailableProviders (envId: string): Promise<AvailableProviders> {
+  if (typeof window === 'undefined') return { github: false, google: false, email: false }
+
+  // 命中缓存（同 envId + 未过期）直接返回
+  if (_providersCache && _providersCache.envId === envId && Date.now() - _providersCache.ts < PROVIDERS_TTL) {
+    return _providersCache.value
+  }
+
+  const base = (envId || window.location.origin).replace(/\/$/, '')
+  try {
+    const res = await fetch(`${base}/api/auth/providers`, { method: 'GET' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    const result: AvailableProviders = {
+      github: !!data.github,
+      google: !!data.google,
+      email: !!data.email,
+    }
+    _providersCache = { value: result, ts: Date.now(), envId }
+    return result
+  } catch {
+    // 失败时不缓存，避免短时间内反复打挂掉的服务
+    return { github: false, google: false, email: false }
+  }
+}
+
+/** 清空 provider 缓存（用于配置变更后强制重拉） */
+export function invalidateProvidersCache (): void {
+  _providersCache = null
+}

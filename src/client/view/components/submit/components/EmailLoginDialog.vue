@@ -260,49 +260,230 @@ watch(() => props.modelValue, (v) => { if (v) reset() })
 </script>
 
 <style scoped>
+/* ========== 遮罩层：玻璃拟态 + 渐变暗化 ========== */
 .tk-email-dialog-mask {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.4));
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
+  animation: tk-mask-in .2s ease-out;
 }
+@keyframes tk-mask-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ========== 弹窗：浅色玻璃面 + 顶部品牌渐变条 ========== */
 .tk-email-dialog {
-  background: var(--tk-bg-elevated, #1a1a1a);
-  border: 1px solid var(--tk-border, #2a2a2a);
-  border-radius: var(--tk-r-card, 12px);
-  box-shadow: var(--tk-shadow-float, 0 4px 16px rgba(0,0,0,0.4));
-  padding: 24px;
-  max-width: 400px;
+  position: relative;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  box-shadow:
+    0 20px 50px -12px rgba(0, 0, 0, 0.25),
+    0 8px 24px -8px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 0;
+  max-width: 420px;
   width: 100%;
-  display: flex; flex-direction: column; gap: 16px;
+  display: flex; flex-direction: column; gap: 0;
+  overflow: hidden;
+  animation: tk-dialog-in .25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.tk-email-dialog-header { display: flex; align-items: center; justify-content: space-between; }
-.tk-email-dialog-title { font-size: 16px; font-weight: 600; margin: 0; }
-.tk-email-step-bar { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.tk-email-step {
-  width: 24px; height: 24px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--tk-bg-hover, #262626); color: var(--tk-text-tertiary, #737373);
-  font-size: 12px; font-weight: 500;
-  transition: background .15s, color .15s;
+.tk-email-dialog::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #fbbf24 0%, #f97316 50%, #ef4444 100%);
+  z-index: 1;
 }
-.tk-email-step-active { background: var(--tk-brand, #fbbf24); color: #fff; }
-.tk-email-step-done { background: var(--tk-success, #22c55e); color: #fff; }
-.tk-email-step-line { width: 32px; height: 1px; background: var(--tk-border, #2a2a2a); }
-.tk-email-hint { font-size: 13px; color: var(--tk-text-secondary, #a3a3a3); margin: 0; line-height: 1.5; }
-.tk-email-step-body { display: flex; flex-direction: column; gap: 12px; }
-.tk-email-error {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: var(--tk-danger, #ef4444);
-  padding: 8px 12px; border-radius: 8px; font-size: 13px;
+@keyframes tk-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ========== 头部 ========== */
+.tk-email-dialog-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 20px 0;
+}
+.tk-email-dialog-title {
+  font-size: 17px; font-weight: 600;
+  margin: 0;
+  color: #1f2329;
+  letter-spacing: -0.01em;
+}
+.tk-btn-icon-ghost {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  border: none; background: transparent;
+  color: #6b7280;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tk-btn-icon-ghost:hover { background: rgba(0, 0, 0, 0.05); color: #1f2329; }
+
+/* ========== 步骤条 ========== */
+.tk-email-step-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 16px 20px 0;
+}
+.tk-email-step {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9; color: #94a3b8;
+  font-size: 12px; font-weight: 600;
+  transition: all .2s ease;
+  border: 1.5px solid transparent;
+}
+.tk-email-step-active {
+  background: #1f2329; color: #fff;
+  box-shadow: 0 0 0 4px rgba(31, 35, 41, 0.08);
+}
+.tk-email-step-done {
+  background: #10b981; color: #fff;
+}
+.tk-email-step-line {
+  width: 36px; height: 1.5px; background: #e2e8f0;
+}
+
+/* ========== 提示 & 错误 ========== */
+.tk-email-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+  text-align: center;
+}
+.tk-email-error {
+  margin: 0 20px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.04));
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+  padding: 8px 12px; border-radius: 8px; font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ========== 表单区 ========== */
+.tk-email-step-body {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px 20px 20px;
+}
+.tk-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #1f2329;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.tk-input::placeholder { color: #94a3b8; }
+.tk-input:hover:not(:disabled) { border-color: #cbd5e1; }
+.tk-input:focus {
+  border-color: #fbbf24;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+}
+.tk-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.tk-code-input {
+  text-align: center;
+  letter-spacing: 0.5em;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: 'SF Mono', Menlo, monospace;
+}
+
+/* ========== 主操作按钮 ========== */
+.tk-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1f2329 0%, #374151 100%);
+  color: #fff;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: transform .1s, box-shadow .15s, opacity .15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+}
+.tk-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.tk-btn-primary:active:not(:disabled) { transform: translateY(0); }
+.tk-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ========== 次要链接 ========== */
+.tk-btn-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 32px;
+  border: none; background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color .15s;
+  margin-top: -4px;
+}
+.tk-btn-link:hover:not(:disabled) { color: #1f2329; }
+.tk-btn-link:disabled { color: #cbd5e1; cursor: not-allowed; }
+
+/* ========== 过渡 ========== */
 .tk-fade-enter-active, .tk-fade-leave-active { transition: opacity .15s; }
 .tk-fade-enter-from, .tk-fade-leave-to { opacity: 0; }
 
+/* ========== 暗色模式 ========== */
+@media (prefers-color-scheme: dark) {
+  .tk-email-dialog {
+    background: rgba(22, 27, 34, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 20px 50px -12px rgba(0, 0, 0, 0.6),
+      0 8px 24px -8px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .tk-email-dialog-title { color: #e5eaf3; }
+  .tk-btn-icon-ghost { color: #9aa5b1; }
+  .tk-btn-icon-ghost:hover { background: rgba(255, 255, 255, 0.05); color: #e5eaf3; }
+  .tk-email-step { background: #161b22; color: #6b7280; }
+  .tk-email-step-active { background: #fbbf24; color: #1f2329; box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15); }
+  .tk-email-step-line { background: #21262d; }
+  .tk-email-hint { color: #9aa5b1; }
+  .tk-input {
+    background: #0d1117; border-color: #21262d; color: #e5eaf3;
+  }
+  .tk-input::placeholder { color: #6b7280; }
+  .tk-input:hover:not(:disabled) { border-color: #30363d; }
+  .tk-input:focus { border-color: #fbbf24; background: #161b22; box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15); }
+  .tk-btn-primary { background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%); color: #1f2329; }
+  .tk-btn-link { color: #9aa5b1; }
+  .tk-btn-link:hover:not(:disabled) { color: #e5eaf3; }
+}
+
+/* ========== 移动端 ========== */
 @media (max-width: 640px) {
-  .tk-email-dialog { padding: 16px; }
-  .tk-email-dialog-mask { padding: 10px; }
+  .tk-email-dialog-mask { padding: 12px; align-items: flex-end; }
+  .tk-email-dialog {
+    max-width: 100%;
+    border-radius: 20px 20px 16px 16px;
+    animation: tk-dialog-in-mobile .25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes tk-dialog-in-mobile {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .tk-email-dialog-header { padding: 18px 16px 0; }
+  .tk-email-step-bar { padding: 12px 16px 0; }
+  .tk-email-step-body { padding: 14px 16px 18px; }
+  .tk-email-error { margin: 0 16px; }
 }
 </style>

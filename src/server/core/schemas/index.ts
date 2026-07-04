@@ -21,6 +21,8 @@ export const SubmitCommentSchema = z.object({
   captchaToken: z.string().optional(),
   _token: z.string().optional(),
   token: z.string().optional(),
+  // 私密评论：开启后只有博主和评论作者本人可见
+  isPrivate: z.boolean().optional(),
 })
 
 export const GetCommentSchema = z.object({
@@ -28,6 +30,9 @@ export const GetCommentSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   sort: z.enum(['newest', 'oldest', 'hottest']).default('newest'),
+  // 用于识别"博主视角"或"作者本人"，让私密评论对合法读者可见
+  viewerToken: z.string().optional(),
+  adminToken: z.string().optional(),
 })
 
 export const CommentIdSchema = z.object({

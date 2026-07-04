@@ -384,7 +384,15 @@ const fetchComments = async (): Promise<void> => {
   try {
     const targetUrl = await resolveTargetUrl(signal)
     if (signal.aborted) return
-    const result = await getComments(mergedOptions.value.envId, { url: targetUrl!, page: page.value, pageSize: pageSize.value, sort: sort.value, signal })
+    const result = await getComments(mergedOptions.value.envId, {
+      url: targetUrl!,
+      page: page.value,
+      pageSize: pageSize.value,
+      sort: sort.value,
+      signal,
+      // 当前登录用户的 social token：让作者本人能看到自己的私密评论
+      viewerToken: getAuthState()?.token || undefined,
+    })
     const fetched = result.data || []
     resolveReplyToNick(fetched)
     if (infiniteMode.value) allComments.value = fetched
@@ -493,8 +501,8 @@ onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch(); if (unsubs
 .tk-load-more { color: var(--tk-brand); cursor: pointer; font-size: 13px; opacity: 0.7; transition: opacity 0.2s; }
 .tk-load-more:hover { opacity: 1; }
 .tk-thread-card {
-  /* 设计稿：评论列表单卡片容器 */
-  background: var(--tk-bg-card);
+  /* 设计稿：评论列表单卡片容器（半透明背景，融入更多站点主题） */
+  background: transparent;
   border: 1px solid var(--tk-border);
   border-radius: var(--tk-r-card);
   box-shadow: var(--tk-shadow-card);
