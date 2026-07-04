@@ -3,7 +3,6 @@
  */
 
 import * as crypto from 'node:crypto'
-import { escapeHtml } from '@takoio/common'
 import { commentStore } from '../store/index'
 import { invalidateCommentListCache } from '../store/redis'
 

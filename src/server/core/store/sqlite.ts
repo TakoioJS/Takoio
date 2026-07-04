@@ -547,28 +547,18 @@ export async function ensureDb (): Promise<void> {
 export async function dbRateLimit (
   key: string,
   maxRequests: number,
-  windowMs: number,
+  _windowMs: number,
   windowStart: number
 ): Promise<boolean> {
-  const dbClient = getDb()
-  const existing = await dbClient.select().from(rateLimits)
-    .where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
-    .limit(1)
-
-  if (existing.length === 0) {
-    // First request in this window
-    await dbClient.insert(rateLimits).values({ key, windowStart, count: 1 }).onConflictDoNothing()
-    return true
-  }
-
-  const entry = existing[0]
-  if (entry.count >= maxRequests) {
-    return false
-  }
-
-  await dbClient.update(rateLimits)
-    .set({ count: entry.count + 1 })
-    .where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
-
-  return true
+  if (maxRequests <= 0) return false
+  // 原子化 upsert：INSERT 新窗口计数为 1；若存在冲突且当前 count < max，则 +1。
+  // 当 count >= max 时 WHERE 条件不成立，rowsAffected = 0，直接返回 false。
+  const result = await db().run(sql`
+    INSERT INTO ${rateLimits} (key, window_start, count)
+    VALUES (${key}, ${windowStart}, 1)
+    ON CONFLICT(key, window_start) DO UPDATE SET
+      count = count + 1
+    WHERE count < ${maxRequests}
+  `)
+  return (result.rowsAffected ?? 0) > 0
 }

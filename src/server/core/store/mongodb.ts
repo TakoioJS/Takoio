@@ -698,17 +698,15 @@ export async function dbRateLimit (
   _windowMs: number,
   windowStart: number
 ): Promise<boolean> {
+  if (maxRequests <= 0) return false
   const db = await getDb()
   const rateCol = col(db, 'rate_limits')
 
-  const doc = await rateCol.findOne({ key, windowStart })
-  if (!doc) {
-    await rateCol.insertOne({ key, windowStart, count: 1 })
-    // TTL: auto-delete entries older than 1 hour
-    await rateCol.createIndex({ windowStart: 1 }, { expireAfterSeconds: 3600 }).catch(() => {})
-    return true
-  }
-  if (doc.count >= maxRequests) return false
-  await rateCol.updateOne({ key, windowStart }, { $inc: { count: 1 } })
-  return true
+  // 原子化 findOneAndUpdate + upsert + $inc：MongoDB 在文档级别保证原子性
+  const result = await rateCol.findOneAndUpdate(
+    { key, windowStart },
+    { $inc: { count: 1 } },
+    { upsert: true, returnDocument: 'after' }
+  )
+  return (result?.count ?? 0) <= maxRequests
 }

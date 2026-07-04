@@ -42,15 +42,17 @@ export const handleCommentGet = async (data: GetCommentData) => {
     commentStore.getComments(targetUrl, page, pageSize, sort)
   )
 
-  // 二次过滤：私密评论
+  // 二次过滤：私密评论。
+  // 先浅克隆每一项，避免 markMasterComments 直接修改缓存中的原始对象引用。
   const filteredData = (result.data as any[]).map((c: any) => {
-    if (!c.isPrivate) return c
+    const clone = { ...c }
+    if (!clone.isPrivate) return clone
     // 博主可见
-    if (isMasterViewer) return c
+    if (isMasterViewer) return clone
     // 作者本人可见（mailMd5 匹配）
-    if (viewerMailMd5 && c.mailMd5 && c.mailMd5 === viewerMailMd5) return c
+    if (viewerMailMd5 && clone.mailMd5 && clone.mailMd5 === viewerMailMd5) return clone
     // 其他视角：用占位替换 content，避免泄露正文
-    return { ...c, comment: '🔒 私密评论', renderedComment: '<p>🔒 私密评论，仅博主与作者本人可见</p>' }
+    return { ...clone, comment: '🔒 私密评论', renderedComment: '<p>🔒 私密评论，仅博主与作者本人可见</p>' }
   })
 
   const rawCfg = await getConfig()

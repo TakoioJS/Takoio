@@ -71,7 +71,14 @@ export default defineHandler(async (event) => {
         spinnerEl.style.display = 'none';
         titleEl.textContent = '登录成功';
         const providerLabel = { github: 'GitHub', google: 'Google', email: '邮箱' }[data.user.provider] || data.user.provider;
-        msgEl.innerHTML = '欢迎，' + (data.user.name || '') + '<br><span class="provider">' + providerLabel + '</span>';
+        // 使用 textContent / DOM 构建，避免 data.user.name 被 XSS 利用
+        msgEl.textContent = '欢迎，' + (data.user.name || '');
+        const br = document.createElement('br');
+        const providerSpan = document.createElement('span');
+        providerSpan.className = 'provider';
+        providerSpan.textContent = providerLabel;
+        msgEl.appendChild(br);
+        msgEl.appendChild(providerSpan);
         // 3s 后尝试关闭弹窗（如果是 OAuth 弹窗打开）或刷新父窗口
         setTimeout(function() {
           if (window.opener) {

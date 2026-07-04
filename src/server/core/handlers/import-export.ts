@@ -170,7 +170,12 @@ const toComment = (item: any, source: string) => {
   }
 }
 
+const ALLOWED_IMPORT_SOURCES = ['json', 'valine', 'artalk', 'waline', 'twikoo', 'disqus', 'takoio']
+
 export const handleImport = async (source: string, data: any) => {
+  if (!ALLOWED_IMPORT_SOURCES.includes(source)) {
+    throw new AppError('INVALID_INPUT', `不支持的导入源: ${source}`, 400)
+  }
   const validation = safeValidate(ImportSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const raw = validation.data.json || (validation.data as any)[source]

@@ -12,7 +12,6 @@
  *   - config.ts           : MAX_UPLOAD_SIZE
  *   - config-cache.ts     : CACHE_TTL
  *   - handlers/comment-submit.ts : COMMENT_WINDOW_MAX / COMMENT_WINDOW_MS / COMMENT_RATE_LIMIT_DEFAULT
- *   - handlers/_comment-moderation.ts : 同上（重复定义，一并迁移）
  *   - store/utils.ts      : BATCH_SIZE_SQLITE / BATCH_SIZE_PG / BATCH_SIZE_MONGO
  *   - packages/core/src/api.ts : API_TIMEOUT_MS（方案 C，保留原位，不迁移）
  */
@@ -41,7 +40,7 @@ export const MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 /** 服务端配置内存缓存 TTL（较短 TTL 降低多实例部署下的过期配置） */
 export const CACHE_TTL = 15_000 // 15 seconds
 
-// ========== Comment Rate Limit (handlers/comment-submit.ts / _comment-moderation.ts) ==========
+// ========== Comment Rate Limit (handlers/comment-submit.ts) ==========
 
 /** 评论滑动窗口：每个 IP 在窗口内最多提交多少条评论 */
 export const COMMENT_WINDOW_MAX = 3
@@ -54,10 +53,6 @@ export const COMMENT_RATE_LIMIT_DEFAULT = 30_000 // 30 seconds
 
 /** SQLite 批量插入分批大小 */
 export const BATCH_SIZE_SQLITE = 50
-/** PostgreSQL 批量插入分批大小 */
-export const BATCH_SIZE_PG = 100
-/** MongoDB 批量插入分批大小 */
-export const BATCH_SIZE_MONGO = 100
 
 // ========== Cross-Package Note ==========
 // API_TIMEOUT_MS = 30_000 仍保留在 packages/core/src/api.ts（方案 C）

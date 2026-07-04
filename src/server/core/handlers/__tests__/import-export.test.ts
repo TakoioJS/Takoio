@@ -71,7 +71,7 @@ describe('import-export handlers', () => {
       // So 2 pages expected
       const result = await handleExport({ format: 'json' })
       expect(Array.isArray(result.data)).toBe(true)
-      expect(result.data.length).toBe(6)
+      expect((result.data as any[]).length).toBe(6)
       expect(result.total).toBe(6)
       // getAllComments called at least once with page=1
       expect(commentStore.getAllComments).toHaveBeenCalledWith(1, 500)
@@ -80,12 +80,12 @@ describe('import-export handlers', () => {
     it('stops at MAX_PAGES safety bound', async () => {
       // Force store to always report total > current accumulated length
       vi.mocked(commentStore.getAllComments).mockImplementation(async (page, pageSize) => ({
-        data: [{ id: `c${page}`, url: `/p${page}` }],
+        data: [{ id: `c${page}`, url: `/p${page}`, nick: 'A', comment: 'test', state: 'visible', created: 1, like: 0, dislike: 0, isSpam: false, isTop: false, isPinned: false, isPrivate: false }],
         total: 999999, // never satisfied
       }))
       const result = await handleExport({ format: 'json' })
       // Should stop at 200 pages × 1 item each = 200 items
-      expect(result.data.length).toBe(200)
+      expect((result.data as any[]).length).toBe(200)
     })
 
     it('defaults format to json when omitted', async () => {

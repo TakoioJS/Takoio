@@ -119,8 +119,6 @@ describe('handleCommentGet', () => {
     vi.mocked(commentStore.getComments).mockResolvedValueOnce({
       data: [],
       total: 0,
-      page: 1,
-      pageSize: 10,
     })
     const result = await handleCommentGet({ url: '/empty' } as any)
     expect(result.data).toEqual([])

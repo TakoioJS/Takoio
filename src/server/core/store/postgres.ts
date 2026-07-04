@@ -1,5 +1,5 @@
 import { getDb, initDb } from '../db/pg-client'
-import { comments, configs, visitors, sessions, reactions, commentReactions, rateLimits } from '../db/schema-pg'
+import { comments, configs, visitors, sessions, reactions, commentReactions } from '../db/schema-pg'
 import { eq, and, inArray, like, or, sql, asc, desc, count as drizzleCount } from 'drizzle-orm'
 import type {
   Comment,
@@ -534,22 +534,16 @@ export async function dbRateLimit (
   _windowMs: number,
   windowStart: number
 ): Promise<boolean> {
-  const db = getDb()
-  const existing = await db.select().from(rateLimits)
-    .where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
-    .limit(1)
-
-  if (existing.length === 0) {
-    await db.insert(rateLimits).values({ key, windowStart, count: 1 }).onConflictDoNothing()
-    return true
-  }
-
-  const entry = existing[0]
-  if (entry.count >= maxRequests) return false
-
-  await db.update(rateLimits)
-    .set({ count: entry.count + 1 })
-    .where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
-
-  return true
+  if (maxRequests <= 0) return false
+  // 原子化 upsert：INSERT ... ON CONFLICT ... DO UPDATE SET count = count + 1 WHERE count < max
+  // 当窗口已满时 WHERE 不成立，返回 0 行，直接拒绝。
+  const result = await db().execute(sql`
+    INSERT INTO rate_limits (key, window_start, count)
+    VALUES (${key}, ${windowStart}, 1)
+    ON CONFLICT (key, window_start) DO UPDATE SET
+      count = rate_limits.count + 1
+    WHERE rate_limits.count < ${maxRequests}
+  `)
+  // postgres-js 的 execute 返回 RowList；未发生更新/插入时数组为空
+  return (result as any).rowCount > 0 || (result as any).length > 0
 }

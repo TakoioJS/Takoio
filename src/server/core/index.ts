@@ -68,7 +68,7 @@
  * ============================================================================
  * 内部模块边界（不通过 facade 暴露，nitro 禁止直接 import）
  * ============================================================================
- *   - handlers/_comment-shared.ts / _comment-moderation.ts（内部共享）
+ *   - handlers/_comment-shared.ts（内部共享）
  *   - handlers/comment-submit-side-effects.ts（内部副作用）
  *   - handlers/admin-*.ts / comment-*.ts（通过 admin.ts / comment.ts 聚合）
  *   - store/sqlite.ts / mongodb.ts / postgres.ts / query-helpers.ts（DB 实现）

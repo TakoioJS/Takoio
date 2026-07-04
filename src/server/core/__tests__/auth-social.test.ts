@@ -117,7 +117,7 @@ describe('signToken / verifyToken round-trip', () => {
 
   it('returns null for an expired token', () => {
     const token = signToken(baseUser)
-    const [headerB64, payloadB64, sigB64] = token.split('.')
+    const [headerB64, , sigB64] = token.split('.')
     // Build an expired payload (exp in the past)
     const expiredPayload = {
       ...baseUser,
@@ -137,9 +137,9 @@ describe('signToken / verifyToken round-trip', () => {
       .toString('base64url')
     const expiredToken = `${headerB64}.${expiredB64}.${newSig}`
     expect(verifyToken(expiredToken)).toBeNull()
-    // sanity: the original is still valid
+    // sanity: the original is still valid (sigB64 仅用于占位说明三部分结构)
     expect(verifyToken(token)).not.toBeNull()
-    void sigB64
+    expect(sigB64).toBeDefined()
   })
 
   it('returns null for a malformed token (not 3 parts)', () => {

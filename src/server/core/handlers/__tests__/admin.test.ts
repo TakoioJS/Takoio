@@ -4,28 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../../store/index', async () => {
-  const actual = await vi.importActual('../../store/index')
-  return {
-    ...actual,
-    configStore: {
-      getConfig: vi.fn().mockResolvedValue({}),
-      setConfig: vi.fn().mockResolvedValue(undefined),
-      setManyConfig: vi.fn().mockResolvedValue(undefined),
-      resetConfig: vi.fn().mockResolvedValue(undefined),
-    },
-    sessionStore: {
-      createToken: vi.fn().mockResolvedValue('test-token'),
-      validateToken: vi.fn().mockResolvedValue(true),
-      removeToken: vi.fn().mockResolvedValue(undefined),
-      removeAllTokens: vi.fn().mockResolvedValue(undefined),
-    },
-    rateLimitStore: {
-      checkRateLimit: vi.fn().mockResolvedValue(true),
-    },
-  }
-})
-
 vi.mock('../../config', async () => {
   const actual = await vi.importActual('../../config')
   return {
@@ -162,7 +140,7 @@ describe('Admin Handlers', () => {
 
     it('blocks when rate limited', async () => {
       const { checkLoginRateLimit } = await import('../../auth')
-      vi.mocked(checkLoginRateLimit).mockResolvedValueOnce({ allowed: false })
+      vi.mocked(checkLoginRateLimit).mockResolvedValueOnce({ allowed: false, remainingAttempts: 0 })
 
       const result = await handleLogin(
         { password: 'correct-password' },

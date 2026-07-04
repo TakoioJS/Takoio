@@ -46,6 +46,11 @@ coverage/
 *.db
 *.sqlite
 src/server/data/
+
+# 本地参考/实验目录
+--brand-css
+comment-section-ui/
+
 # 临时
 *.tmp
 *.temp

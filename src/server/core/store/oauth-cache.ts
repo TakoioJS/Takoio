@@ -13,6 +13,7 @@
  */
 
 import { withRedis } from './redis'
+import { LRUCache } from '../utils/lru-cache'
 import { logger } from '../utils/logger'
 import type { AuthUser } from '../auth-social'
 
@@ -26,46 +27,6 @@ const verifyCodeKey = (uuid: string): string => `takoio:oauth:email-code:${uuid}
 interface MemEntry<V> {
   value: V
   expire: number
-}
-
-// LRU cache — same shape as the private class defined in redis.ts (line 194).
-// Kept local because that class is not exported and other files must not be modified.
-class LRUCache<K, V> {
-  private cache = new Map<K, V>()
-  constructor (private maxSize: number) {}
-
-  get (key: K): V | undefined {
-    const value = this.cache.get(key)
-    if (value) {
-      // Move to most-recently-used position
-      this.cache.delete(key)
-      this.cache.set(key, value)
-    }
-    return value
-  }
-
-  set (key: K, value: V): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key)
-    } else if (this.cache.size >= this.maxSize) {
-      // Evict oldest
-      const firstKey = this.cache.keys().next().value
-      if (firstKey !== undefined) this.cache.delete(firstKey)
-    }
-    this.cache.set(key, value)
-  }
-
-  delete (key: K): boolean {
-    return this.cache.delete(key)
-  }
-
-  has (key: K): boolean {
-    return this.cache.has(key)
-  }
-
-  keys (): IterableIterator<K> {
-    return this.cache.keys()
-  }
 }
 
 const _memStateCache = new LRUCache<string, MemEntry<true>>(LRU_MAX_SIZE)

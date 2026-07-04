@@ -52,10 +52,11 @@ export const maskSensitiveConfig = (cfg: TakoioConfig): TakoioConfig => {
   const ALLOWED = new Set<string>(ALLOWED_CONFIG_KEYS)
   const masked: Record<string, any> = {}
   for (const key of ALLOWED) {
+    // hidden 键：完全排除，不在任何 API 响应中暴露（包括管理面板）
+    if (PUBLIC_EXCLUDED_KEYS.has(key)) continue
     if (key in cfg) masked[key] = cfg[key as keyof TakoioConfig]
   }
-  // 管理面板需要展示所有配置项（含 hidden 分类），仅对 masked 键做掩码保护。
-  // hidden 分类仅用于公开 API（publicConfigSubset 白名单），不在管理 API 中删除。
+  // masked 键：对非空字符串值做掩码保护
   for (const key of SENSITIVE_CONFIG_KEYS) {
     if (masked[key] && typeof masked[key] === 'string' && masked[key].length > 0) {
       masked[key] = maskSensitiveValue(masked[key])

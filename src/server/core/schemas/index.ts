@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod'
+import { ALLOWED_CONFIG_KEYS } from '../config-schema'
 
 // ========== Comment ==========
 
@@ -79,7 +80,20 @@ export const UpdateCommentSchema = z.object({
 // ========== Config ==========
 
 export const SetConfigSchema = z.object({
-  config: z.record(z.string(), z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown())
+    .optional()
+    .superRefine((config, ctx) => {
+      if (!config) return
+      for (const key of Object.keys(config)) {
+        if (!ALLOWED_CONFIG_KEYS.includes(key as any)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `不允许的配置键: ${key}`,
+            path: ['config', key],
+          })
+        }
+      }
+    }),
 })
 
 // ========== Counter ==========

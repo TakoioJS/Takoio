@@ -13,8 +13,7 @@ import { commentStore } from '../store/index'
 import type { CommentInput } from '../store/index'
 import { getConfig } from '../config'
 import type { TakoioConfig } from '../config'
-import type { AppError } from '../errors'
-import { verifyCaptcha, requireAdmin } from '../auth'
+import { verifyCaptcha } from '../auth'
 import { lookupIpRegion } from '../ip-region'
 import { renderComment } from '../utils/render'
 import { logger } from '../utils/logger'
@@ -110,7 +109,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const cfg = await getConfig()
 
   // 1. Validate
-  const { url, nick, mail, link, comment, pid, rid, ua, image, title, authUser, isPrivate } = await validateSubmit(data, cfg)
+  const { url, nick, mail, link, comment, pid, rid, ua, image, isPrivate } = await validateSubmit(data, cfg)
 
   // 2. Build comment object
   const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''

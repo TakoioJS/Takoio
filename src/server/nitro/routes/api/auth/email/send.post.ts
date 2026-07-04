@@ -2,6 +2,7 @@
  * POST /api/auth/email/send — generate verify code, store in cache, send email.
  */
 
+import * as crypto from 'node:crypto'
 import {
   getConfig,
   generateVerifyCode,

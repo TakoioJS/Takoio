@@ -8,7 +8,7 @@ import { safeValidate, LoginSchema, PasswordSetSchema } from '../schemas'
 import type { LoginData, PasswordSetData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig } from '../config'
-import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha } from '../auth'
+import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha, requireAdmin } from '../auth'
 import { verifyPassword, needsRehash } from '../utils/crypto'
 import { logger } from '../utils/logger'
 import { AppError } from '../errors'
@@ -36,9 +36,12 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
     return { success: false, needSetup: true, message: '请先创建管理员密码' }
   }
 
-  // CAPTCHA verification
-  if (validation.data.captchaToken) {
-    const cfg = await getConfig()
+  // CAPTCHA verification：开启后必须提供并校验 captchaToken，不能通过省略字段绕过
+  const cfg = await getConfig()
+  if (cfg.ENABLE_CAPTCHA) {
+    if (!validation.data.captchaToken) {
+      return { success: false, message: '请完成人机验证' }
+    }
     try {
       await verifyCaptcha(validation.data.captchaToken, cfg)
     } catch (e: any) {

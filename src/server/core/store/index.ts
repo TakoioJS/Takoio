@@ -64,16 +64,27 @@ function validateBackend (impl: StoreBackend, backendName: string): void {
   }
 }
 
+function createStoreProxy<T extends object> (name: keyof StoreBackend): T {
+  return new Proxy({} as T, {
+    get (_target, prop) {
+      if (!_initialized || !_impl) {
+        throw new Error(`Store "${name}" is not initialized. Call initStore() before using any store methods.`)
+      }
+      const store = (_impl as any)[name] as T
+      const value = (store as any)[prop]
+      if (typeof value === 'function') {
+        return value.bind(store)
+      }
+      return value
+    },
+  })
+}
+
 /** Initialize the store backend — called from Nitro init plugin */
 export async function initStore (): Promise<void> {
   if (_initialized) return
   const impl = await getImpl()
   validateBackend(impl, DB_TYPE)
-  Object.assign(commentStore, impl.commentStore)
-  Object.assign(configStore, impl.configStore)
-  Object.assign(visitorStore, impl.visitorStore)
-  Object.assign(sessionStore, impl.sessionStore)
-  Object.assign(reactionStore, impl.reactionStore)
   _initialized = true
 }
 
@@ -82,12 +93,12 @@ export function isStoreInitialized (): boolean {
   return _initialized
 }
 
-// Module-level store objects — populated by initStore(), used by all consumers
-export const commentStore = {} as CommentStore
-export const configStore = {} as ConfigStore
-export const visitorStore = {} as VisitorStore
-export const sessionStore = {} as SessionStore
-export const reactionStore = {} as ReactionStore
+// Module-level store proxies — delegate to the actual backend after initStore()
+export const commentStore: CommentStore = createStoreProxy('commentStore')
+export const configStore: ConfigStore = createStoreProxy('configStore')
+export const visitorStore: VisitorStore = createStoreProxy('visitorStore')
+export const sessionStore: SessionStore = createStoreProxy('sessionStore')
+export const reactionStore: ReactionStore = createStoreProxy('reactionStore')
 
 // Direct async functions for one-off use (import, export, ensureDb)
 export async function getStore (): Promise<StoreSnapshot> { return (await getImpl()).getStore() }

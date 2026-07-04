@@ -2,6 +2,7 @@
  * Comment Admin — 管理操作（更新、删除、隐藏、置顶、审核、批量）
  */
 
+import * as crypto from 'node:crypto'
 import { safeValidate } from '../schemas'
 import {
   CommentIdSchema,
@@ -20,7 +21,6 @@ import { getConfig } from '../config'
 import { renderComment } from '../utils/render'
 import { markMasterComments, invalidateCommentCacheById, normalizeCommentHref } from './_comment-shared'
 import { AppError } from '../errors'
-import { logger } from '../utils/logger'
 
 // ========== Comment Update ==========
 
@@ -28,7 +28,7 @@ export const handleCommentUpdate = async (data: UpdateCommentData) => {
   const validation = safeValidate(UpdateCommentSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const { id, nick, mail, link, comment } = validation.data
-  const mailMd5 = mail ? await import('node:crypto').then(c => c.createHash('md5').update(mail.trim().toLowerCase()).digest('hex')) : ''
+  const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''
   const renderedComment = comment ? await renderComment(comment).catch(() => null) : undefined
   await commentStore.updateComment(id, { nick, mail, mailMd5, link, comment, ...(renderedComment ? { renderedComment } : {}) })
   await invalidateCommentCacheById(id)

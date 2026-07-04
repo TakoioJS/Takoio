@@ -7,7 +7,6 @@
 import { safeValidate, SendNotificationSchema, EmailTestSchema } from '../schemas'
 import type { SendNotificationData, EmailTestData } from '../schemas'
 import { getConfig } from '../config'
-import { logger } from '../utils/logger'
 import { sendNotification } from '../notify'
 import { sendEmail } from '../email'
 import { AppError } from '../errors'
@@ -36,7 +35,10 @@ export const handleEmailTest = async (data: EmailTestData) => {
   const validation = safeValidate(EmailTestSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
   const cfg = await getConfig()
-  if (validation.data.email) cfg.SMTP_TO = validation.data.email
+  // 不修改全局配置缓存：构造本地覆盖对象传递给 sendEmail
+  const emailCfg = validation.data.email
+    ? { ...cfg, SMTP_TO: validation.data.email }
+    : cfg
 
   const isAdmin = validation.data.template === 'admin'
   const subject = isAdmin
@@ -56,7 +58,7 @@ export const handleEmailTest = async (data: EmailTestData) => {
     ua: 'Mozilla/5.0 TestBrowser',
   }
   const html = renderTemplate(rawTpl, vars)
-  const result = await sendEmail(cfg, renderTemplate(subject, vars), html)
+  const result = await sendEmail(emailCfg, renderTemplate(subject, vars), html)
 
   // Return sanitized result — do not expose full SMTP log to client
   return {

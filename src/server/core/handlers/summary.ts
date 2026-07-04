@@ -84,7 +84,6 @@ export async function handleArticleSummary (data: {
       system: SUMMARY_SYSTEM_PROMPT,
       prompt,
       temperature: 0.3,
-      maxTokens: 1024,
     })
 
     // Parse JSON from response

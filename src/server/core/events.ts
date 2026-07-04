@@ -10,6 +10,7 @@
 
 import type { SSESink } from './ports'
 import { MAX_LISTENERS, LISTENER_TIMEOUT_MS } from './constants'
+import { logger } from './utils/logger'
 
 interface Listener {
   url: string
@@ -98,6 +99,6 @@ export function getListenerCount () {
 setInterval(() => {
   const removed = cleanupStaleListeners()
   if (removed > 0) {
-    console.warn(`[SSE] Cleaned up ${removed} stale listeners`)
+    logger.warn(`[SSE] Cleaned up ${removed} stale listeners`)
   }
 }, 60_000).unref()

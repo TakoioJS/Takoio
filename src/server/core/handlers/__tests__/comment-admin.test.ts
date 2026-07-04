@@ -102,14 +102,14 @@ describe('comment-admin handlers', () => {
       expect(commentStore.updateComment).not.toHaveBeenCalled()
     })
 
-    it('handles optional mail with md5 hash', async () => {
+    it('handles optional mail with sha256 hash', async () => {
       const result = await handleCommentUpdate({
         id: 'c1',
         mail: 'user@example.com',
       })
       expect(result).toEqual({ success: true })
       const arg = vi.mocked(commentStore.updateComment).mock.calls[0][1] as any
-      expect(arg.mailMd5).toMatch(/^[a-f0-9]{32}$/)
+      expect(arg.mailMd5).toMatch(/^[a-f0-9]{64}$/)
     })
   })
 
@@ -165,7 +165,7 @@ describe('comment-admin handlers', () => {
   describe('handleCommentGetAdmin', () => {
     it('calls getAllComments when no search/filter', async () => {
       vi.mocked(commentStore.getAllComments).mockResolvedValueOnce({
-        data: [{ id: 'c1', url: '/test', nick: 'A' }],
+        data: [{ id: 'c1', url: '/test', nick: 'A', comment: 'test', state: 'visible', created: 1, like: 0, dislike: 0, isSpam: false, isTop: false, isPinned: false, isPrivate: false }],
         total: 1,
       })
       const result = await handleCommentGetAdmin({ page: 1, pageSize: 20 })

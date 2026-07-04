@@ -12,6 +12,7 @@
 import Redis from 'ioredis'
 import { createHash } from 'node:crypto'
 import { logger } from '../utils/logger'
+import { LRUCache } from '../utils/lru-cache'
 import { REDIS_URL } from '../env'
 
 const CONNECT_TIMEOUT = 5_000
@@ -91,14 +92,17 @@ export async function closeRedis (): Promise<void> {
 
 /**
  * 在复用连接上执行 Redis 操作。
- * 连接异常时自动降级到内存兜底。
+ * - REDIS_URL 未配置时返回 null（表示 Redis 不可用，调用方应走内存兜底）。
+ * - 当 throwOnError = true 时，连接或操作异常会抛出，便于调用方区分“无数据”与“Redis 故障”。
+ * - 默认 throwOnError = false 保持向后兼容：异常时返回 null 并清理连接。
  */
-export async function withRedis<T> (fn: (client: Redis) => Promise<T>): Promise<T | null> {
+export async function withRedis<T> (fn: (client: Redis) => Promise<T>, throwOnError = false): Promise<T | null> {
   try {
     const client = await getRedisClient()
     if (!client) return null
     return await fn(client)
   } catch (e: any) {
+    logger.warn({ error: e.message }, '[withRedis] Redis operation failed')
     // 连接失败时清除缓存，下次会重新连接
     if (_redisClient) {
       try { _redisClient.disconnect() } catch { /* ignore */ }
@@ -106,6 +110,7 @@ export async function withRedis<T> (fn: (client: Redis) => Promise<T>): Promise<
     }
     _connecting = false
     _connectPromise = null
+    if (throwOnError) throw e
     return null
   }
 }
@@ -191,48 +196,6 @@ const summaryCacheKey = (url: string, content: string): string =>
   `takoio:summary:${createHash('sha256').update(url).digest('hex').slice(0, 16)}:${createHash('sha256').update(content).digest('hex').slice(0, 16)}`
 
 // Memory fallback when Redis is unavailable — LRU with max size
-class LRUCache<K, V> {
-  private cache = new Map<K, V>()
-  constructor (private maxSize: number) {}
-
-  get (key: K): V | undefined {
-    const value = this.cache.get(key)
-    if (value) {
-      // 移动到最新
-      this.cache.delete(key)
-      this.cache.set(key, value)
-    }
-    return value
-  }
-
-  set (key: K, value: V): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key)
-    } else if (this.cache.size >= this.maxSize) {
-      // 淘汰最旧的
-      const firstKey = this.cache.keys().next().value
-      if (firstKey !== undefined) this.cache.delete(firstKey)
-    }
-    this.cache.set(key, value)
-  }
-
-  delete (key: K): boolean {
-    return this.cache.delete(key)
-  }
-
-  has (key: K): boolean {
-    return this.cache.has(key)
-  }
-
-  keys (): IterableIterator<K> {
-    return this.cache.keys()
-  }
-
-  get size (): number {
-    return this.cache.size
-  }
-}
-
 const _memCache = new LRUCache<string, { data: SummaryCacheData; expire: number }>(1000)
 setInterval(() => {
   const now = Date.now()
@@ -420,7 +383,13 @@ export async function invalidateCommentListCache (url: string): Promise<void> {
         cursor = next
         keys.push(...batch)
       } while (cursor !== '0')
-      if (keys.length > 0) await c.del(...keys)
+      // 分批删除，避免单次 DEL 参数过多触发 Redis 限制
+      if (keys.length > 0) {
+        const BATCH = 1000
+        for (let i = 0; i < keys.length; i += BATCH) {
+          await c.del(...keys.slice(i, i + BATCH))
+        }
+      }
       return true
     })
   } catch { /* ignore */ }

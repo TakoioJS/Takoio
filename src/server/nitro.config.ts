@@ -18,13 +18,13 @@ export default defineNitroConfig({
 
   // Admin SPA built assets
   publicAssets: [
-    { dir: '../../dist/admin', baseURL: '/admin' },
+    { dir: '../../dist/admin', baseURL: '/admin', maxAge: 60 * 60 * 24 * 365 },
   ],
 
   // Dev server port — must match admin/client proxy config
   devServer: {
     port: 8080,
-    host: '0.0.0.0',
+    hostname: '0.0.0.0',
   },
 
   // Global error handler
@@ -57,13 +57,6 @@ export default defineNitroConfig({
         ],
       },
     ],
-  },
-
-  // ESM target
-  esbuild: {
-    options: {
-      target: 'es2022',
-    },
   },
 
   // Inject __dirname polyfill for JSDOM compatibility in ESM bundled builds.

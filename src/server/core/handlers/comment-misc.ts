@@ -8,8 +8,6 @@ import {
   CounterUpdateSchema,
   CommentsCountSchema,
   RecentCommentsSchema,
-  ReactionGetSchema,
-  ReactionSubmitSchema,
 } from '../schemas'
 import type {
   CounterGetData,

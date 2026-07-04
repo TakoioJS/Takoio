@@ -27,6 +27,13 @@
 
 import * as crypto from 'node:crypto'
 import type { TakoioConfig } from './config'
+import {
+  getAuthJwtSecret,
+  getGithubClientId,
+  getGithubClientSecret,
+  getGoogleClientId,
+  getGoogleClientSecret,
+} from './env'
 import { setState, getState, consumeState, setVerifyCode, consumeVerifyCode } from './store/oauth-cache'
 
 // Re-export cache primitives so route handlers can call them directly
@@ -52,7 +59,7 @@ interface JwtPayload extends AuthUser {
 }
 
 function getSecret (): string {
-  const secret = process.env.AUTH_JWT_SECRET
+  const secret = getAuthJwtSecret()
   if (!secret) {
     throw new Error('AUTH_JWT_SECRET environment variable is required for social auth. Please set it before starting the server.')
   }
@@ -123,14 +130,14 @@ function generateState (): string {
 export function createOAuthProviders (siteUrl: string, cfg: TakoioConfig): Record<string, OAuthProvider> {
   const providers: Record<string, OAuthProvider> = {}
 
-  // GitHub: config key or env var
-  const githubId = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_ID
-  const githubSecret = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_SECRET || process.env.GITHUB_CLIENT_SECRET
+  // GitHub: config key or env var（env 统一从 env.ts 读取）
+  const githubId = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_ID || getGithubClientId()
+  const githubSecret = cfg?.SOCIAL_AUTH_GITHUB_CLIENT_SECRET || getGithubClientSecret()
   if (githubId && githubSecret) {
     providers.github = {
       name: 'GitHub',
       authUrl: (state) => {
-        void setState(state).catch(() => {})
+        setState(state).catch(() => {})
         return `https://github.com/login/oauth/authorize?client_id=${githubId}&redirect_uri=${encodeURIComponent(siteUrl + '/api/auth/github/callback')}&scope=user:email&state=${state}`
       },
       getToken: async (code) => {
@@ -162,14 +169,14 @@ export function createOAuthProviders (siteUrl: string, cfg: TakoioConfig): Recor
     }
   }
 
-  // Google: config key or env var
-  const googleId = cfg?.SOCIAL_AUTH_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
-  const googleSecret = cfg?.SOCIAL_AUTH_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+  // Google: config key or env var（env 统一从 env.ts 读取）
+  const googleId = cfg?.SOCIAL_AUTH_GOOGLE_CLIENT_ID || getGoogleClientId()
+  const googleSecret = cfg?.SOCIAL_AUTH_GOOGLE_CLIENT_SECRET || getGoogleClientSecret()
   if (googleId && googleSecret) {
     providers.google = {
       name: 'Google',
       authUrl: (state) => {
-        void setState(state).catch(() => {})
+        setState(state).catch(() => {})
         return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleId}&redirect_uri=${encodeURIComponent(siteUrl + '/api/auth/google/callback')}&response_type=code&scope=openid+profile+email&state=${state}`
       },
       getToken: async (code) => {

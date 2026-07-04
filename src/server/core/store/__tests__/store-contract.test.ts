@@ -113,10 +113,12 @@ describe('SQLite commentStore contract', () => {
       expect(result.nick).toBe(input.nick)
       expect(result.comment).toBe(input.comment)
       expect(result.url).toBe(input.url)
-      expect(result.relativeTime).toBeDefined()
-      expect(typeof result.relativeTime).toBe('string')
-      expect(result.children).toEqual([])
-      expect(result.replyCount).toBe(0)
+      // addComment 返回 Comment；relativeTime/children/replyCount 是 CommentListItem 字段
+      const listItem = result as any
+      expect(listItem.relativeTime).toBeDefined()
+      expect(typeof listItem.relativeTime).toBe('string')
+      expect(listItem.children).toEqual([])
+      expect(listItem.replyCount).toBe(0)
     })
 
     it('persists the comment so it can be retrieved by getComment', async () => {

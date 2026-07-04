@@ -251,13 +251,13 @@ export const isAdmin = (token?: string | null): boolean => {
   // 私密评论鉴权可接受短暂延迟（getComments 一次请求内只调一次）。
   // 注意：使用 void + cache 模式可能引入竞态；这里改成同步 best-effort 检查。
   // 真正的强鉴权仍在 requireAdmin 中通过 async 路径完成。
-  return !!token && _adminTokenCache.has(token) || token === _shadowAdminToken
+  return (!!token && _adminTokenCache.has(token)) || token === _shadowAdminToken
 }
 
 // 简化的 admin token cache（避免每次 getComments 都查数据库）
 // key: token, value: { expiresAt }
 const _adminTokenCache = new Map<string, { expiresAt: number }>()
-let _shadowAdminToken = ''  // 测试桩位，生产环境永远为空
+const _shadowAdminToken = ''  // 测试桩位，生产环境永远为空
 
 /** 异步版：实际验证 admin token（包含 DB 查询） */
 export const isAdminAsync = async (token?: string | null): Promise<boolean> => {
@@ -305,7 +305,13 @@ export const validateOrigin = async (ctx: RequestContext): Promise<void> => {
   const origin = ctx.headers['origin'] || ctx.headers['referer'] || ''
   if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)
 
-  const originHost = new URL(origin).hostname
+  let originHost: string
+  try {
+    originHost = new URL(origin).hostname
+  } catch {
+    logger.warn({ origin }, 'Admin request rejected due to malformed origin')
+    throw new AppError('INVALID_ORIGIN', '请求来源格式不合法', 403)
+  }
 
   // Same-origin request: allow if origin host matches the request's host header.
   // Browsers do not let attackers forge Origin to match the target host on cross-site requests.

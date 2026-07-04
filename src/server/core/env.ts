@@ -58,6 +58,35 @@ export const MONGODB_DB = process.env.MONGODB_DB
 /** Redis 连接 URL */
 export const REDIS_URL = process.env.REDIS_URL
 
+// ========== 社交登录 / JWT 配置 ==========
+// 以下配置在测试中会动态覆盖 process.env，因此使用 getter 函数而非模块级常量，
+// 既保证统一入口，又保留运行时可覆盖性。
+
+/** JWT 签名密钥（社交登录、邮箱验证码 Token） */
+export function getAuthJwtSecret (): string | undefined {
+  return process.env.AUTH_JWT_SECRET
+}
+
+/** GitHub OAuth Client ID */
+export function getGithubClientId (): string | undefined {
+  return process.env.GITHUB_CLIENT_ID
+}
+
+/** GitHub OAuth Client Secret */
+export function getGithubClientSecret (): string | undefined {
+  return process.env.GITHUB_CLIENT_SECRET
+}
+
+/** Google OAuth Client ID */
+export function getGoogleClientId (): string | undefined {
+  return process.env.GOOGLE_CLIENT_ID
+}
+
+/** Google OAuth Client Secret */
+export function getGoogleClientSecret (): string | undefined {
+  return process.env.GOOGLE_CLIENT_SECRET
+}
+
 // ========== 限流配置 ==========
 
 /** 人工延迟（毫秒），默认 0 */

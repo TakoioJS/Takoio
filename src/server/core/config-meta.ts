@@ -32,6 +32,7 @@ export interface ConfigMeta {
 
 export const CONFIG_META: ConfigMeta[] = [
   // ---- Site ----
+  { key: 'TYPE',                    type: 'string',  default: 'self-hosted',                            hidden: true },
   { key: 'SITE_NAME',               type: 'string',  default: 'My Blog',                               public: true },
   { key: 'SITE_URL',                type: 'string',  default: '',                                       public: true },
   { key: 'MASTER',                  type: 'string',  default: '',                                       hidden: true },
@@ -61,7 +62,7 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'ENABLE_LIKE',             type: 'boolean', default: true,                                     public: true },
   { key: 'ENABLE_DISLIKE',          type: 'boolean', default: true,                                     public: true },
   { key: 'ENABLE_ARTICLE_REACTION', type: 'boolean', default: false,                                    public: true },
-  { key: 'ENABLE_COMMENT_REACTION', type: 'boolean', default: true,                                     public: true, hidden: true },
+  { key: 'ENABLE_COMMENT_REACTION', type: 'boolean', default: true,                                     public: true },
   { key: 'ENABLE_EMOTION',          type: 'boolean', default: true,                                     public: true },
   { key: 'ENABLE_LINK_INPUT',       type: 'boolean', default: true,                                     public: true },
   { key: 'COMMENT_LINK_REQUIRED',   type: 'boolean', default: false,                                    public: true },

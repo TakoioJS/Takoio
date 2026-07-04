@@ -423,7 +423,7 @@ const onSave = async () => {
     await loadConfig()
     if (result.skipped && Object.keys(result.skipped).length > 0) {
       const details = Object.entries(result.skipped).map(([k, v]) => `${k}: ${v}`).join('；')
-        message.warning(t('unsavedConfigWarning') + '：' + details)
+      message.warning(t('unsavedConfigWarning') + '：' + details)
     } else {
       message.success(t('configSuccess'))
     }

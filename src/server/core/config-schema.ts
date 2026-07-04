@@ -51,6 +51,7 @@ export interface TakoioConfig {
   ENABLE_LIKE: boolean
   ENABLE_DISLIKE: boolean
   ENABLE_ARTICLE_REACTION?: boolean
+  ENABLE_COMMENT_REACTION?: boolean
   ENABLE_EMOTION: boolean
   ENABLE_LINK_INPUT: boolean
   COMMENT_LINK_REQUIRED: boolean

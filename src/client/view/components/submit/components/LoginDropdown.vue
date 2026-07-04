@@ -117,9 +117,11 @@ const rootEl = ref<HTMLElement | null>(null)
 const t = (key: string) => _i18nT(key)
 
 const labelOf = (p: LoginProvider) => {
-  return p === 'github' ? (t('loginWithGitHub') || 'GitHub')
-    : p === 'google' ? (t('loginWithGoogle') || 'Google')
-    : (t('loginWithEmail') || '邮箱')
+  return p === 'github'
+    ? (t('loginWithGitHub') || 'GitHub')
+    : p === 'google'
+      ? (t('loginWithGoogle') || 'Google')
+      : (t('loginWithEmail') || '邮箱')
 }
 
 const onSelect = (p: LoginProvider) => {

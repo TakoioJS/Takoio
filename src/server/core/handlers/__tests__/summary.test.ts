@@ -297,7 +297,6 @@ describe('handleArticleSummary', () => {
     expect(call.prompt).toContain('文章内容：')
     expect(call.system).toBeDefined()
     expect(call.temperature).toBe(0.3)
-    expect(call.maxTokens).toBe(1024)
   })
 
   it('passes plain content as prompt when no title', async () => {

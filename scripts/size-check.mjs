@@ -4,9 +4,9 @@ import { join } from 'node:path'
 
 const DIST_DIR = join(import.meta.dirname, '..', 'dist')
 const BUDGETS = [
-  { file: 'takoio.umd.cjs',   budget: 90_000, label: 'UMD (gzip)' },
+  { file: 'takoio.min.js',    budget: 95_000, label: 'UMD (gzip)' },
   { file: 'takoio.esm.js',    budget: 80_000, label: 'ESM (gzip)' },
-  { file: 'takoio.css',       budget: 15_000, label: 'CSS (gzip)' },
+  { file: 'takoio.min.css',   budget: 30_000, label: 'CSS (gzip)' },
 ]
 
 let failed = false

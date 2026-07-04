@@ -74,9 +74,9 @@ const detectNsfwSelfHosted = async (base64Data: string, endpoint: string, thresh
  * 调用模力方舟 (ai.gitee.com) NSFW 检测 API
  * @see https://ai.gitee.com
  */
-const detectNsfwModelArk = async (base64Data: string, apiKey: string, threshold: number): Promise<NsfwResult> => {
-  const endpoint = 'https://ai.gitee.com/v1/moderations'
-  const res = await fetch(endpoint, {
+const detectNsfwModelArk = async (base64Data: string, apiKey: string, threshold: number, endpoint?: string): Promise<NsfwResult> => {
+  const url = (endpoint || 'https://ai.gitee.com/v1/moderations').replace(/\/+$/, '')
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ export const checkImageNsfw = async (base64Data: string): Promise<NsfwResult | n
     if (!cfg.NSFW_API_KEY) {
       throw new AppError('NSFW_NOT_CONFIGURED', '模力方舟 API Key 未配置，请在管理面板中设置 NSFW_API_KEY', 400)
     }
-    return detectNsfwModelArk(base64Data, cfg.NSFW_API_KEY, threshold)
+    return detectNsfwModelArk(base64Data, cfg.NSFW_API_KEY, threshold, cfg.NSFW_ENDPOINT)
   }
 
   logger.warn({ service }, '未知的 NSFW 检测服务')

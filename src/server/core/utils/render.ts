@@ -25,6 +25,7 @@ async function initPurify () {
   }
   try {
     // Dynamic import — jsdom is externalized in nitro.config.ts.
+    // @ts-expect-error jsdom has no bundled type declarations
     const { JSDOM } = await import('jsdom') as { JSDOM: JSDOMType }
     const { window } = new JSDOM('')
     purify = DOMPurify(window)
@@ -114,6 +115,7 @@ export async function renderComment (text: string): Promise<string> {
   md.use({
     async: true,
     renderer: {
+      // @ts-expect-error Marked types do not fully support async renderer signatures
       async code ({ text: code, lang }: { text: string; lang?: string }) {
         const language = (lang || 'text').toLowerCase()
         try {
