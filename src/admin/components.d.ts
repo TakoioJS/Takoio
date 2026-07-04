@@ -13,6 +13,15 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     LogoMark: typeof import('./components/LogoMark.vue')['default']
+    NCheckbox: typeof import('naive-ui')['NCheckbox']
+    NCheckboxGroup: typeof import('naive-ui')['NCheckboxGroup']
+    NColorPicker: typeof import('naive-ui')['NColorPicker']
+    NInput: typeof import('naive-ui')['NInput']
+    NInputNumber: typeof import('naive-ui')['NInputNumber']
+    NSelect: typeof import('naive-ui')['NSelect']
+    NSlider: typeof import('naive-ui')['NSlider']
+    NSpace: typeof import('naive-ui')['NSpace']
+    NSwitch: typeof import('naive-ui')['NSwitch']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SensitiveInput: typeof import('./components/SensitiveInput.vue')['default']
@@ -22,6 +31,15 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const LogoMark: typeof import('./components/LogoMark.vue')['default']
+  const NCheckbox: typeof import('naive-ui')['NCheckbox']
+  const NCheckboxGroup: typeof import('naive-ui')['NCheckboxGroup']
+  const NColorPicker: typeof import('naive-ui')['NColorPicker']
+  const NInput: typeof import('naive-ui')['NInput']
+  const NInputNumber: typeof import('naive-ui')['NInputNumber']
+  const NSelect: typeof import('naive-ui')['NSelect']
+  const NSlider: typeof import('naive-ui')['NSlider']
+  const NSpace: typeof import('naive-ui')['NSpace']
+  const NSwitch: typeof import('naive-ui')['NSwitch']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
   const SensitiveInput: typeof import('./components/SensitiveInput.vue')['default']

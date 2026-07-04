@@ -45,6 +45,16 @@ export const CommentActionSchema = z.object({
   hide: z.boolean().optional(),
 })
 
+export const CommentSetTopSchema = z.object({
+  id: z.string().min(1),
+  isTop: z.boolean().optional(),
+})
+
+export const CommentSetSpamSchema = z.object({
+  id: z.string().min(1),
+  isSpam: z.boolean().optional(),
+})
+
 // ========== Admin ==========
 
 export const LoginSchema = z.object({
@@ -289,6 +299,8 @@ export type SubmitCommentData = z.infer<typeof SubmitCommentSchema>
 export type GetCommentData = z.infer<typeof GetCommentSchema>
 export type CommentIdData = z.infer<typeof CommentIdSchema>
 export type CommentActionData = z.infer<typeof CommentActionSchema>
+export type CommentSetTopData = z.infer<typeof CommentSetTopSchema>
+export type CommentSetSpamData = z.infer<typeof CommentSetSpamSchema>
 export type LoginData = z.infer<typeof LoginSchema>
 export type PasswordSetData = z.infer<typeof PasswordSetSchema>
 export type AdminCommentData = z.infer<typeof AdminCommentSchema>

@@ -48,11 +48,8 @@ export interface TakoioConfig {
   TRUSTED_PROXIES: string
   SHOW_IP_REGION: boolean | string
   SHOW_UA_INFO: boolean
-  ENABLE_LIKE: boolean
-  ENABLE_DISLIKE: boolean
   ENABLE_ARTICLE_REACTION?: boolean
   ENABLE_COMMENT_REACTION?: boolean
-  ENABLE_EMOTION: boolean
   ENABLE_LINK_INPUT: boolean
   COMMENT_LINK_REQUIRED: boolean
   ENABLE_ADMIN_KEYWORD: boolean

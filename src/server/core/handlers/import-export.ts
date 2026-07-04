@@ -205,6 +205,28 @@ export const handleImport = async (source: string, data: any) => {
 
 // ========== Export ==========
 
+/** CSV 列顺序 */
+const CSV_COLUMNS = ['id', 'url', 'nick', 'mail', 'link', 'comment', 'created', 'state', 'ip', 'ua', 'pid', 'rid', 'like', 'dislike', 'isSpam', 'isTop', 'isPrivate', 'ipRegion'] as const
+
+/** 将值转义为 CSV 字段（含逗号/引号/换行时包裹双引号） */
+function csvEscape (val: unknown): string {
+  const s = val == null ? '' : String(val)
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return `"${s.replace(/"/g, '""')}"`
+  }
+  return s
+}
+
+/** 将 Comment 数组序列化为 CSV 字符串（含 BOM + 表头） */
+function commentsToCsv (comments: Comment[]): string {
+  // BOM 使 Excel 正确识别 UTF-8
+  const lines: string[] = ['﻿' + CSV_COLUMNS.map(c => csvEscape(c)).join(',')]
+  for (const c of comments) {
+    lines.push(CSV_COLUMNS.map(col => csvEscape((c as any)[col])).join(','))
+  }
+  return lines.join('\n')
+}
+
 export const handleExport = async (data: any) => {
   const validation = safeValidate(ExportSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
@@ -226,5 +248,10 @@ export const handleExport = async (data: any) => {
     all.push(...res.data)
     total = res.total
   } while (all.length < total && page++ < MAX_PAGES)
+
+  if (data.format === 'csv') {
+    return { data: commentsToCsv(all), total: all.length, format: 'csv' }
+  }
+
   return { data: all, total: all.length }
 }

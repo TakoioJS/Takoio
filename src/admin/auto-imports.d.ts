@@ -131,6 +131,8 @@ declare global {
   const until: typeof import('@vueuse/core').until
   const useActiveElement: typeof import('@vueuse/core').useActiveElement
   const useAnimate: typeof import('@vueuse/core').useAnimate
+  const useApi: typeof import('./composables/useApi').useApi
+  const useApiWithReset: typeof import('./composables/useApi').useApiWithReset
   const useAppStore: typeof import('./stores/app').useAppStore
   const useArrayDifference: typeof import('@vueuse/core').useArrayDifference
   const useArrayEvery: typeof import('@vueuse/core').useArrayEvery
@@ -182,6 +184,7 @@ declare global {
   const useDocumentVisibility: typeof import('@vueuse/core').useDocumentVisibility
   const useDraggable: typeof import('@vueuse/core').useDraggable
   const useDropZone: typeof import('@vueuse/core').useDropZone
+  const useDynamicList: typeof import('./composables/useDynamicList').useDynamicList
   const useElementBounding: typeof import('@vueuse/core').useElementBounding
   const useElementByPoint: typeof import('@vueuse/core').useElementByPoint
   const useElementHover: typeof import('@vueuse/core').useElementHover
@@ -324,8 +327,14 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { ApiCallOptions } from './composables/useApi'
+  import('./composables/useApi')
+  // @ts-ignore
   export type { UseConfigEditorOptions } from './composables/useConfigEditor'
   import('./composables/useConfigEditor')
+  // @ts-ignore
+  export type { DynamicListOptions } from './composables/useDynamicList'
+  import('./composables/useDynamicList')
   // @ts-ignore
   export type { TimeFormat } from './composables/useFormatTime'
   import('./composables/useFormatTime')

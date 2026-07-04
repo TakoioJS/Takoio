@@ -7,15 +7,16 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src/client'),
+      '@shared': resolve(__dirname, 'src/client'),
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'packages/**/*.test.ts'],
     environment: 'node',
     globals: true,
     coverage: {
       provider: 'v8',
-      include: ['src/client/**', 'src/server/**'],
+      include: ['src/client/**', 'src/server/**', 'packages/common/**'],
       exclude: ['**/*.test.ts', '**/*.spec.ts', '**/node_modules/**'],
     },
     testTimeout: 20000,

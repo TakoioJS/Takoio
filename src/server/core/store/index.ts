@@ -107,3 +107,22 @@ export async function ensureDb (): Promise<void> { return (await getImpl()).ensu
 
 // 限流逻辑统一从 ./rate-limit re-export（Task 4.2 迁出，过渡期保留聚合入口）
 export * from './rate-limit'
+
+/** 安全关闭数据库连接 — 用于优雅退出 */
+export async function closeDb (): Promise<void> {
+  try {
+    if (DB_TYPE === 'mongodb') {
+      // MongoDB 驱动自行管理连接池，无需显式关闭
+      return
+    }
+    // SQLite 和 PostgreSQL 各自有 closeDb 实现
+    const mod = DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg'
+      ? await import('../db/pg-client.js')
+      : await import('../db/client.js')
+    if (typeof mod.closeDb === 'function') {
+      await mod.closeDb()
+    }
+  } catch {
+    // 关闭阶段的错误不做传播
+  }
+}

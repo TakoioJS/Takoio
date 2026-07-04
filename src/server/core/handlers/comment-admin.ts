@@ -7,12 +7,16 @@ import { safeValidate } from '../schemas'
 import {
   CommentIdSchema,
   CommentActionSchema,
+  CommentSetTopSchema,
+  CommentSetSpamSchema,
   UpdateCommentSchema,
   AdminCommentSchema,
 } from '../schemas'
 import type {
   CommentIdData,
   CommentActionData,
+  CommentSetTopData,
+  CommentSetSpamData,
   UpdateCommentData,
   AdminCommentData,
 } from '../schemas'
@@ -80,20 +84,20 @@ export const handleCommentGetAdmin = async (data: AdminCommentData) => {
 
 // ========== Comment Set Top ==========
 
-export const handleCommentSetTop = async (data: CommentIdData & { isTop?: boolean }) => {
-  const validation = safeValidate(CommentIdSchema, data)
+export const handleCommentSetTop = async (data: CommentSetTopData) => {
+  const validation = safeValidate(CommentSetTopSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  const isTop = data.isTop ?? true
+  const isTop = validation.data.isTop ?? true
   await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.setTop(validation.data.id, isTop) }
 }
 
 // ========== Comment Set Spam ==========
 
-export const handleCommentSetSpam = async (data: CommentIdData & { isSpam?: boolean }) => {
-  const validation = safeValidate(CommentIdSchema, data)
+export const handleCommentSetSpam = async (data: CommentSetSpamData) => {
+  const validation = safeValidate(CommentSetSpamSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
-  const isSpam = data.isSpam ?? true
+  const isSpam = validation.data.isSpam ?? true
   await invalidateCommentCacheById(validation.data.id)
   return { success: await commentStore.setSpam(validation.data.id, isSpam) }
 }

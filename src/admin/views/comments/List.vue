@@ -41,38 +41,11 @@
         class="batch-bar"
       >
         <span class="batch-count">已选 {{ selectedIds.length }} 条</span>
-        <n-button
-          size="small"
-          @click="batchApprove"
-        >
-          通过
-        </n-button>
-        <n-button
-          size="small"
-          @click="batchShow"
-        >
-          显示
-        </n-button>
-        <n-button
-          size="small"
-          @click="batchHide"
-        >
-          隐藏
-        </n-button>
-        <n-button
-          size="small"
-          type="warning"
-          @click="batchSpam"
-        >
-          垃圾
-        </n-button>
-        <n-button
-          size="small"
-          type="error"
-          @click="batchDelete"
-        >
-          删除
-        </n-button>
+        <n-button size="small" @click="batchApprove">通过</n-button>
+        <n-button size="small" @click="batchShow">显示</n-button>
+        <n-button size="small" @click="batchHide">隐藏</n-button>
+        <n-button size="small" type="warning" @click="batchSpam">垃圾</n-button>
+        <n-button size="small" type="error" @click="batchDelete">删除</n-button>
       </div>
     </div>
 
@@ -84,245 +57,23 @@
             v-if="comments.length === 0 && !loading"
             class="empty-state"
           >
-            <n-icon
-              size="40"
-              :depth="3"
-            >
-              <ChatbubblesOutline />
-            </n-icon>
+            <n-icon size="40" :depth="3"><ChatbubblesOutline /></n-icon>
             <p>暂无评论</p>
           </div>
 
-          <div
+          <CommentItem
             v-for="item in comments"
             :key="item.id"
-            :class="['comment-item', { selected: selectedIds.includes(item.id) }]"
-          >
-            <n-checkbox
-              :checked="selectedIds.includes(item.id)"
-              size="small"
-              class="comment-check"
-              @update:checked="toggleSelect(item)"
-            />
-            <div class="avatar-wrap">
-              <img
-                :src="getAvatar(item)"
-                class="comment-avatar"
-                :alt="item.nick"
-                @error="onImgError"
-              >
-              <span
-                :class="['status-dot', stateClass(item)]"
-                :title="stateLabel(item)"
-              />
-            </div>
-
-            <div class="comment-body">
-              <!-- 头部：昵称 + 状态标签 + 时间 -->
-              <div class="comment-head">
-                <div class="head-left">
-                  <span class="comment-name">{{ item.nick }}</span>
-                  <div class="status-tags">
-                    <n-tag
-                      v-if="item.isMaster"
-                      size="tiny"
-                      type="success"
-                      round
-                    >
-                      博主
-                    </n-tag>
-                    <n-tag
-                      v-if="item.isTop"
-                      size="tiny"
-                      type="warning"
-                      round
-                    >
-                      置顶
-                    </n-tag>
-                    <n-tag
-                      v-if="item.state === 'pending'"
-                      size="tiny"
-                      type="default"
-                      round
-                    >
-                      待审
-                    </n-tag>
-                    <n-tag
-                      v-else-if="item.state === 'hidden'"
-                      size="tiny"
-                      type="warning"
-                      round
-                    >
-                      隐藏
-                    </n-tag>
-                    <n-tag
-                      v-else-if="item.isSpam"
-                      size="tiny"
-                      type="error"
-                      round
-                    >
-                      垃圾
-                    </n-tag>
-                  </div>
-                </div>
-                <span class="comment-time">{{ formatTime(item.created) }}</span>
-              </div>
-
-              <!-- 联系方式行 -->
-              <div
-                v-if="item.mail || item.link"
-                class="comment-contact"
-              >
-                <span
-                  v-if="item.mail"
-                  class="contact-item"
-                >
-                  <n-icon size="11"><MailOutline /></n-icon>
-                  <span class="contact-text">{{ item.mail }}</span>
-                </span>
-                <a
-                  v-if="item.link"
-                  :href="item.link"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  class="contact-item contact-link"
-                  :title="item.link"
-                >
-                  <n-icon size="11"><LinkOutline /></n-icon>
-                  <span class="contact-text">{{ item.link }}</span>
-                </a>
-              </div>
-
-              <!-- 原文链接 -->
-              <div
-                v-if="item.url || item.href"
-                class="comment-source"
-              >
-                <n-icon size="11">
-                  <DocumentTextOutline />
-                </n-icon>
-                <a
-                  :href="sourceUrl(item)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="source-link"
-                  :title="item.url"
-                >
-                  {{ item.url }}
-                </a>
-              </div>
-
-              <!-- 评论内容 -->
-              <div
-                class="comment-content"
-                v-html="item._safeContent || ''"
-              />
-
-              <!-- 底部信息行 -->
-              <div class="comment-meta">
-                <TkUa
-                  v-if="item.ua"
-                  :ua="item.ua"
-                  class="meta-ua"
-                />
-                <span
-                  v-if="item.ua && (item.ipRegion || isValidIp(item.ip))"
-                  class="meta-divider"
-                >·</span>
-                <span
-                  v-if="item.ipRegion"
-                  class="meta-item"
-                >
-                  <n-tag
-                    size="tiny"
-                    type="success"
-                    round
-                  >{{ item.ipRegion }}</n-tag>
-                </span>
-                <span
-                  v-if="isValidIp(item.ip)"
-                  class="meta-item"
-                >
-                  <n-tag
-                    size="tiny"
-                    round
-                  >{{ item.ip }}</n-tag>
-                </span>
-                <n-button
-                  v-if="!item.ipRegion && isValidIp(item.ip)"
-                  size="tiny"
-                  quaternary
-                  circle
-                  title="解析IP归属地"
-                  @click="refreshRegion(item)"
-                >
-                  <template #icon>
-                    <n-icon size="12">
-                      <RefreshCircleOutline />
-                    </n-icon>
-                  </template>
-                </n-button>
-              </div>
-
-              <!-- 操作栏 -->
-              <div class="comment-actions">
-                <!-- 桌面端：高频操作直接露出 -->
-                <span class="action-primary">
-                  <n-button
-                    v-if="item.state === 'pending'"
-                    size="tiny"
-                    type="success"
-                    secondary
-                    @click="approveOne(item)"
-                  >
-                    通过
-                  </n-button>
-                  <n-button
-                    size="tiny"
-                    type="primary"
-                    secondary
-                    @click="openReply(item)"
-                  >
-                    回复
-                  </n-button>
-                  <n-button
-                    size="tiny"
-                    secondary
-                    @click="openEdit(item)"
-                  >
-                    编辑
-                  </n-button>
-                  <n-button
-                    size="tiny"
-                    type="error"
-                    secondary
-                    @click="onDeleteOne(item)"
-                  >
-                    删除
-                  </n-button>
-                </span>
-                <!-- 更多操作下拉 -->
-                <n-dropdown
-                  trigger="click"
-                  :options="moreActionOptions(item)"
-                  size="small"
-                  @select="(key: string) => handleMoreAction(item, key)"
-                >
-                  <n-button
-                    size="tiny"
-                    quaternary
-                    title="更多操作"
-                  >
-                    <template #icon>
-                      <n-icon size="16">
-                        <EllipsisHorizontal />
-                      </n-icon>
-                    </template>
-                  </n-button>
-                </n-dropdown>
-              </div>
-            </div>
-          </div>
+            :comment="item"
+            :selected="selectedIds.includes(item.id)"
+            @select="toggleSelect"
+            @approve="approveOne"
+            @reply="openReply"
+            @edit="openEdit"
+            @delete="onDeleteOne"
+            @refresh-region="refreshRegion"
+            @more-action="onMoreAction"
+          />
         </div>
       </n-spin>
     </div>
@@ -343,136 +94,39 @@
     </div>
 
     <!-- 编辑 Modal -->
-    <n-modal
-      v-model:show="editVisible"
-      preset="card"
-      title="编辑评论"
-      style="max-width: 520px;"
-    >
-      <n-form
-        label-placement="left"
-        label-width="60"
-      >
-        <n-form-item label="昵称">
-          <n-input v-model:value="editForm.nick" />
-        </n-form-item>
-        <n-form-item label="邮箱">
-          <n-input v-model:value="editForm.mail" />
-        </n-form-item>
-        <n-form-item label="链接">
-          <n-input v-model:value="editForm.link" />
-        </n-form-item>
-        <n-form-item label="内容">
-          <n-input
-            v-model:value="editForm.comment"
-            type="textarea"
-            :rows="6"
-          />
-        </n-form-item>
-      </n-form>
-      <template #footer>
-        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <n-button
-            size="small"
-            @click="editVisible = false"
-          >
-            取消
-          </n-button>
-          <n-button
-            size="small"
-            type="primary"
-            :loading="editSaving"
-            @click="saveEdit"
-          >
-            保存
-          </n-button>
-        </div>
-      </template>
-    </n-modal>
+    <CommentEditModal
+      :visible="editVisible"
+      :comment="editTarget"
+      :saving="editSaving"
+      @update:visible="editVisible = $event"
+      @save="saveEdit"
+    />
 
     <!-- 回复 Modal -->
-    <n-modal
-      v-model:show="replyVisible"
-      preset="card"
-      title="回复评论"
-      style="max-width: 520px;"
-    >
-      <div
-        v-if="replyTarget"
-        class="reply-quote"
-      >
-        <div class="quote-meta">
-          <span class="quote-name">{{ replyTarget.nick }}</span>
-          <span class="quote-time">{{ formatTime(replyTarget.created) }}</span>
-        </div>
-        <div
-          class="quote-content"
-          v-html="replyTarget._safeContent || ''"
-        />
-      </div>
-      <n-form
-        label-placement="left"
-        label-width="60"
-      >
-        <n-form-item label="昵称">
-          <n-input
-            v-model:value="replyForm.nick"
-            placeholder="博主"
-          />
-        </n-form-item>
-        <n-form-item label="邮箱">
-          <n-input
-            v-model:value="replyForm.mail"
-            placeholder="博主邮箱（选填）"
-          />
-        </n-form-item>
-        <n-form-item label="回复">
-          <n-input
-            v-model:value="replyForm.comment"
-            type="textarea"
-            :rows="5"
-            placeholder="输入回复内容..."
-          />
-        </n-form-item>
-      </n-form>
-      <template #footer>
-        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <n-button
-            size="small"
-            @click="replyVisible = false"
-          >
-            取消
-          </n-button>
-          <n-button
-            size="small"
-            type="primary"
-            :loading="replySaving"
-            @click="saveReply"
-          >
-            发送回复
-          </n-button>
-        </div>
-      </template>
-    </n-modal>
+    <CommentReplyModal
+      :visible="replyVisible"
+      :comment="replyTarget"
+      :loading="replySaving"
+      @update:visible="replyVisible = $event"
+      @send="saveReply"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import {
-  NSelect, NInput, NButton, NIcon, NCheckbox, NTag, NSpin, NDropdown,
-  NPagination, NModal, NForm, NFormItem, useMessage, useDialog,
+  NSelect, NInput, NButton, NIcon, NSpin, NPagination, useMessage, useDialog,
 } from 'naive-ui'
-import {
-  RefreshOutline, RefreshCircleOutline, SearchOutline, ChatbubblesOutline,
-  LinkOutline, DocumentTextOutline, MailOutline, EllipsisHorizontal,
-} from '@vicons/ionicons5'
+import { RefreshOutline, SearchOutline, ChatbubblesOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import { commentsApi } from '../../api/comments'
 import { renderMarkdown } from '@shared/utils/marked'
 import { t } from '@shared/utils/i18n'
 import type { Comment } from '@shared/types'
-import TkUa from '@shared/view/components/TkUa.vue'
+import CommentItem from './components/CommentItem.vue'
+import CommentEditModal from './components/CommentEditModal.vue'
+import CommentReplyModal from './components/CommentReplyModal.vue'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -507,53 +161,6 @@ const filterOptions = [
   { label: '待审', value: 'pending' },
 ]
 
-const formatTime = (ts: number): string => {
-  const d = new Date(ts)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-const getAvatar = (item: Comment): string => {
-  const base = 'https://weavatar.com/avatar/'
-  const hash = item.mailMd5 || encodeURIComponent(item.nick || '?')
-  return `${base}${hash}?d=identicon&s=40`
-}
-
-const stateClass = (row: Comment): string => {
-  if (row.state === 'hidden') return 'dot-hidden'
-  if (row.state === 'spam' || row.isSpam) return 'dot-spam'
-  if (row.state === 'pending') return 'dot-pending'
-  return 'dot-ok'
-}
-
-const stateLabel = (row: Comment): string => {
-  if (row.state === 'pending') return '待审核'
-  if (row.state === 'hidden') return '已隐藏'
-  if (row.state === 'spam' || row.isSpam) return '垃圾'
-  return '可见'
-}
-
-const sourceUrl = (item: Comment): string => {
-  return item.href || item.url || '#'
-}
-
-const isValidIp = (ip: string | undefined | null): boolean => {
-  if (!ip || typeof ip !== 'string') return false
-  const trimmed = ip.trim()
-  if (!trimmed) return false
-  // IPv4
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(trimmed)) {
-    return trimmed.split('.').every(n => {
-      const num = Number(n)
-      return num >= 0 && num <= 255
-    })
-  }
-  // IPv6 (简化校验)
-  return /^[0-9a-fA-F:]+$/.test(trimmed) && trimmed.includes(':')
-}
-
-const onImgError = (e: Event) => { (e.target as HTMLElement).style.display = 'none' }
-const onSearchClear = () => { search.value = ''; page.value = 1; loadComments() }
-
 const loadComments = async () => {
   loading.value = true
   try {
@@ -579,21 +186,25 @@ const onSearchDebounced = () => {
   searchTimer = setTimeout(() => { page.value = 1; loadComments() }, 300)
 }
 
+const onSearchClear = () => { search.value = ''; page.value = 1; loadComments() }
+const onFilterChange = () => { page.value = 1; router.replace({ query: { ...route.query, filter: filter.value } }).catch(() => {}); loadComments() }
+const onPageSizeChange = (size: number) => { pageSize.value = size; page.value = 1; loadComments() }
+
+// ===== 选择 =====
 const toggleSelect = (item: Comment) => {
   const idx = selectedIds.value.indexOf(item.id)
   if (idx >= 0) selectedIds.value.splice(idx, 1)
   else selectedIds.value.push(item.id)
 }
 
+// ===== 单条操作 =====
 const toggleHide = async (row: Comment) => {
   try {
     const hide = row.state !== 'hidden'
     await commentsApi.hide(row.id, hide)
     row.state = hide ? 'hidden' : 'visible'
     message.success(t('operationSuccess'))
-  } catch (e: any) {
-    message.error(t('operationFailed') + ': ' + (e.message || ''))
-  }
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const toggleSpam = async (row: Comment) => {
@@ -603,9 +214,7 @@ const toggleSpam = async (row: Comment) => {
     row.isSpam = isSpam
     row.state = isSpam ? 'spam' : 'visible'
     message.success(t('operationSuccess'))
-  } catch (e: any) {
-    message.error(t('operationFailed') + ': ' + (e.message || ''))
-  }
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const approveOne = async (row: Comment) => {
@@ -613,9 +222,15 @@ const approveOne = async (row: Comment) => {
     await commentsApi.approve(row.id)
     row.state = 'visible'
     message.success(t('approved'))
-  } catch (e: any) {
-    message.error(t('operationFailed') + ': ' + (e.message || ''))
-  }
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
+}
+
+const toggleTop = async (row: Comment) => {
+  try {
+    await commentsApi.toggleTop(row.id, !row.isTop)
+    row.isTop = !row.isTop
+    message.success(t('operationSuccess'))
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const onDeleteOne = (row: Comment) => {
@@ -629,25 +244,52 @@ const onDeleteOne = (row: Comment) => {
         await commentsApi.delete(row.id)
         message.success(t('deleteSuccess'))
         loadComments()
-      } catch (e: any) {
-        message.error(t('deleteFailed') + ': ' + (e.message || ''))
-      }
+      } catch (e: any) { message.error(t('deleteFailed') + ': ' + (e.message || '')) }
     },
   })
 }
 
-const batchHide = async () => {
+const refreshRegion = async (row: Comment) => {
   try {
-    await commentsApi.batchHide(selectedIds.value, true)
+    const r = await commentsApi.refreshIpRegion(row.id)
+    if (r.ipRegion) {
+      row.ipRegion = r.ipRegion
+      message.success(t('regionResolved'))
+    } else {
+      message.info(t('regionUnresolved'))
+    }
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
+}
+
+const onMoreAction = ({ comment, key }: { comment: Comment; key: string }) => {
+  if (key === 'approve') approveOne(comment)
+  else if (key === 'top') toggleTop(comment)
+  else if (key === 'hide') toggleHide(comment)
+  else if (key === 'spam') toggleSpam(comment)
+}
+
+// ===== 批量操作 =====
+const batchApprove = async () => {
+  try {
+    await commentsApi.batchApprove(selectedIds.value)
     selectedIds.value = []
     loadComments()
-    message.success(t('operationSuccess'))
+    message.success(t('approved'))
   } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
 const batchShow = async () => {
   try {
     await commentsApi.batchHide(selectedIds.value, false)
+    selectedIds.value = []
+    loadComments()
+    message.success(t('operationSuccess'))
+  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
+}
+
+const batchHide = async () => {
+  try {
+    await commentsApi.batchHide(selectedIds.value, true)
     selectedIds.value = []
     loadComments()
     message.success(t('operationSuccess'))
@@ -663,15 +305,6 @@ const batchSpam = async () => {
   } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
 }
 
-const batchApprove = async () => {
-  try {
-    await commentsApi.batchApprove(selectedIds.value)
-    selectedIds.value = []
-    loadComments()
-    message.success(t('approved'))
-  } catch (e: any) { message.error(t('operationFailed') + ': ' + (e.message || '')) }
-}
-
 const batchDelete = () => {
   dialog.warning({
     title: '批量删除',
@@ -684,51 +317,25 @@ const batchDelete = () => {
         selectedIds.value = []
         message.success(t('deleteSuccess'))
         loadComments()
-      } catch (e: any) {
-        message.error(t('deleteFailed') + ': ' + (e.message || ''))
-      }
+      } catch (e: any) { message.error(t('deleteFailed') + ': ' + (e.message || '')) }
     },
   })
 }
 
-// 更多操作下拉
-const moreActionOptions = (item: Comment) => {
-  const opts: { label: string; key: string }[] = []
-  if (item.state === 'pending') opts.push({ label: '通过', key: 'approve' })
-  opts.push({ label: item.isTop ? '取消置顶' : '置顶', key: 'top' })
-  opts.push({ label: item.state === 'hidden' ? '显示' : '隐藏', key: 'hide' })
-  opts.push({ label: item.isSpam ? '取消垃圾' : '标垃圾', key: 'spam' })
-  return opts
-}
-
-const handleMoreAction = async (item: Comment, key: string) => {
-  if (key === 'approve') await approveOne(item)
-  else if (key === 'top') await toggleTop(item)
-  else if (key === 'hide') await toggleHide(item)
-  else if (key === 'spam') await toggleSpam(item)
-}
-
-const onFilterChange = () => {
-  page.value = 1
-  // 同步到 URL query，便于从 Dashboard 等页面带筛选跳转
-  router.replace({ query: { ...route.query, filter: filter.value } }).catch(() => {})
-  loadComments()
-}
-const onPageSizeChange = (size: number) => { pageSize.value = size; page.value = 1; loadComments() }
-
 // ===== 编辑 =====
 const editVisible = ref(false)
 const editSaving = ref(false)
-const editForm = ref({ id: '', nick: '', mail: '', link: '', comment: '' })
+const editTarget = ref<Comment | null>(null)
+
 const openEdit = (item: Comment) => {
-  editForm.value = { id: item.id, nick: item.nick, mail: item.mail || '', link: item.link || '', comment: item.comment || '' }
+  editTarget.value = item
   editVisible.value = true
 }
 
-const saveEdit = async () => {
+const saveEdit = async (form: { id: string; nick: string; mail: string; link: string; comment: string }) => {
   editSaving.value = true
   try {
-    await commentsApi.update(editForm.value.id, editForm.value)
+    await commentsApi.update(form.id, form)
     message.success(t('saveSuccess'))
     editVisible.value = false
     loadComments()
@@ -743,27 +350,25 @@ const saveEdit = async () => {
 const replyVisible = ref(false)
 const replySaving = ref(false)
 const replyTarget = ref<Comment | null>(null)
-const replyForm = ref({ nick: '', mail: '', comment: '' })
 
 const openReply = (item: Comment) => {
   replyTarget.value = item
-  replyForm.value = { nick: '', mail: '', comment: '' }
   replyVisible.value = true
 }
 
-const saveReply = async () => {
+const saveReply = async (form: { nick: string; mail: string; comment: string }) => {
   if (!replyTarget.value) return
-  if (!replyForm.value.comment.trim()) { message.warning(t('enterContent')); return }
-  if (!replyForm.value.nick.trim()) { message.warning(t('enterNickname')); return }
+  if (!form.comment.trim()) { message.warning(t('enterContent')); return }
+  if (!form.nick.trim()) { message.warning(t('enterNickname')); return }
   replySaving.value = true
   try {
     const target = replyTarget.value
     await commentsApi.reply({
       url: target.url || '/',
       href: target.href || target.url || '',
-      nick: replyForm.value.nick,
-      mail: replyForm.value.mail,
-      comment: replyForm.value.comment,
+      nick: form.nick,
+      mail: form.mail,
+      comment: form.comment,
       pid: target.id,
       rid: target.rid || target.id,
       ua: navigator.userAgent,
@@ -776,30 +381,6 @@ const saveReply = async () => {
     message.error(t('replyFailed') + ': ' + (e.message || ''))
   } finally {
     replySaving.value = false
-  }
-}
-
-const toggleTop = async (row: Comment) => {
-  try {
-    await commentsApi.toggleTop(row.id, !row.isTop)
-    row.isTop = !row.isTop
-    message.success(t('operationSuccess'))
-  } catch (e: any) {
-    message.error(t('operationFailed') + ': ' + (e.message || ''))
-  }
-}
-
-const refreshRegion = async (row: Comment) => {
-  try {
-    const r = await commentsApi.refreshIpRegion(row.id)
-    if (r.ipRegion) {
-      row.ipRegion = r.ipRegion
-      message.success(t('regionResolved'))
-    } else {
-      message.info(t('regionUnresolved'))
-    }
-  } catch (e: any) {
-    message.error(t('operationFailed') + ': ' + (e.message || ''))
   }
 }
 
@@ -868,7 +449,6 @@ watch(() => route.query.filter, (q) => {
   border-radius: 10px;
   overflow: hidden;
 }
-
 .comment-list { min-height: 200px; }
 .empty-state {
   text-align: center;
@@ -877,184 +457,6 @@ watch(() => route.query.filter, (q) => {
   font-size: 13px;
 }
 .empty-state p { margin: 8px 0 0; }
-
-.comment-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--edge-soft);
-  transition: background 0.2s cubic-bezier(.22,.61,.36,1);
-}
-.comment-item:last-child { border-bottom: none; }
-.comment-item:hover {
-  background: var(--edge-soft);
-}
-.comment-item.selected {
-  background: var(--accent-soft);
-}
-
-.comment-check { margin-top: 6px; flex-shrink: 0; }
-
-/* ---- 头像 + 状态点 ---- */
-.avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.comment-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: block;
-  background: var(--edge-soft);
-}
-.status-dot {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid var(--paper);
-  box-sizing: content-box;
-}
-.dot-ok { background: var(--accent); }
-.dot-hidden { background: var(--warning); }
-.dot-spam { background: var(--danger); }
-.dot-pending { background: var(--ink-3); }
-
-/* ---- 评论主体 ---- */
-.comment-body { flex: 1; min-width: 0; }
-
-/* 头部：昵称 + 标签 / 时间 */
-.comment-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.head-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.comment-name {
-  font-weight: 600;
-  font-size: var(--fs-base);
-  color: var(--ink);
-}
-.status-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.comment-time {
-  font-size: 11px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* 联系方式行 */
-.comment-contact {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-.contact-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
-  min-width: 0;
-}
-.contact-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 220px;
-}
-.contact-link {
-  color: var(--accent);
-  text-decoration: none;
-}
-.contact-link:hover { text-decoration: underline; }
-
-/* 原文链接 */
-.comment-source {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
-  margin-bottom: 6px;
-}
-.source-link {
-  color: var(--accent);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 400px;
-}
-.source-link:hover { text-decoration: underline; }
-
-/* 评论内容 */
-.comment-content {
-  font-size: 13px;
-  color: var(--ink-2);
-  line-height: 1.6;
-  word-break: break-word;
-  margin: 2px 0 8px;
-}
-.comment-content :deep(p) { margin: 0; display: inline; }
-.comment-content :deep(img) { max-height: 32px; vertical-align: middle; border-radius: 2px; }
-
-/* 底部信息行 */
-.comment-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-bottom: 8px;
-}
-.meta-item {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-}
-.meta-ua {
-  font-size: 11px;
-  color: var(--ink-3);
-}
-.meta-divider {
-  color: var(--edge);
-  font-size: 10px;
-}
-
-/* 操作栏 */
-.comment-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding-top: 8px;
-  border-top: 1px dashed var(--edge-soft);
-}
-.action-primary {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 
 /* ---- 分页 ---- */
 .pagination-bar {
@@ -1073,89 +475,19 @@ watch(() => route.query.filter, (q) => {
   white-space: nowrap;
 }
 
-/* ---- 回复引用 ---- */
-.reply-quote {
-  background: var(--edge-soft);
-  border-left: 3px solid var(--accent);
-  padding: 10px 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-.quote-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-.quote-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.quote-time {
-  font-size: 11px;
-  color: var(--ink-3);
-}
-.quote-content {
-  font-size: 12px;
-  color: var(--ink-2);
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
 /* ============ 移动端响应式 ============ */
 @media (max-width: 768px) {
   .comments-page { gap: 10px; }
-
   .toolbar-card {
     flex-direction: column;
     align-items: stretch;
     padding: 10px;
   }
-  .toolbar-left {
-    gap: 6px;
-  }
+  .toolbar-left { gap: 6px; }
   .toolbar-left .n-select,
-  .toolbar-left .n-input {
-    width: 100% !important;
-  }
-  .toolbar-left .n-button {
-    align-self: flex-start;
-  }
-  .batch-bar {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-
-  .comment-item {
-    padding: 12px 12px;
-    gap: 10px;
-  }
-  .comment-avatar {
-    width: 32px;
-    height: 32px;
-  }
-  .source-link,
-  .contact-text {
-    max-width: 160px;
-  }
-
-  .comment-head {
-    flex-wrap: wrap;
-  }
-
-  .comment-actions {
-    gap: 4px;
-  }
-  .action-primary :deep(.n-button) {
-    padding: 0 8px;
-    font-size: 12px;
-  }
-
+  .toolbar-left .n-input { width: 100% !important; }
+  .toolbar-left .n-button { align-self: flex-start; }
+  .batch-bar { flex-wrap: wrap; justify-content: flex-start; }
   .pagination-bar {
     flex-direction: column;
     align-items: stretch;
@@ -1164,27 +496,6 @@ watch(() => route.query.filter, (q) => {
   .pagination-bar :deep(.n-pagination) {
     justify-content: center;
     flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 480px) {
-  .comment-item {
-    padding: 10px 10px;
-    gap: 8px;
-  }
-  .comment-avatar {
-    width: 30px;
-    height: 30px;
-  }
-  .comment-content {
-    font-size: var(--fs-base);
-  }
-  .comment-actions {
-    gap: 4px;
-  }
-  .comment-actions :deep(.n-button) {
-    padding: 0 6px;
-    font-size: 12px;
   }
 }
 </style>

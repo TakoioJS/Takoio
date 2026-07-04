@@ -274,7 +274,12 @@ describe('import-export handlers', () => {
         total: 0,
       })
       const result = await handleExport({ format: 'csv' })
-      expect(result.data).toEqual([])
+      // CSV 返回字符串，空数据集只含 BOM + 表头
+      expect(typeof result.data).toBe('string')
+      expect((result.data as string).startsWith('﻿')).toBe(true)
+      expect((result.data as string)).toContain('id,url,nick')
+      expect(result.format).toBe('csv')
+      expect(result.total).toBe(0)
     })
 
     it('handleImport throws AppError on invalid shape (json must be string or array)', async () => {

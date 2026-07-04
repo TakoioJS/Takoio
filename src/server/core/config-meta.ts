@@ -39,7 +39,7 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'MASTER_NAME',             type: 'string',  default: '',                                       public: true },
   { key: 'MASTER_LABEL',            type: 'string',  default: '',                                       public: true },
   { key: 'MASTER_LABEL_COLOR',      type: 'string',  default: '',                                       public: true },
-  { key: 'GLOBAL_COLOR',            type: 'string',  default: '',                                       public: true },
+  { key: 'GLOBAL_COLOR',            type: 'string',  default: '#5E8C6A',                                   public: true },
 
   // ---- Comment Display ----
   { key: 'PAGE_SIZE',               type: 'number',  default: 10,                                       public: true },
@@ -59,11 +59,8 @@ export const CONFIG_META: ConfigMeta[] = [
 
   // ---- Features ----
   { key: 'ENABLE_VISITOR_COUNTER',  type: 'boolean', default: true,                                     public: true },
-  { key: 'ENABLE_LIKE',             type: 'boolean', default: true,                                     public: true },
-  { key: 'ENABLE_DISLIKE',          type: 'boolean', default: true,                                     public: true },
   { key: 'ENABLE_ARTICLE_REACTION', type: 'boolean', default: false,                                    public: true },
   { key: 'ENABLE_COMMENT_REACTION', type: 'boolean', default: true,                                     public: true },
-  { key: 'ENABLE_EMOTION',          type: 'boolean', default: true,                                     public: true },
   { key: 'ENABLE_LINK_INPUT',       type: 'boolean', default: true,                                     public: true },
   { key: 'COMMENT_LINK_REQUIRED',   type: 'boolean', default: false,                                    public: true },
   { key: 'ENABLE_ADMIN_KEYWORD',    type: 'boolean', default: false,                                    hidden: true },
@@ -127,7 +124,7 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'SMTP_PASS',               type: 'string',  default: '',                                       masked: true, hidden: true },
   { key: 'SMTP_FROM',               type: 'string',  default: '',                                       hidden: true },
   { key: 'SMTP_TO',                 type: 'string',  default: '',                                       hidden: true },
-  { key: 'SMTP_TLS',                type: 'boolean', default: false,                                     hidden: true },
+  { key: 'SMTP_TLS',                type: 'boolean', default: true,                                      hidden: true },
   { key: 'SENDER_EMAIL',            type: 'string',  default: '',                                       hidden: true },
   { key: 'SENDER_NAME',             type: 'string',  default: '',                                       public: true },
   { key: 'MAIL_SUBJECT',            type: 'string',  default: '有人在 {title} 中回复了你',              public: true },

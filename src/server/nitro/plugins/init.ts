@@ -7,8 +7,10 @@
 import { ensureDb, sessionStore, initStore } from '#core'
 import { initPassword } from '#core'
 import { initIpSearcher } from '#core'
+import { closeRedis } from '#core'
 import { logger } from '#core'
 import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN } from '#core'
+import { closeDb } from '#core'
 
 let initialized = false
 
@@ -53,4 +55,41 @@ export default definePlugin(async () => {
   }
 
   logger.info('Takoio server ready')
+
+  // 非 serverless 环境注册优雅关闭信号处理
+  if (!isServerless()) {
+    let shuttingDown = false
+
+    const handleShutdown = async (signal: string) => {
+      if (shuttingDown) return
+      shuttingDown = true
+      logger.info({ signal }, 'Received shutdown signal, starting graceful shutdown...')
+
+      // 停止接收新连接 + 给 in-flight 请求完成时间
+      await new Promise<void>(resolve => {
+        // 最多等待 10 秒
+        const timeout = setTimeout(() => {
+          logger.warn('Graceful shutdown timeout reached, forcing exit')
+          resolve()
+        }, 10_000).unref()
+
+        // 再等一个事件循环 tick，让 Node.js 有机会关闭 HTTP server
+        setImmediate(() => {
+          clearTimeout(timeout)
+          resolve()
+        })
+      })
+
+      // 关闭 Redis 连接
+      try { await closeRedis() } catch {}
+      // 关闭数据库连接
+      try { await closeDb() } catch {}
+
+      logger.info('Shutdown complete')
+      process.exit(0)
+    }
+
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'))
+    process.on('SIGINT', () => handleShutdown('SIGINT'))
+  }
 })

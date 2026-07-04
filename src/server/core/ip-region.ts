@@ -17,6 +17,7 @@ type IpSearcher = { search: (ip: string) => Promise<{ region: string | null }> }
 
 let ipSearcher: IpSearcher | null = null
 let initDone = false
+let initPromise: Promise<void> | null = null
 
 const cleanRegion = (s: string): string =>
   s.split(' ').filter(p => p && p !== '0').join(' ')
@@ -56,23 +57,32 @@ const resolveXdbPath = (defaultDbFile: string): string | undefined => {
 
 export const initIpSearcher = async (): Promise<void> => {
   if (initDone) return
-  initDone = true
+  // 用 promise 做并发互斥，避免重复初始化
+  if (initPromise) return initPromise
 
-  try {
-    const { loadContentFromFile, newWithBuffer, defaultDbFile } = await import('ip2region-ts')
-    const xdbPath = resolveXdbPath(defaultDbFile)
+  initPromise = (async () => {
+    try {
+      const { loadContentFromFile, newWithBuffer, defaultDbFile } = await import('ip2region-ts')
+      const xdbPath = resolveXdbPath(defaultDbFile)
 
-    if (!xdbPath) {
-      logger.warn('ip2region.xdb not found, IP lookup disabled')
-      return
+      if (!xdbPath) {
+        logger.warn('ip2region.xdb not found, IP lookup disabled')
+        initDone = true
+        return
+      }
+
+      const buffer = loadContentFromFile(xdbPath)
+      ipSearcher = newWithBuffer(buffer) as IpSearcher
+      initDone = true
+      logger.info('IP region searcher initialized')
+    } catch (e: any) {
+      logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
+      // 失败时清除 initPromise，允许下次调用重试
+      initPromise = null
     }
+  })()
 
-    const buffer = loadContentFromFile(xdbPath)
-    ipSearcher = newWithBuffer(buffer) as IpSearcher
-    logger.info('IP region searcher initialized')
-  } catch (e: any) {
-    logger.warn({ error: e.message }, 'Failed to initialize ip2region, IP lookup disabled')
-  }
+  return initPromise
 }
 
 export const lookupIpRegion = async (ip: string): Promise<string> => {
