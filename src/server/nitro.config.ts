@@ -77,17 +77,8 @@ if (typeof globalThis.__dirname === 'undefined') {
   // load time (computed-style.js:17), which breaks when bundled into ESM.
   // render.ts uses dynamic import + try/catch so admin APIs don't load jsdom.
   // ioredis is bundled (not external) so Redis works on serverless platforms.
-  // DB drivers (libsql/mongodb/postgres/drizzle-orm) externalized for serverless.
+  // DB drivers are bundled for serverless compatibility (Vercel/Netlify need them in output).
   rolldownConfig: {
-    external: [
-      'jsdom',
-      '@libsql/client',
-      'mongodb',
-      'postgres',
-      'drizzle-orm',
-      'drizzle-orm/libsql',
-      'drizzle-orm/postgres-js',
-      'drizzle-orm/mongodb',
-    ],
+    external: ['jsdom'],
   },
 })
