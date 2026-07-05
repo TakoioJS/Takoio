@@ -3,6 +3,7 @@
  * useImageUpload composable 测试
  * insertAtCursor 是内部函数，通过 removeImage 间接测试
  */
+import { ref } from 'vue'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useImageUpload } from '../useImageUpload'
 
@@ -13,7 +14,7 @@ vi.mock('../../../../utils', () => ({
 }))
 
 describe('useImageUpload', () => {
-  const editorRef = { value: document.createElement('textarea') }
+  const editorRef = ref(document.createElement('textarea'))
   const form = { comment: '' }
   const opts = { envId: 'test', editorRef, form, enabled: true }
 

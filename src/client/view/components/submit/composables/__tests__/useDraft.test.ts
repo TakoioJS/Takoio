@@ -9,7 +9,7 @@ describe('useDraft', () => {
   const DRAFT_KEY = 'takoio-draft'
   const OLD_DRAFT_KEY = 'twikoo-draft'
   let form: { nick: string; mail: string; link: string; comment: string }
-  let toast: ReturnType<typeof vi.fn>
+  let toast: any
 
   beforeEach(() => {
     vi.useFakeTimers()

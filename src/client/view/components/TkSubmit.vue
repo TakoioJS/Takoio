@@ -37,6 +37,7 @@ const previewRef = ref<HTMLElement>()
 const isFocused = ref(false) // 焦点态：用于 .tk-submit-card-focus 外发光
 const form = reactive({ nick: '', mail: '', link: '', comment: '' })
 const defaultEmojis = ['👍', '👎', '❤️', '😂', '🤯', '🎉']
+const isGuestActive = ref(false)
 
 // --- Composed state ---
 const showUploadBtn = computed(() => props.siteConfig?.ENABLE_IMAGE_UPLOAD && props.siteConfig?.IMAGE_HOSTING_PROVIDER)
@@ -198,6 +199,9 @@ const onSubmit = async (): Promise<void> => {
 onMounted(async () => {
   fetchReactions()
   loadDraft()
+  if (form.nick || form.mail) {
+    isGuestActive.value = true
+  }
   unsubscribeAuth = onAuthChange((state) => { isLoggedIn.value = !!state; currentUser.value = state?.user || null })
   // 拉取后端实际启用的 provider 列表（无 options.loginProviders 时回退）
   if (props.options.envId) {
@@ -268,146 +272,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
       class="tk-submit-form"
       @submit.prevent="onSubmit"
     >
-      <!-- 已登录：显示用户信息（替代 3 个 input） -->
-      <div
-        v-if="isLoggedIn"
-        class="tk-auth-meta"
-      >
-        <span class="tk-auth-avatar">
-          <img v-if="currentUser?.avatar" :src="currentUser.avatar" :alt="currentUser.name" referrerpolicy="no-referrer">
-          <span v-else class="tk-auth-avatar-placeholder">{{ (currentUser?.name || '?')[0] }}</span>
-        </span>
-        <span class="tk-auth-name">{{ currentUser?.name }}</span>
-        <span v-if="currentUser?.email" class="tk-auth-email">{{ currentUser.email }}</span>
-        <span class="tk-auth-provider">{{ currentUser?.provider }}</span>
-      </div>
-
-      <!-- 顶部 meta-row：未登录态显示 nickname / email（已登录由 tk-auth-meta 替代） -->
-      <div
-        v-if="!showGuestInfo && !isLoggedIn"
-        class="tk-meta-row"
-      >
-        <div class="tk-meta-item">
-          <input
-            v-model="form.nick"
-            :aria-label="t('nickname')"
-            :placeholder="t('nickname')"
-            class="tk-input"
-            :class="{ 'tk-input-error': errors.nick }"
-          >
-          <span
-            v-if="errors.nick"
-            class="tk-field-error"
-          >{{ errors.nick }}</span>
-        </div>
-        <div class="tk-meta-item">
-          <input
-            v-model="form.mail"
-            type="email"
-            :aria-label="t('email')"
-            :placeholder="t('email')"
-            class="tk-input"
-            :class="{ 'tk-input-error': errors.mail }"
-          >
-          <span
-            v-if="errors.mail"
-            class="tk-field-error"
-          >{{ errors.mail }}</span>
-        </div>
-        <div
-          v-if="options.enableLinkInput"
-          class="tk-meta-item"
-        >
-          <input
-            v-model="form.link"
-            :aria-label="t('link')"
-            :placeholder="t('link')"
-            class="tk-input"
-            :class="{ 'tk-input-error': errors.link }"
-          >
-          <span
-            v-if="errors.link"
-            class="tk-field-error"
-          >{{ errors.link }}</span>
-        </div>
-      </div>
-
-      <!-- 设计稿：免登录态垂直堆叠（comment-input-guest.html 218-227 行） -->
-      <div
-        v-else
-        class="tk-guest-info"
-      >
-        <div class="tk-guest-hint">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
-            cx="12"
-            cy="7"
-            r="4"
-          /></svg>
-          {{ t('guestInfoTitle') || '免登录评论需要填写以下信息' }}
-        </div>
-        <div class="tk-guest-fields">
-          <div class="tk-meta-item">
-            <label class="tk-field-label">
-              {{ t('nickname') }} <span class="tk-required">*</span>
-            </label>
-            <input
-              v-model="form.nick"
-              :aria-label="t('nickname')"
-              :placeholder="t('nickname')"
-              class="tk-input"
-              :class="{ 'tk-input-error': errors.nick }"
-            >
-            <span
-              v-if="errors.nick"
-              class="tk-field-error"
-            >{{ errors.nick }}</span>
-          </div>
-          <div class="tk-meta-item">
-            <label class="tk-field-label">
-              {{ t('email') }} <span class="tk-required">*</span>
-            </label>
-            <input
-              v-model="form.mail"
-              type="email"
-              :aria-label="t('email')"
-              :placeholder="t('email')"
-              class="tk-input"
-              :class="{ 'tk-input-error': errors.mail }"
-            >
-            <span
-              v-if="errors.mail"
-              class="tk-field-error"
-            >{{ errors.mail }}</span>
-          </div>
-          <div
-            v-if="options.enableLinkInput"
-            class="tk-meta-item"
-          >
-            <label class="tk-field-label">{{ t('link') }}</label>
-            <input
-              v-model="form.link"
-              :aria-label="t('link')"
-              :placeholder="t('link')"
-              class="tk-input"
-              :class="{ 'tk-input-error': errors.link }"
-            >
-            <span
-              v-if="errors.link"
-              class="tk-field-error"
-            >{{ errors.link }}</span>
-          </div>
-        </div>
-      </div>
-
       <div class="tk-editor-item">
         <textarea
           ref="editorRef"
@@ -474,7 +338,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           <button
             type="submit"
             class="tk-btn-send"
-            :disabled="submitting"
+            :disabled="submitting || (!isLoggedIn && !isGuestActive)"
             @click.prevent="onSubmit"
           >
             <svg
@@ -545,15 +409,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
             :editor-ref="{ value: editorRef }"
             variant="compact"
           />
-
-          <!-- 设计稿：登录下拉（带 chevron 的 pill 按钮） -->
-          <LoginDropdown
-            v-if="showLogin"
-            :providers="loginProviders"
-            :env-id="options.envId"
-            class="tk-toolbar-login"
-            @select="onSelectProvider"
-          />
         </div>
 
         <div class="tk-toolbar-right">
@@ -567,6 +422,170 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
         </div>
       </div>
     </form>
+  </div>
+
+  <!-- 已登录：显示用户信息（替代 3 个 input） -->
+  <div
+    v-if="isLoggedIn"
+    class="tk-auth-meta"
+  >
+    <span class="tk-auth-avatar">
+      <img v-if="currentUser?.avatar" :src="currentUser.avatar" :alt="currentUser.name" referrerpolicy="no-referrer">
+      <span v-else class="tk-auth-avatar-placeholder">{{ (currentUser?.name || '?')[0] }}</span>
+    </span>
+    <span class="tk-auth-name">{{ currentUser?.name }}</span>
+    <span v-if="currentUser?.email" class="tk-auth-email">{{ currentUser.email }}</span>
+    <span class="tk-auth-provider">{{ currentUser?.provider }}</span>
+  </div>
+
+  <template v-if="!isLoggedIn && isGuestActive">
+    <!-- 顶部 meta-row：未登录态显示 nickname / email（已登录由 tk-auth-meta 替代） -->
+    <div
+      v-if="!showGuestInfo"
+      class="tk-meta-row"
+    >
+      <div class="tk-meta-item">
+        <input
+          v-model="form.nick"
+          :aria-label="t('nickname')"
+          :placeholder="t('nickname')"
+          class="tk-input"
+          :class="{ 'tk-input-error': errors.nick }"
+        >
+        <span
+          v-if="errors.nick"
+          class="tk-field-error"
+        >{{ errors.nick }}</span>
+      </div>
+      <div class="tk-meta-item">
+        <input
+          v-model="form.mail"
+          type="email"
+          :aria-label="t('email')"
+          :placeholder="t('email')"
+          class="tk-input"
+          :class="{ 'tk-input-error': errors.mail }"
+        >
+        <span
+          v-if="errors.mail"
+          class="tk-field-error"
+        >{{ errors.mail }}</span>
+      </div>
+      <div
+        v-if="options.enableLinkInput"
+        class="tk-meta-item"
+      >
+        <input
+          v-model="form.link"
+          :aria-label="t('link')"
+          :placeholder="t('link')"
+          class="tk-input"
+          :class="{ 'tk-input-error': errors.link }"
+        >
+        <span
+          v-if="errors.link"
+          class="tk-field-error"
+        >{{ errors.link }}</span>
+      </div>
+    </div>
+
+    <!-- 设计稿：免登录态垂直堆叠（comment-input-guest.html 218-227 行） -->
+    <div
+      v-else
+      class="tk-guest-info"
+    >
+      <div class="tk-guest-hint">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
+          cx="12"
+          cy="7"
+          r="4"
+        /></svg>
+        {{ t('guestInfoTitle') || '免登录评论需要填写以下信息' }}
+      </div>
+      <div class="tk-guest-fields">
+        <div class="tk-meta-item">
+          <label class="tk-field-label">
+            {{ t('nickname') }} <span class="tk-required">*</span>
+          </label>
+          <input
+            v-model="form.nick"
+            :aria-label="t('nickname')"
+            :placeholder="t('nickname')"
+            class="tk-input"
+            :class="{ 'tk-input-error': errors.nick }"
+          >
+          <span
+            v-if="errors.nick"
+            class="tk-field-error"
+          >{{ errors.nick }}</span>
+        </div>
+        <div class="tk-meta-item">
+          <label class="tk-field-label">
+            {{ t('email') }} <span class="tk-required">*</span>
+          </label>
+          <input
+            v-model="form.mail"
+            type="email"
+            :aria-label="t('email')"
+            :placeholder="t('email')"
+            class="tk-input"
+            :class="{ 'tk-input-error': errors.mail }"
+          >
+          <span
+            v-if="errors.mail"
+            class="tk-field-error"
+          >{{ errors.mail }}</span>
+        </div>
+        <div
+          v-if="options.enableLinkInput"
+          class="tk-meta-item"
+        >
+          <label class="tk-field-label">{{ t('link') }}</label>
+          <input
+            v-model="form.link"
+            :aria-label="t('link')"
+            :placeholder="t('link')"
+            class="tk-input"
+            :class="{ 'tk-input-error': errors.link }"
+          >
+          <span
+            v-if="errors.link"
+            class="tk-field-error"
+          >{{ errors.link }}</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Action Buttons block: A new button container to toggle state or trigger login when not logged in -->
+  <div
+    v-if="!isLoggedIn"
+    class="tk-submit-actions"
+  >
+    <LoginDropdown
+      v-if="showLogin"
+      :providers="loginProviders"
+      :env-id="options.envId"
+      class="tk-toolbar-login"
+      @select="onSelectProvider"
+    />
+    <button
+      v-if="showGuestInfo"
+      type="button"
+      class="tk-btn-guest-toggle"
+      @click="isGuestActive = true"
+    >
+      {{ t('guestComment') || '免登录评论' }}
+    </button>
   </div>
 
   <div
@@ -743,5 +762,33 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   padding: 1px 6px; background: var(--tk-bg-hover, #e5e5e5);
   border-radius: 9999px; font-size: 10px; text-transform: uppercase;
   color: var(--tk-text-tertiary, #999);
+}
+
+.tk-submit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: var(--tk-space-sm, 10px);
+}
+.tk-btn-guest-toggle {
+  background: none;
+  border: 1px solid var(--tk-border-light, #e5e5e5);
+  border-radius: var(--tk-r-pill, 9999px);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tk-text-secondary, #666);
+  cursor: pointer;
+  transition: all .15s;
+}
+.tk-btn-guest-toggle:hover,
+.tk-btn-guest-toggle:focus {
+  background: var(--tk-bg-hover, #f5f5f5);
+  color: var(--tk-text-primary, #333);
+}
+.tk-submit-card + .tk-auth-meta,
+.tk-submit-card + .tk-meta-row,
+.tk-submit-card + .tk-guest-info {
+  margin-top: var(--tk-space-sm, 10px);
 }
 </style>
