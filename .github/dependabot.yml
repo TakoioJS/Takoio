@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "nitro"
+        update-types: ["version-update:semver-major"]  # 跟踪 Nitro 3 稳定版
+      - dependency-name: "h3"
+        update-types: ["version-update:semver-major"]  # h3 RC 版本谨慎升级
+  - package-ecosystem: "npm"
+    directory: "/src/server"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+  - package-ecosystem: "npm"
+    directory: "/src/admin"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3

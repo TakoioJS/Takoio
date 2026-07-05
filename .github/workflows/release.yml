@@ -24,6 +24,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Security audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true  # 不阻断 CI，仅报告
+
       - name: Lint
         run: pnpm lint
 

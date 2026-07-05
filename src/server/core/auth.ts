@@ -300,9 +300,28 @@ export const validateOrigin = async (ctx: RequestContext): Promise<void> => {
     ...parseOrigins(cfg.CORS_ORIGINS),
     ...(cfg.SITE_URL ? [cfg.SITE_URL] : []),
   ].filter(Boolean)
-  if (allowedOrigins.length === 0) return // No allowed origins configured = skip validation
 
   const origin = ctx.headers['origin'] || ctx.headers['referer'] || ''
+
+  // When no allowed origins configured, at least validate same-origin requests
+  if (allowedOrigins.length === 0) {
+    const requestHost = ctx.headers['host']?.split(':')[0]
+    if (origin) {
+      let originHost: string
+      try {
+        originHost = new URL(origin).hostname
+      } catch {
+        logger.warn({ origin }, 'Admin request rejected due to malformed origin (no CORS_ORIGINS configured)')
+        throw new AppError('INVALID_ORIGIN', '请求来源格式不合法', 403)
+      }
+      if (originHost !== requestHost) {
+        logger.warn({ origin, originHost, requestHost },
+          'CSRF check skipped (CORS_ORIGINS not configured) but cross-origin request detected')
+      }
+    }
+    return // No origin header = same-origin request = safe
+  }
+
   if (!origin) return // No origin header = same-origin request (browser doesn't send for same-origin)
 
   let originHost: string
