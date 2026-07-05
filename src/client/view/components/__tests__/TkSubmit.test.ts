@@ -22,7 +22,7 @@ vi.mock('../../../utils/auth', () => ({
   onAuthChange: vi.fn(() => {
     return () => {} // unsubscribe function
   }),
-  getAvailableProviders: vi.fn(() => Promise.resolve({ github: false, google: false, email: false })),
+  getAvailableProviders: vi.fn(() => Promise.resolve({ github: true, google: false, email: false })),
 }))
 
 vi.mock('../../../utils/marked', () => ({
@@ -59,8 +59,10 @@ describe('TkSubmit.vue', () => {
     expect(form.find('.tk-submit-card form').exists()).toBe(false)
   })
 
-  it('shows the guest toggle button initially if not logged in and not active', () => {
+  it('shows the guest toggle button initially if not logged in and not active', async () => {
     const wrapper = mount(TkSubmit, { props: defaultProps })
+    await nextTick()
+    await nextTick()
     const guestBtn = wrapper.find('.tk-btn-guest-toggle')
     expect(guestBtn.exists()).toBe(true)
     expect(wrapper.find('.tk-meta-row').exists()).toBe(false)
@@ -69,6 +71,8 @@ describe('TkSubmit.vue', () => {
 
   it('activates guest mode when the toggle button is clicked', async () => {
     const wrapper = mount(TkSubmit, { props: defaultProps })
+    await nextTick()
+    await nextTick()
     const guestBtn = wrapper.find('.tk-btn-guest-toggle')
     await guestBtn.trigger('click')
     expect(wrapper.find('.tk-btn-guest-toggle').exists()).toBe(false)
@@ -103,6 +107,8 @@ describe('TkSubmit.vue', () => {
 
   it('submits comment correctly with guest details', async () => {
     const wrapper = mount(TkSubmit, { props: defaultProps })
+    await nextTick()
+    await nextTick()
     // Activate guest mode
     await wrapper.find('.tk-btn-guest-toggle').trigger('click')
 
@@ -148,5 +154,25 @@ describe('TkSubmit.vue', () => {
       token: 'valid-token-123',
       comment: 'Logged in test comment',
     }))
+  })
+
+  it('renders correctly when social login is disabled', async () => {
+    const { getAvailableProviders } = await import('../../../utils/auth')
+    vi.mocked(getAvailableProviders).mockResolvedValueOnce({ github: false, google: false, email: false })
+
+    const wrapper = mount(TkSubmit, { props: defaultProps })
+    await nextTick()
+    await nextTick()
+
+    // Assert that .tk-submit-actions and .tk-btn-guest-toggle do NOT exist
+    expect(wrapper.find('.tk-submit-actions').exists()).toBe(false)
+    expect(wrapper.find('.tk-btn-guest-toggle').exists()).toBe(false)
+
+    // Assert that .tk-guest-info DOES exist directly
+    expect(wrapper.find('.tk-guest-info').exists()).toBe(true)
+
+    // Assert that the send button is NOT disabled by default
+    const sendBtn = wrapper.find('.tk-btn-send')
+    expect(sendBtn.attributes('disabled')).toBeUndefined()
   })
 })

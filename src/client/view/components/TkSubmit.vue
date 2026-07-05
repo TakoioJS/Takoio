@@ -166,7 +166,7 @@ watch(() => props.options.privateComment, (v) => { if (typeof v === 'boolean') p
 
 // --- Submit ---
 const onSubmit = async (): Promise<void> => {
-  if (!isLoggedIn.value && !isGuestActive.value) { isGuestActive.value = true; return }
+  if (!isLoggedIn.value && showLogin.value && !isGuestActive.value) { isGuestActive.value = true; return }
   if (!validate(t, isLoggedIn.value)) return
   captchaError.value = ''
   if (props.options.enableCaptcha && !captchaToken.value) { captchaError.value = t('captchaRequired') || '请完成人机验证'; return }
@@ -341,7 +341,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           <button
             type="submit"
             class="tk-btn-send"
-            :disabled="submitting || (!isLoggedIn && !isGuestActive)"
+            :disabled="submitting || (!isLoggedIn && showLogin && !isGuestActive)"
             @click.prevent="onSubmit"
           >
             <svg
@@ -441,7 +441,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
     <span class="tk-auth-provider">{{ currentUser?.provider }}</span>
   </div>
 
-  <template v-if="!isLoggedIn && isGuestActive">
+  <template v-if="!isLoggedIn && (isGuestActive || !showLogin)">
     <!-- 顶部 meta-row：未登录态显示 nickname / email（已登录由 tk-auth-meta 替代） -->
     <div
       v-if="!showGuestInfo"
@@ -571,7 +571,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
   <!-- Action Buttons block: A new button container to toggle state or trigger login when not logged in -->
   <div
-    v-if="!isLoggedIn && (showLogin || (showGuestInfo && !isGuestActive))"
+    v-if="!isLoggedIn && showLogin && !isGuestActive"
     class="tk-submit-actions"
   >
     <LoginDropdown
