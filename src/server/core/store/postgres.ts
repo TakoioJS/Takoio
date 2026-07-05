@@ -1,5 +1,5 @@
 import { getDb, initDb } from '../db/pg-client'
-import { comments, configs, visitors, sessions, reactions, commentReactions } from '../db/schema-pg'
+import { comments, configs, visitors, sessions, reactions, commentReactions, users } from '../db/schema-pg'
 import { eq, and, inArray, like, or, sql, asc, desc, count as drizzleCount } from 'drizzle-orm'
 import type {
   Comment,
@@ -18,6 +18,8 @@ import type {
   StoreImportData,
   CommentState,
   CommentSort,
+  User,
+  UserRole,
 } from './types'
 import type {
   CommentStore,
@@ -25,6 +27,7 @@ import type {
   VisitorStore,
   SessionStore,
   ReactionStore,
+  UserStore,
 } from './index'
 import { COMMENT_STATE, relTime, stripPrivate, fromRowPg as fromRow } from './utils'
 import { buildGetCommentsQuery } from './query-helpers'
@@ -410,6 +413,87 @@ export const reactionStore: ReactionStore = {
         .where(and(eq(reactions.url, url), eq(reactions.emoji, emoji), eq(reactions.ip, ip)))
     }
     return reactionStore.getReactions(url)
+  },
+}
+
+export const userStore: UserStore = {
+  async upsertUser (data): Promise<User> {
+    const { randomUUID } = await import('node:crypto')
+    const now = Date.now()
+    // try insert; on conflict (provider+providerId), update
+    try {
+      const id = randomUUID()
+      await db().insert(users).values({
+        id,
+        provider: data.provider,
+        providerId: data.providerId,
+        email: data.email,
+        name: data.name,
+        avatar: data.avatar || null,
+        role: 'user',
+        createdAt: now,
+        lastLoginAt: now,
+        loginCount: 1,
+      })
+      const rows = await db().select().from(users).where(eq(users.id, id)).limit(1)
+      return rows[0] as User
+    } catch {
+      // conflict — update login info
+      const existing = await db().select().from(users)
+        .where(and(eq(users.provider, data.provider), eq(users.providerId, data.providerId)))
+        .limit(1)
+      if (existing[0]) {
+        await db().update(users).set({
+          name: data.name,
+          email: data.email,
+          avatar: data.avatar || null,
+          lastLoginAt: now,
+          loginCount: existing[0].loginCount + 1,
+        }).where(eq(users.id, existing[0].id))
+        return { ...existing[0], name: data.name, email: data.email, avatar: data.avatar || undefined, lastLoginAt: now, loginCount: existing[0].loginCount + 1 } as User
+      }
+      throw new Error('upsertUser: insert failed and no existing user found')
+    }
+  },
+
+  async getUsers (page = 1, pageSize = 20, search = '', filter = ''): Promise<PaginatedResult<User>> {
+    const conditions = []
+    if (search) {
+      const kw = `%${search.toLowerCase()}%`
+      conditions.push(or(
+        like(sql`LOWER(${users.name})`, kw),
+        like(sql`LOWER(${users.email})`, kw),
+      ))
+    }
+    if (filter === 'banned') conditions.push(eq(users.role, 'banned'))
+    else if (filter === 'user') conditions.push(eq(users.role, 'user'))
+    const where = conditions.length > 0 ? and(...conditions) : undefined
+    const totalRows = await db().select({ count: drizzleCount() }).from(users).where(where)
+    const rows = await db().select().from(users)
+      .where(where)
+      .orderBy(desc(users.lastLoginAt))
+      .limit(pageSize).offset((page - 1) * pageSize)
+    return { data: rows as User[], total: Number(totalRows[0]?.count ?? 0) }
+  },
+
+  async getUser (id: string): Promise<User | undefined> {
+    const rows = await db().select().from(users).where(eq(users.id, id)).limit(1)
+    return rows[0] as User | undefined
+  },
+
+  async getUserByEmail (email: string): Promise<User | undefined> {
+    const rows = await db().select().from(users).where(eq(users.email, email.toLowerCase())).limit(1)
+    return rows[0] as User | undefined
+  },
+
+  async setUserRole (id: string, role: UserRole): Promise<boolean> {
+    const result = await db().update(users).set({ role }).where(eq(users.id, id)).returning({ id: users.id })
+    return result.length > 0
+  },
+
+  async getUserCount (): Promise<number> {
+    const rows = await db().select({ count: drizzleCount() }).from(users)
+    return Number(rows[0]?.count ?? 0)
   },
 }
 

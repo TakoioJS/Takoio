@@ -10,6 +10,7 @@ import {
   handleConfigReset, handlePasswordSet, handleCheckSetup,
   handleTypeSet, handlePrivateKeyGet, handlePrivateKeySet,
   handleSendNotification, handleEmailTest,
+  handleGetUsers, handleBanUser, handleUnbanUser,
 } from '#core'
 import { handleImport, handleExport } from '#core'
 import { handleDashboardStats, handleDashboardTrend } from '#core'
@@ -176,6 +177,33 @@ export default defineHandler(async (event) => {
     await validateOrigin(buildRequestContext(event))
     const body = await validateBody(event, ImportSchema)
     return handleImport(source, body)
+  }
+
+  // GET /api/admin/users — list users with search/filter/pagination
+  if (segments[0] === 'users' && method === 'GET' && segments.length === 1) {
+    const token = getToken(event)
+    await requireAdmin({ token })
+    const query = getQuery(event)
+    return handleGetUsers({
+      page: parseInt(query.page as string) || 1,
+      pageSize: parseInt(query.pageSize as string) || 20,
+      search: (query.search as string) || '',
+      filter: (query.filter as string) || '',
+    })
+  }
+
+  // PATCH /api/admin/users/:id/ban
+  if (segments[0] === 'users' && segments.length === 3 && segments[2] === 'ban' && method === 'PATCH') {
+    const token = getToken(event)
+    await requireAdmin({ token })
+    return handleBanUser({ id: segments[1] })
+  }
+
+  // PATCH /api/admin/users/:id/unban
+  if (segments[0] === 'users' && segments.length === 3 && segments[2] === 'unban' && method === 'PATCH') {
+    const token = getToken(event)
+    await requireAdmin({ token })
+    return handleUnbanUser({ id: segments[1] })
   }
 
   // GET /api/admin/system — system status (dev mode, DB, Redis, AI stats)

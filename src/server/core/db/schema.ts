@@ -17,3 +17,4 @@ export const sessions = _schema.sessions
 export const rateLimits = _schema.rateLimits
 export const reactions = _schema.reactions
 export const commentReactions = _schema.commentReactions
+export const users = _schema.users

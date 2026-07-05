@@ -17,6 +17,7 @@ import type {
   VisitorStore,
   SessionStore,
   ReactionStore,
+  UserStore,
   StoreSnapshot,
   StoreImportData,
 } from './types'
@@ -99,6 +100,7 @@ export const configStore: ConfigStore = createStoreProxy('configStore')
 export const visitorStore: VisitorStore = createStoreProxy('visitorStore')
 export const sessionStore: SessionStore = createStoreProxy('sessionStore')
 export const reactionStore: ReactionStore = createStoreProxy('reactionStore')
+export const userStore: UserStore = createStoreProxy('userStore')
 
 // Direct async functions for one-off use (import, export, ensureDb)
 export async function getStore (): Promise<StoreSnapshot> { return (await getImpl()).getStore() }

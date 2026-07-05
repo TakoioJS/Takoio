@@ -5,6 +5,7 @@
 import {
   consumeVerifyCode,
   signToken,
+  userStore,
   EmailVerifySchema,
   safeValidate,
 } from '#core'
@@ -16,6 +17,9 @@ export default defineHandler(async (event) => {
 
   const user = await consumeVerifyCode(v.data.uuid, v.data.code)
   if (!user) throw createError({ statusCode: 400, statusMessage: '验证码错误或已过期' })
+
+  // 持久化用户（首次登录自动创建）
+  await userStore.upsertUser(user).catch(() => {})
 
   const token = signToken(user)
   return {

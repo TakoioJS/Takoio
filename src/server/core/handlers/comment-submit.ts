@@ -19,6 +19,7 @@ import { renderComment } from '../utils/render'
 import { logger } from '../utils/logger'
 import { AppError as AppErrorClass } from '../errors'
 import { verifyToken } from '../auth-social'
+import { userStore } from '../store/index'
 import { invalidateAfterSubmit, notifyAfterSubmit } from './comment-submit-side-effects'
 import { COMMENT_WINDOW_MAX, COMMENT_WINDOW_MS, COMMENT_RATE_LIMIT_DEFAULT } from '../constants'
 
@@ -43,10 +44,12 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
   // 博主视角的 token 视为已认证身份：开启私密评论不需要 CAPTCHA 也允许
   // （避免已登录博主评论自己博客时反复验证）
 
-  // Impersonation protection
+  // Impersonation protection — case-INSENSITIVE comparison (CVE-2026-0705-01 fix)
   const masterNameLower = cfg.MASTER_NAME?.toLowerCase() || ''
   const nickLower = nick.toLowerCase()
-  if ((masterNameLower && nickLower === masterNameLower) || (cfg.MASTER && mail === cfg.MASTER)) {
+  const masterMailLower = cfg.MASTER?.trim().toLowerCase() || ''
+  const mailLower = mail?.trim().toLowerCase() || ''
+  if ((masterNameLower && nickLower === masterNameLower) || (masterMailLower && mailLower === masterMailLower)) {
     logger.warn({ nick, mail: mail ? '[redacted]' : '', ip: data._ip }, 'Impersonation attempt blocked')
     throw new AppErrorClass('INVALID_INPUT', '提交失败，请检查输入信息', 400)
   }
@@ -109,7 +112,26 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
   const cfg = await getConfig()
 
   // 1. Validate
-  const { url, nick, mail, link, comment, pid, rid, ua, image, isPrivate } = await validateSubmit(data, cfg)
+  const validated = await validateSubmit(data, cfg)
+  const { url, nick, mail, link, comment, pid, rid, ua, image, isPrivate, authUser } = validated
+
+  // 1a. Ban check: if authenticated, look up user role
+  let userId: string | null = null
+  if (authUser) {
+    try {
+      const userRecord = await userStore.getUserByEmail(authUser.email || '')
+      if (userRecord) {
+        userId = userRecord.id
+        if (userRecord.role === 'banned') {
+          throw new AppErrorClass('USER_BANNED', '账户已被封禁，无法提交评论', 403)
+        }
+      }
+    } catch (e) {
+      if (e instanceof AppErrorClass) throw e
+      // 查询失败不应阻塞评论提交，仅降级
+      logger.warn({ email: authUser.email }, 'Failed to look up user for ban check')
+    }
+  }
 
   // 2. Build comment object
   const mailMd5 = mail ? crypto.createHash('sha256').update(mail.trim().toLowerCase()).digest('hex') : ''
@@ -135,6 +157,8 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     isTop: false,
     isPinned: false,
     isPrivate: !!isPrivate,
+    userId: userId || null,
+    authProvider: authUser?.provider || null,
     image: image || null,
     ipRegion: null,
     renderedComment: null,

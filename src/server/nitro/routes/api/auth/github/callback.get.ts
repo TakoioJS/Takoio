@@ -8,6 +8,7 @@ import {
   getState,
   consumeState,
   getConfig,
+  userStore,
   OAuthCallbackSchema,
   safeValidate,
 } from '#core'
@@ -34,6 +35,8 @@ export default defineHandler(async (event) => {
 
   const accessToken = await providers.github.getToken(v.data.code)
   const user = await providers.github.getUser(accessToken)
+  // 持久化用户（首次登录自动创建）
+  await userStore.upsertUser(user).catch(() => {})
   const token = signToken(user)
 
   // 仅 token 跳转，user 信息由前端通过 /me 拿（避免 Referer 泄漏）

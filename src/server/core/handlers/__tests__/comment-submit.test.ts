@@ -141,6 +141,19 @@ describe('handleCommentSubmit', () => {
     ).rejects.toThrow('提交失败')
   })
 
+  // Regress: case-variant email must not bypass impersonation check (SEC-001)
+  it('blocks case-variant email impersonation', async () => {
+    await expect(
+      handleCommentSubmit({
+        url: '/test',
+        nick: 'not-admin',
+        mail: 'Admin@Test.com', // case differs from cfg.MASTER 'admin@test.com'
+        comment: 'Should be blocked by fix',
+        _ip: '127.0.0.1',
+      })
+    ).rejects.toThrow('提交失败')
+  })
+
   it('rejects nick exceeding 50 chars', async () => {
     await expect(
       handleCommentSubmit({

@@ -14,6 +14,44 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
 import { pgTable, text as pgText, integer as pgInteger, boolean, index as pgIndex, primaryKey as pgPrimaryKey } from 'drizzle-orm/pg-core'
 
+/** sqlite users 表 — 独立构造便于独立管理 */
+function _buildSqliteUsers () {
+  return sqliteTable('users', {
+    id: text('id').primaryKey(),
+    provider: text('provider').notNull(),
+    providerId: text('provider_id').notNull(),
+    email: text('email').notNull(),
+    name: text('name').notNull(),
+    avatar: text('avatar'),
+    role: text('role').notNull().default('user'),
+    createdAt: integer('created_at').notNull(),
+    lastLoginAt: integer('last_login_at').notNull(),
+    loginCount: integer('login_count').notNull().default(1),
+  }, (table) => [
+    index('idx_users_email').on(table.email),
+    index('idx_users_provider').on(table.provider, table.providerId),
+  ])
+}
+
+/** pg users 表 */
+function _buildPgUsers () {
+  return pgTable('users', {
+    id: pgText('id').primaryKey(),
+    provider: pgText('provider').notNull(),
+    providerId: pgText('provider_id').notNull(),
+    email: pgText('email').notNull(),
+    name: pgText('name').notNull(),
+    avatar: pgText('avatar'),
+    role: pgText('role').notNull().default('user'),
+    createdAt: pgInteger('created_at').notNull(),
+    lastLoginAt: pgInteger('last_login_at').notNull(),
+    loginCount: pgInteger('login_count').notNull().default(1),
+  }, (table) => [
+    pgIndex('idx_users_email').on(table.email),
+    pgIndex('idx_users_provider').on(table.provider, table.providerId),
+  ])
+}
+
 /** sqlite schema 内部构造（用于 ReturnType 推导） */
 function _buildSqliteSchema () {
   const comments = sqliteTable('comments', {
@@ -100,7 +138,7 @@ function _buildSqliteSchema () {
     index('idx_comment_reactions_commentId').on(table.commentId),
   ])
 
-  return { comments, configs, visitors, sessions, rateLimits, reactions, commentReactions }
+  return { comments, configs, visitors, sessions, rateLimits, reactions, commentReactions, users: _buildSqliteUsers() }
 }
 
 /** pg schema 内部构造（用于 ReturnType 推导） */
@@ -190,7 +228,7 @@ function _buildPgSchema () {
     pgIndex('idx_comment_reactions_commentId').on(table.commentId),
   ])
 
-  return { comments, configs, visitors, sessions, rateLimits, reactions, commentReactions }
+  return { comments, configs, visitors, sessions, rateLimits, reactions, commentReactions, users: _buildPgUsers() }
 }
 
 type SqliteSchema = ReturnType<typeof _buildSqliteSchema>

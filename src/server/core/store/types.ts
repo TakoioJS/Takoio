@@ -9,7 +9,35 @@
  *   返回符合这些类型的数据，由 index.ts 的 interface 强制约束。
  */
 
-// ========== Comment ==========
+// ========== User ==========
+
+export type UserRole = 'user' | 'banned'
+export type AuthProvider = 'github' | 'google' | 'email'
+
+/** 用户 — OAuth / 邮箱登录时自动创建 */
+export interface User {
+  id: string
+  provider: AuthProvider
+  providerId: string
+  email: string
+  name: string
+  avatar?: string | null
+  role: UserRole
+  createdAt: number
+  lastLoginAt: number
+  loginCount: number
+}
+
+/** 更新用户的可选字段 */
+export interface UserUpdate {
+  name?: string
+  avatar?: string | null
+  role?: UserRole
+  lastLoginAt?: number
+  loginCount?: number
+}
+
+// ========== Comment (现有，追加 userId / authProvider) ==========
 
 /** 评论 state 字段的合法值 */
 export type CommentState = 'visible' | 'hidden' | 'spam' | 'pending'
@@ -43,6 +71,10 @@ export interface Comment {
   isTop: boolean
   isPinned: boolean
   isPrivate: boolean
+  /** 登录用户所关联的 User.id（匿名评论为 null） */
+  userId?: string | null
+  /** 冗余字段：登录时的 provider（github/google/email），用于显示标识 */
+  authProvider?: string | null
   image?: string | null
   sticker?: string | null
   ipRegion?: string | null
@@ -224,6 +256,26 @@ export interface ReactionStore {
   toggleReaction (url: string, emoji: string, ip: string): Promise<ReactionMap>
 }
 
+export interface UserStore {
+  /** OAuth 回调 / 邮箱验证时 upsert，按 provider+providerId 匹配 */
+  upsertUser (data: {
+    provider: AuthProvider
+    providerId: string
+    email: string
+    name: string
+    avatar?: string | null
+  }): Promise<User>
+  /** 管理面板：用户列表 */
+  getUsers (page?: number, pageSize?: number, search?: string, filter?: string): Promise<PaginatedResult<User>>
+  /** 单用户查询 */
+  getUser (id: string): Promise<User | undefined>
+  getUserByEmail (email: string): Promise<User | undefined>
+  /** 封禁 / 解封 */
+  setUserRole (id: string, role: UserRole): Promise<boolean>
+  /** 统计总数（概览用） */
+  getUserCount (): Promise<number>
+}
+
 /**
  * Store backend module shape — every backend (sqlite/mongodb/postgres)
  * must export these members. Enforces compile-time consistency across implementations.
@@ -234,6 +286,7 @@ export interface StoreBackend {
   visitorStore: VisitorStore
   sessionStore: SessionStore
   reactionStore: ReactionStore
+  userStore: UserStore
   getStore (): Promise<StoreSnapshot>
   importStore (data: StoreImportData): Promise<void>
   ensureDb (): Promise<void>

@@ -47,6 +47,7 @@ function createLogger () {
 
 export async function sendEmail (
   config: EmailConfig,
+  to: string,
   subject: string,
   html: string
 ): Promise<SendEmailResult> {
@@ -85,7 +86,6 @@ export async function sendEmail (
     }
 
     const from = config.SMTP_FROM || config.SMTP_USER
-    const to = config.SMTP_TO || config.SMTP_USER
     logger.info(`发送邮件至 ${to}，主题: ${subject}`)
 
     const start = Date.now()

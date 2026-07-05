@@ -150,7 +150,7 @@ import {
 import {
   GridOutline, ChatbubblesOutline, SettingsOutline, ServerOutline,
   SunnyOutline, MoonOutline, LogOutOutline, KeyOutline, CubeOutline,
-  ChevronDownOutline, LogoGithub,
+  ChevronDownOutline, LogoGithub, PeopleOutline,
   MenuOutline,
 } from '@vicons/ionicons5'
 import { setUnauthorizedHandler } from '../api/client'
@@ -186,6 +186,7 @@ setUnauthorizedHandler(() => { router.push('/login') })
 const menuItems = [
   { path: '/dashboard', title: '概览', icon: GridOutline },
   { path: '/comments', title: '评论', icon: ChatbubblesOutline },
+  { path: '/users', title: '用户', icon: PeopleOutline },
   { path: '/settings', title: '配置', icon: SettingsOutline },
   {
     path: '/ai', title: 'AI 功能', icon: CubeOutline,

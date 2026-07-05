@@ -38,7 +38,7 @@ export default defineHandler(async (event) => {
   await setVerifyCode(uuid, code, user)
 
   // 错误必须传播（不再 .catch(() => {}) 静默吞错）
-  const result = await sendEmail(cfg, 'Takoio 登录验证码',
+  const result = await sendEmail(cfg, v.data.email, 'Takoio 登录验证码',
     `<div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px;">
       <p>您的验证码是：</p>
       <div style="font-size:32px;font-weight:700;text-align:center;padding:20px;background:#f5f5f5;border-radius:8px;letter-spacing:8px;">${code}</div>

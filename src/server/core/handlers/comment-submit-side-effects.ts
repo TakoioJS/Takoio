@@ -49,7 +49,7 @@ async function sendEmailNotification (saved: any, cfg: TakoioConfig) {
   if (!cfg.ENABLE_MAIL_NOTIFICATION || !cfg.SMTP_HOST) return
   try {
     const { sendEmail } = await import('../email')
-    await sendEmail(cfg, '新评论通知', `用户 ${saved.nick} 发表了评论`)
+    await sendEmail(cfg, cfg.SMTP_TO || cfg.SMTP_USER, '新评论通知', `用户 ${saved.nick} 发表了评论`)
   } catch { /* ignore */ }
 }
 

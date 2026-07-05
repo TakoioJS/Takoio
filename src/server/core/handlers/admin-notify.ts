@@ -58,7 +58,7 @@ export const handleEmailTest = async (data: EmailTestData) => {
     ua: 'Mozilla/5.0 TestBrowser',
   }
   const html = renderTemplate(rawTpl, vars)
-  const result = await sendEmail(emailCfg, renderTemplate(subject, vars), html)
+  const result = await sendEmail(emailCfg, emailCfg.SMTP_TO || emailCfg.SMTP_USER, renderTemplate(subject, vars), html)
 
   // Return sanitized result — do not expose full SMTP log to client
   return {

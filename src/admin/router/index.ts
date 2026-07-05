@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '评论', icon: 'chatbubbles-outline' },
       },
       {
+        path: 'users',
+        name: 'users',
+        component: () => import('../views/users/List.vue'),
+        meta: { title: '用户', icon: 'people-outline' },
+      },
+      {
         path: 'settings',
         name: 'settings',
         component: () => import('../views/settings/Settings.vue'),

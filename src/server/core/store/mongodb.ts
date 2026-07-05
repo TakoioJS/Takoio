@@ -17,6 +17,8 @@ import type {
   StoreImportData,
   CommentState,
   CommentSort,
+  User,
+  UserRole,
 } from './types'
 import type {
   CommentStore,
@@ -24,6 +26,7 @@ import type {
   VisitorStore,
   SessionStore,
   ReactionStore,
+  UserStore,
 } from './index'
 import { COMMENT_STATE } from './utils'
 
@@ -539,6 +542,116 @@ export const reactionStore: ReactionStore = {
       }
     }
     return reactionStore.getReactions(url)
+  },
+}
+
+export const userStore: UserStore = {
+  async upsertUser (data): Promise<User> {
+    const db = await getDb()
+    const coll = col(db, 'users')
+    const now = Date.now()
+    // Atomic upsert: find by provider+providerId, update or insert
+    const existing = await coll.findOne({ provider: data.provider, providerId: data.providerId })
+    if (existing) {
+      await coll.updateOne(
+        { _id: existing._id },
+        {
+          $set: { name: data.name, email: data.email, avatar: data.avatar || null, lastLoginAt: now },
+          $inc: { loginCount: 1 },
+        }
+      )
+      return {
+        id: existing._id,
+        provider: existing.provider,
+        providerId: existing.providerId,
+        email: data.email,
+        name: data.name,
+        avatar: data.avatar || null,
+        role: existing.role || 'user',
+        createdAt: existing.createdAt,
+        lastLoginAt: now,
+        loginCount: (existing.loginCount || 1) + 1,
+      } as User
+    }
+    const { randomUUID } = await import('node:crypto')
+    const id = randomUUID()
+    await coll.insertOne({
+      _id: id,
+      provider: data.provider,
+      providerId: data.providerId,
+      email: data.email,
+      name: data.name,
+      avatar: data.avatar || null,
+      role: 'user',
+      createdAt: now,
+      lastLoginAt: now,
+      loginCount: 1,
+    })
+    return {
+      id, provider: data.provider, providerId: data.providerId,
+      email: data.email, name: data.name, avatar: data.avatar || null,
+      role: 'user', createdAt: now, lastLoginAt: now, loginCount: 1,
+    } as User
+  },
+
+  async getUsers (page = 1, pageSize = 20, search = '', filter = ''): Promise<PaginatedResult<User>> {
+    const db = await getDb()
+    const coll = col(db, 'users')
+    const filterDoc: any = {}
+    if (search) {
+      const kw = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      filterDoc.$or = [
+        { name: { $regex: kw, $options: 'i' } },
+        { email: { $regex: kw, $options: 'i' } },
+      ]
+    }
+    if (filter === 'banned') filterDoc.role = 'banned'
+    else if (filter === 'user') filterDoc.role = 'user'
+    const total = await coll.countDocuments(filterDoc)
+    const rows = await coll.find(filterDoc)
+      .sort({ lastLoginAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray()
+    const data: User[] = rows.map(r => ({
+      id: r._id, provider: r.provider, providerId: r.providerId,
+      email: r.email, name: r.name, avatar: r.avatar || null,
+      role: r.role || 'user', createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+    }))
+    return { data, total }
+  },
+
+  async getUser (id: string): Promise<User | undefined> {
+    const db = await getDb()
+    const r = await col(db, 'users').findOne({ _id: id })
+    if (!r) return undefined
+    return {
+      id: r._id, provider: r.provider, providerId: r.providerId,
+      email: r.email, name: r.name, avatar: r.avatar || null,
+      role: r.role || 'user', createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+    } as User
+  },
+
+  async getUserByEmail (email: string): Promise<User | undefined> {
+    const db = await getDb()
+    const r = await col(db, 'users').findOne({ email: email.toLowerCase() })
+    if (!r) return undefined
+    return {
+      id: r._id, provider: r.provider, providerId: r.providerId,
+      email: r.email, name: r.name, avatar: r.avatar || null,
+      role: r.role || 'user', createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+    } as User
+  },
+
+  async setUserRole (id: string, role: UserRole): Promise<boolean> {
+    const db = await getDb()
+    const result = await col(db, 'users').updateOne({ _id: id }, { $set: { role } })
+    return result.matchedCount > 0
+  },
+
+  async getUserCount (): Promise<number> {
+    const db = await getDb()
+    return await col(db, 'users').countDocuments()
   },
 }
 

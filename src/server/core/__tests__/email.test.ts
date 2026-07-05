@@ -9,6 +9,7 @@ describe('sendEmail', () => {
   it('returns error when SMTP is not configured', async () => {
     const result = await sendEmail(
       { SMTP_HOST: '', SMTP_USER: '', SMTP_PASS: '' },
+      'test@test.com',
       'Test Subject',
       '<p>Test</p>'
     )
@@ -19,6 +20,7 @@ describe('sendEmail', () => {
   it('returns error when SMTP_HOST is missing', async () => {
     const result = await sendEmail(
       { SMTP_HOST: '', SMTP_USER: 'user@test.com', SMTP_PASS: 'pass' },
+      'test@test.com',
       'Test',
       '<p>Test</p>'
     )
@@ -28,6 +30,7 @@ describe('sendEmail', () => {
   it('returns error when SMTP_USER is missing', async () => {
     const result = await sendEmail(
       { SMTP_HOST: 'smtp.test.com', SMTP_USER: '', SMTP_PASS: 'pass' },
+      'test@test.com',
       'Test',
       '<p>Test</p>'
     )
@@ -37,6 +40,7 @@ describe('sendEmail', () => {
   it('returns error when SMTP_PASS is missing', async () => {
     const result = await sendEmail(
       { SMTP_HOST: 'smtp.test.com', SMTP_USER: 'user@test.com', SMTP_PASS: '' },
+      'test@test.com',
       'Test',
       '<p>Test</p>'
     )
