@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TkSubmit from '../TkSubmit.vue'
 import { submitComment } from '../../../utils'
+import { getAuthState } from '../../../utils/auth'
 
 // Mock dependencies
 vi.mock('../../../utils', () => ({
@@ -17,7 +18,7 @@ vi.mock('../../../utils', () => ({
 }))
 
 vi.mock('../../../utils/auth', () => ({
-  getAuthState: vi.fn(() => ({ token: null, user: null })),
+  getAuthState: vi.fn(() => null),
   onAuthChange: vi.fn(() => {
     return () => {} // unsubscribe function
   }),
@@ -45,6 +46,7 @@ describe('TkSubmit.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    vi.mocked(getAuthState).mockReturnValue(null)
   })
 
   it('renders the semantic form outer wrapper', () => {
@@ -120,6 +122,31 @@ describe('TkSubmit.vue', () => {
       nick: 'John Doe',
       mail: 'john@example.com',
       comment: 'This is a test comment',
+    }))
+  })
+
+  it('submits comment correctly when logged in', async () => {
+    vi.mocked(getAuthState).mockReturnValue({
+      token: 'valid-token-123',
+      user: { id: 'user-123', name: 'Logged In User', email: 'user@example.com', avatar: '', provider: 'github' }
+    })
+
+    const wrapper = mount(TkSubmit, { props: defaultProps })
+    await nextTick()
+
+    expect(wrapper.find('.tk-auth-meta').exists()).toBe(true)
+    expect(wrapper.find('.tk-guest-info').exists()).toBe(false)
+    expect(wrapper.find('.tk-btn-guest-toggle').exists()).toBe(false)
+
+    const textarea = wrapper.find('.tk-textarea')
+    await textarea.setValue('Logged in test comment')
+
+    const form = wrapper.find('form.tk-submit')
+    await form.trigger('submit')
+
+    expect(submitComment).toHaveBeenCalledWith('test-env-123', expect.objectContaining({
+      token: 'valid-token-123',
+      comment: 'Logged in test comment',
     }))
   })
 })

@@ -166,7 +166,8 @@ watch(() => props.options.privateComment, (v) => { if (typeof v === 'boolean') p
 
 // --- Submit ---
 const onSubmit = async (): Promise<void> => {
-  if (!validate(t)) return
+  if (!isLoggedIn.value && !isGuestActive.value) { isGuestActive.value = true; return }
+  if (!validate(t, isLoggedIn.value)) return
   captchaError.value = ''
   if (props.options.enableCaptcha && !captchaToken.value) { captchaError.value = t('captchaRequired') || '请完成人机验证'; return }
   submitting.value = true
@@ -240,6 +241,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   >
     {{ t('replyTo') }} <strong>{{ replyTo.nick }}</strong>：
     <button
+      type="button"
       class="tk-btn-link tk-btn-sm"
       :aria-label="t('cancel') || '取消'"
       @click="emit('clear-reply')"

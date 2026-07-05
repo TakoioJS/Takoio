@@ -17,17 +17,19 @@ export function useFormValidation (opts: UseFormValidationOptions) {
   const isMailRequired = computed(() => requiredFields.value.includes('mail'))
   const isLinkRequired = computed(() => opts.options.enableLinkInput && requiredFields.value.includes('link'))
 
-  const validate = (getT: (key: string) => string): boolean => {
+  const validate = (getT: (key: string) => string, isLoggedIn = false): boolean => {
     let ok = true
     errors.nick = ''; errors.mail = ''; errors.link = ''; errors.comment = ''
-    if (isNickRequired.value && !opts.form.nick.trim()) { errors.nick = getT('required'); ok = false }
-    if (isMailRequired.value && !opts.form.mail.trim()) { errors.mail = getT('required'); ok = false }
-    if (isLinkRequired.value && !opts.form.link.trim()) { errors.link = getT('required'); ok = false }
-    if (!opts.form.comment.trim()) { errors.comment = getT('commentTooShort'); ok = false }
-    if (opts.form.mail && !EMAIL_RE.test(opts.form.mail.trim())) {
-      errors.mail = `${getT('email')} ${getT('required')}`
-      ok = false
+    if (!isLoggedIn) {
+      if (isNickRequired.value && !opts.form.nick.trim()) { errors.nick = getT('required'); ok = false }
+      if (isMailRequired.value && !opts.form.mail.trim()) { errors.mail = getT('required'); ok = false }
+      if (isLinkRequired.value && !opts.form.link.trim()) { errors.link = getT('required'); ok = false }
+      if (opts.form.mail && !EMAIL_RE.test(opts.form.mail.trim())) {
+        errors.mail = getT('emailInvalid') || 'Invalid email format'
+        ok = false
+      }
     }
+    if (!opts.form.comment.trim()) { errors.comment = getT('commentTooShort'); ok = false }
     return ok
   }
 

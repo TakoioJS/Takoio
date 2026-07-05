@@ -3,6 +3,7 @@
     <button
       v-for="emoji in emojis"
       :key="emoji"
+      type="button"
       :class="['tk-reaction-btn', { active: myReactions.includes(emoji) }]"
       @click="$emit('toggle', emoji)"
     >
