@@ -76,6 +76,8 @@ function _buildSqliteSchema () {
     isTop: integer('is_top').notNull().default(0),
     isPinned: integer('is_pinned').notNull().default(0),
     isPrivate: integer('is_private').notNull().default(0), // 私密评论：仅博主与作者可见
+    userId: text('user_id'), // 登录用户关联
+    authProvider: text('auth_provider'), // 登录 provider 冗余
     image: text('image'),
     sticker: text('sticker'),
     ipRegion: text('ip_region'),
@@ -166,6 +168,8 @@ function _buildPgSchema () {
     isTop: boolean('is_top').notNull().default(false),
     isPinned: boolean('is_pinned').notNull().default(false),
     isPrivate: boolean('is_private').notNull().default(false), // 私密评论：仅博主与作者可见
+    userId: pgText('user_id'), // 登录用户关联
+    authProvider: pgText('auth_provider'), // 登录 provider 冗余
     image: pgText('image'),
     sticker: pgText('sticker'),
     ipRegion: pgText('ip_region'),

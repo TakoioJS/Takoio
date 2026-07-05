@@ -31,8 +31,10 @@ export default defineNitroConfig({
   errorHandler: './nitro/error',
 
   // Path alias: #core → src/server/core/
+  // @takoio/common → src/shared/common/ (迁移后的路径)
   alias: {
     '#core': resolve(rootDir, 'core'),
+    '@takoio/common': resolve(rootDir, '../../src/shared/common'),
   },
 
   // Explicit auto-imports — Nitro 3 beta's auto-import scanner

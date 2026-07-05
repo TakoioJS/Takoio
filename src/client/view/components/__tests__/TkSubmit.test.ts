@@ -175,4 +175,27 @@ describe('TkSubmit.vue', () => {
     const sendBtn = wrapper.find('.tk-btn-send')
     expect(sendBtn.attributes('disabled')).toBeUndefined()
   })
+
+  it('still fetches available providers and renders login when envId is missing', async () => {
+    const { getAvailableProviders } = await import('../../../utils/auth')
+    vi.mocked(getAvailableProviders).mockClear()
+
+    const propsWithoutEnvId = {
+      ...defaultProps,
+      options: {
+        ...defaultProps.options,
+        envId: undefined, // No envId
+      }
+    }
+
+    const wrapper = mount(TkSubmit, { props: propsWithoutEnvId })
+    await nextTick()
+    await nextTick()
+
+    // It should have called getAvailableProviders with an empty string
+    expect(getAvailableProviders).toHaveBeenCalledWith('')
+    // Since mock resolves to github: true, showLogin should be true, guest fields hidden initially
+    expect(wrapper.find('.tk-submit-actions').exists()).toBe(true)
+    expect(wrapper.find('.tk-guest-info').exists()).toBe(false)
+  })
 })

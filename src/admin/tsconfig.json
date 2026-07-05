@@ -12,7 +12,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "@shared/*": ["../client/*"]
+      "@shared/*": ["../client/*"],
+      "@takoio/common": ["../../src/shared/common"]
     }
   },
   "include": [

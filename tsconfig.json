@@ -18,7 +18,9 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@takoio/common": ["./src/shared/common"],
+      "@takoio/core": ["./src/shared/core"]
     },
   },
   "include": [

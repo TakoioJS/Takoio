@@ -8,15 +8,17 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, 'src/client'),
       '@shared': resolve(__dirname, 'src/client'),
+      '@takoio/common': resolve(__dirname, 'src/shared/common'),
+      '@takoio/core': resolve(__dirname, 'src/shared/core')
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'packages/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
     environment: 'node',
     globals: true,
     coverage: {
       provider: 'v8',
-      include: ['src/client/**', 'src/server/**', 'packages/common/**'],
+      include: ['src/client/**', 'src/server/**', 'src/shared/**'],
       exclude: ['**/*.test.ts', '**/*.spec.ts', '**/node_modules/**'],
     },
     testTimeout: 20000,

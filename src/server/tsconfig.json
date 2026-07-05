@@ -10,7 +10,12 @@
     "rootDir": "./",
     "resolveJsonModule": true,
     "declaration": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "#core/*": ["core/*"],
+      "@takoio/common": ["../../src/shared/common"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist", "../../dist/server", "nitro/**"]

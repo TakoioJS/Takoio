@@ -801,6 +801,12 @@ export async function ensureDb (): Promise<void> {
   // Comment reactions: unique (commentId, ip) enforces one reaction per visitor per comment
   await col(db, 'comment_reactions').createIndex({ commentId: 1, ip: 1 }, { unique: true })
   await col(db, 'comment_reactions').createIndex({ commentId: 1 })
+
+  // Users collection indexes
+  await col(db, 'users').createIndexes([
+    { key: { email: 1 } },
+    { key: { provider: 1, providerId: 1 } },
+  ])
 }
 
 // ========== DB-based Rate Limiting (MongoDB) ==========

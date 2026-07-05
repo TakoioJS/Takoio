@@ -53,6 +53,8 @@ export async function initDb () {
     is_top INTEGER NOT NULL DEFAULT 0,
     is_pinned INTEGER NOT NULL DEFAULT 0,
     is_private INTEGER NOT NULL DEFAULT 0,
+    user_id TEXT,
+    auth_provider TEXT,
     image TEXT, sticker TEXT, ip_region TEXT, tags TEXT, rendered_comment TEXT
   )`)
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comments_url ON comments(url)')
@@ -87,6 +89,22 @@ export async function initDb () {
     PRIMARY KEY (comment_id, ip)
   )`)
   await _raw.execute('CREATE INDEX IF NOT EXISTS idx_comment_reactions_commentId ON comment_reactions(comment_id)')
+
+  // Users table
+  await _raw.execute(`CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    avatar TEXT,
+    role TEXT NOT NULL DEFAULT 'user',
+    created_at INTEGER NOT NULL,
+    last_login_at INTEGER NOT NULL,
+    login_count INTEGER NOT NULL DEFAULT 1
+  )`)
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id)')
 
   // Migration tracking table
   await _raw.execute(`CREATE TABLE IF NOT EXISTS migrations (

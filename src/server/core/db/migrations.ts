@@ -41,4 +41,8 @@ export const columnMigrations: ColumnMigration[] = [
     sqliteSql: 'ALTER TABLE comments ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0',
     pgSql: 'ALTER TABLE comments ADD COLUMN is_private BOOLEAN NOT NULL DEFAULT FALSE',
   },
+  // 用户关联：登录用户提交评论时写入 userId
+  { name: 'add_comments_user_id', column: 'user_id', sql: 'ALTER TABLE comments ADD COLUMN user_id TEXT' },
+  // 登录 provider 冗余（github/google/email），用于显示标识
+  { name: 'add_comments_auth_provider', column: 'auth_provider', sql: 'ALTER TABLE comments ADD COLUMN auth_provider TEXT' },
 ]

@@ -83,7 +83,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@shared': resolve(__dirname, 'src/client'),
-        '@': ADMIN_DIR,
+        '@': isBuild ? ADMIN_DIR : resolve(__dirname, 'src/client'),
+        '@takoio/common': resolve(__dirname, 'src/shared/common'),
+        '@takoio/core': resolve(__dirname, 'src/shared/core')
       },
     },
 

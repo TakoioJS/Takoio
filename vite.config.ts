@@ -47,7 +47,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src/client'),
-        '@shared': resolve(__dirname, 'src/client')
+        '@shared': resolve(__dirname, 'src/client'),
+        '@takoio/common': resolve(__dirname, 'src/shared/common'),
+        '@takoio/core': resolve(__dirname, 'src/shared/core')
       }
     },
     define: {

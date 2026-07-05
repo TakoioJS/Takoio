@@ -52,6 +52,8 @@ export async function initDb (): Promise<void> {
     is_top BOOLEAN NOT NULL DEFAULT FALSE,
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
     is_private BOOLEAN NOT NULL DEFAULT FALSE,
+    user_id TEXT,
+    auth_provider TEXT,
     image TEXT,
     sticker TEXT,
     ip_region TEXT,
@@ -101,6 +103,22 @@ export async function initDb (): Promise<void> {
     PRIMARY KEY (comment_id, ip)
   )`)
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_comment_reactions_commentId ON comment_reactions(comment_id)`)
+
+  // Users table
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    avatar TEXT,
+    role TEXT NOT NULL DEFAULT 'user',
+    created_at INTEGER NOT NULL,
+    last_login_at INTEGER NOT NULL,
+    login_count INTEGER NOT NULL DEFAULT 1
+  )`)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id)`)
 
   // Migration tracking table
   await db.execute(sql`CREATE TABLE IF NOT EXISTS migrations (

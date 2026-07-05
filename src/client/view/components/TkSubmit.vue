@@ -205,12 +205,10 @@ onMounted(async () => {
   }
   unsubscribeAuth = onAuthChange((state) => { isLoggedIn.value = !!state; currentUser.value = state?.user || null })
   // 拉取后端实际启用的 provider 列表（无 options.loginProviders 时回退）
-  if (props.options.envId) {
-    try {
-      availableProviders.value = await getAvailableProviders(props.options.envId)
-    } catch {
-      availableProviders.value = { github: false, google: false, email: false }
-    }
+  try {
+    availableProviders.value = await getAvailableProviders(props.options.envId || '')
+  } catch {
+    availableProviders.value = { github: false, google: false, email: false }
   }
 })
 onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as any); if (unsubscribeAuth) unsubscribeAuth() })
@@ -577,7 +575,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
     <LoginDropdown
       v-if="showLogin"
       :providers="loginProviders"
-      :env-id="options.envId"
+      :env-id="options.envId || ''"
       class="tk-toolbar-login"
       @select="onSelectProvider"
     />
@@ -612,7 +610,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   <!-- Email login dialog -->
   <EmailLoginDialog
     v-model="emailDialogOpen"
-    :env-id="options.envId"
+    :env-id="options.envId || ''"
     @success="() => { /* onAuthChange 自动触发，UI 已登录态自动切换 */ }"
   />
   </form>
