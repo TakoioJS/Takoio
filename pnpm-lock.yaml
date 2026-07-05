@@ -176,15 +176,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^4.0.0
         version: 4.0.7(zod@4.4.3)
-      '@libsql/client':
-        specifier: ^0.17.4
-        version: 0.17.4
       ai:
         specifier: ^7.0.2
         version: 7.0.15(zod@4.4.3)
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@libsql/client@0.17.4)(postgres@3.4.9)(sql.js@1.14.1)
       h3:
         specifier: 2.0.1-rc.22
         version: 2.0.1-rc.22(crossws@0.4.9(srvx@0.11.20))
@@ -194,18 +188,12 @@ importers:
       ip2region-ts:
         specifier: ^2.0.1
         version: 2.0.1
-      mongodb:
-        specifier: ^7.3.0
-        version: 7.4.0
       nitro:
         specifier: 3.0.260610-beta
         version: 3.0.260610-beta(@libsql/client@0.17.4)(chokidar@5.0.0)(drizzle-orm@0.45.2(@libsql/client@0.17.4)(postgres@3.4.9)(sql.js@1.14.1))(ioredis@5.11.1)(jiti@2.7.0)(lru-cache@11.5.1)(mongodb@7.4.0)(vite@8.1.3(@types/node@26.1.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
       nodemailer:
         specifier: ^9.0.1
         version: 9.0.3
-      postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
       pushoo:
         specifier: ^0.1.12
         version: 0.1.12
@@ -231,6 +219,19 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+    optionalDependencies:
+      '@libsql/client':
+        specifier: ^0.17.4
+        version: 0.17.4
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@libsql/client@0.17.4)(postgres@3.4.9)(sql.js@1.14.1)
+      mongodb:
+        specifier: ^7.3.0
+        version: 7.4.0
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
 
 packages:
 
@@ -5114,10 +5115,12 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    optional: true
 
   '@libsql/core@0.17.4':
     dependencies:
       js-base64: 3.8.0
+    optional: true
 
   '@libsql/darwin-arm64@0.5.29':
     optional: true
@@ -5132,6 +5135,7 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    optional: true
 
   '@libsql/isomorphic-ws@0.1.5':
     dependencies:
@@ -5140,6 +5144,7 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    optional: true
 
   '@libsql/linux-arm-gnueabihf@0.5.29':
     optional: true
@@ -5165,6 +5170,7 @@ snapshots:
   '@mongodb-js/saslprep@1.4.12':
     dependencies:
       sparse-bitfield: 3.0.3
+    optional: true
 
   '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:
@@ -5180,7 +5186,8 @@ snapshots:
       '@tybys/wasm-util': 0.10.3
     optional: true
 
-  '@neon-rs/load@0.0.4': {}
+  '@neon-rs/load@0.0.4':
+    optional: true
 
   '@one-ini/wasm@0.1.1': {}
 
@@ -5425,15 +5432,18 @@ snapshots:
 
   '@types/web-bluetooth@0.0.21': {}
 
-  '@types/webidl-conversions@7.0.3': {}
+  '@types/webidl-conversions@7.0.3':
+    optional: true
 
   '@types/whatwg-url@13.0.0':
     dependencies:
       '@types/webidl-conversions': 7.0.3
+    optional: true
 
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 26.1.0
+    optional: true
 
   '@typescript-eslint/eslint-plugin@8.62.1(@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
@@ -6140,7 +6150,8 @@ snapshots:
       node-releases: 2.0.50
       update-browserslist-db: 1.2.3(browserslist@4.28.4)
 
-  bson@7.3.1: {}
+  bson@7.3.1:
+    optional: true
 
   buffer-from@1.1.2: {}
 
@@ -6329,7 +6340,8 @@ snapshots:
 
   destr@2.0.5: {}
 
-  detect-libc@2.0.2: {}
+  detect-libc@2.0.2:
+    optional: true
 
   detect-libc@2.1.2: {}
 
@@ -6357,6 +6369,7 @@ snapshots:
       '@libsql/client': 0.17.4
       postgres: 3.4.9
       sql.js: 1.14.1
+    optional: true
 
   dunder-proto@1.0.1:
     dependencies:
@@ -7163,7 +7176,8 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  js-base64@3.8.0: {}
+  js-base64@3.8.0:
+    optional: true
 
   js-beautify@1.15.4:
     dependencies:
@@ -7251,6 +7265,7 @@ snapshots:
       '@libsql/linux-x64-gnu': 0.5.29
       '@libsql/linux-x64-musl': 0.5.29
       '@libsql/win32-x64-msvc': 0.5.29
+    optional: true
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -7389,7 +7404,8 @@ snapshots:
 
   mdn-data@2.27.1: {}
 
-  memory-pager@1.5.0: {}
+  memory-pager@1.5.0:
+    optional: true
 
   micromark-util-character@2.1.1:
     dependencies:
@@ -7441,12 +7457,14 @@ snapshots:
     dependencies:
       '@types/whatwg-url': 13.0.0
       whatwg-url: 14.2.0
+    optional: true
 
   mongodb@7.4.0:
     dependencies:
       '@mongodb-js/saslprep': 1.4.12
       bson: 7.3.1
       mongodb-connection-string-url: 7.0.1
+    optional: true
 
   mrmime@2.0.1: {}
 
@@ -7780,13 +7798,15 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postgres@3.4.9: {}
+  postgres@3.4.9:
+    optional: true
 
   powershell-utils@0.1.0: {}
 
   prelude-ls@1.2.1: {}
 
-  promise-limit@2.7.0: {}
+  promise-limit@2.7.0:
+    optional: true
 
   prop-types@15.8.1:
     dependencies:
@@ -8031,6 +8051,7 @@ snapshots:
   sparse-bitfield@3.0.3:
     dependencies:
       memory-pager: 1.5.0
+    optional: true
 
   speakingurl@14.0.1: {}
 
@@ -8169,6 +8190,7 @@ snapshots:
   tr46@5.1.1:
     dependencies:
       punycode: 2.3.1
+    optional: true
 
   tr46@6.0.0:
     dependencies:
@@ -8683,7 +8705,8 @@ snapshots:
     dependencies:
       xml-name-validator: 5.0.0
 
-  webidl-conversions@7.0.0: {}
+  webidl-conversions@7.0.0:
+    optional: true
 
   webidl-conversions@8.0.1: {}
 
@@ -8695,6 +8718,7 @@ snapshots:
     dependencies:
       tr46: 5.1.1
       webidl-conversions: 7.0.0
+    optional: true
 
   whatwg-url@16.0.1:
     dependencies:
@@ -8774,7 +8798,8 @@ snapshots:
       string-width: 7.2.0
       strip-ansi: 7.2.0
 
-  ws@8.21.0: {}
+  ws@8.21.0:
+    optional: true
 
   wsl-utils@0.3.1:
     dependencies:

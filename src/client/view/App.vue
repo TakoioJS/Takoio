@@ -127,18 +127,23 @@ onMounted(() => {
   }
 
   if (typeof window !== 'undefined' && props.options.customCSS) {
-    // 严格过滤自定义 CSS：禁止 url()、import、expression、javascript: 等危险特性
-    // 注意：正则过滤存在局限，完全安全方案需要 CSS 解析器沙箱
-    const sanitized = props.options.customCSS
-      .replace(/url\s*\([^)]*\)/gi, '/* url() blocked */') // 禁止所有 url()
-      .replace(/@import/gi, '/* @import blocked */')         // 禁止 @import
-      .replace(/expression\s*\([^)]*\)/gi, '/* expression() blocked */') // 禁止 expression
-      .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')       // 禁止 binding
-      .replace(/javascript\s*:/gi, '/* javascript: blocked */')           // 禁止 javascript:
-      .replace(/vbscript\s*:/gi, '/* vbscript: blocked */')               // 禁止 vbscript:
-      .replace(/behavior\s*:/gi, '/* behavior blocked */')                // 禁止 behavior
-      .replace(/@keyframes\s+[^{]*\{/gi, '/* @keyframes blocked */')     // 禁止 @keyframes（可滥用）
-      .replace(/pointer-events?\s*:/gi, '/* pointer-events blocked */')   // 禁止 pointer-events（可遮挡按钮）
+    // 3 层纵深防御：解码 CSS hex 转义 → 剥离 CSS 注释 → 黑名单拒止
+    // 注意：黑名单方案固有局限，完全安全仍需服务端 PostCSS AST 白名单
+    const decodeCssEscapes = (css: string) =>
+      css.replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16)))
+    const stripComments = (css: string) =>
+      css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const sanitized = stripComments(decodeCssEscapes(props.options.customCSS))
+      .replace(/expression\s*\([^)]*\)/gi, '/* expression() blocked */')  // IE XSS (最高危害)
+      .replace(/javascript\s*:/gi, '/* javascript: blocked */')           // javascript: URI
+      .replace(/vbscript\s*:/gi, '/* vbscript: blocked */')               // vbscript: URI
+      .replace(/url\s*\([^)]*\)/gi, '/* url() blocked */')                // 禁止所有 url()
+      .replace(/@import/gi, '/* @import blocked */')                      // 禁止 @import
+      .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')        // XBL binding
+      .replace(/behavior\s*:/gi, '/* behavior blocked */')                // IE behavior
+      .replace(/@keyframes\s+[^{]*\{/gi, '/* @keyframes blocked */')      // @keyframes 可滥用
+      .replace(/pointer-events?\s*:/gi, '/* pointer-events blocked */')   // 可遮挡按钮
     const style = document.createElement('style')
     style.textContent = sanitized
     style.setAttribute('data-takoio-custom-css', '') // 标记来源便于审计

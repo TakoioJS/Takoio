@@ -30,13 +30,24 @@ async function getImpl (): Promise<StoreBackend> {
   if (_impl) return _impl
   if (_initPromise) return _initPromise
 
+  const driverMap: Record<string, { file: string; pkg: string }> = {
+    mongodb: { file: './mongodb.js', pkg: 'mongodb' },
+    postgres: { file: './postgres.js', pkg: 'postgres' },
+    postgresql: { file: './postgres.js', pkg: 'postgres' },
+    pg: { file: './postgres.js', pkg: 'postgres' },
+    sqlite: { file: './sqlite.js', pkg: '@libsql/client' },
+  }
+
+  const driver = driverMap[DB_TYPE] || driverMap.sqlite
+
   _initPromise = (async () => {
-    if (DB_TYPE === 'mongodb') {
-      _impl = await import('./mongodb.js') as StoreBackend
-    } else if (DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg') {
-      _impl = await import('./postgres.js') as StoreBackend
-    } else {
-      _impl = await import('./sqlite.js') as StoreBackend
+    try {
+      _impl = await import(driver.file) as StoreBackend
+    } catch (err: any) {
+      if (err.code === 'ERR_MODULE_NOT_FOUND' || err.message?.includes('Cannot find module')) {
+        throw new Error(`数据库驱动未安装：DB_TYPE="${DB_TYPE}" 需要 "${driver.pkg}" 包。请运行：pnpm install ${driver.pkg} drizzle-orm`)
+      }
+      throw err
     }
     return _impl
   })()
