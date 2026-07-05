@@ -579,7 +579,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
       @select="onSelectProvider"
     />
     <button
-      v-if="showGuestInfo"
+      v-if="showGuestInfo && !isGuestActive"
       type="button"
       class="tk-btn-guest-toggle"
       @click="isGuestActive = true"
@@ -632,9 +632,12 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   transition: box-shadow .18s ease, border-color .18s ease;
   position: relative;
 }
+.tk-submit-card:hover {
+  border-color: var(--tk-border-strong);
+}
 .tk-submit-card:focus-within,
 .tk-submit-card-focus {
-  border-color: var(--tk-brand);
+  border-color: var(--tk-brand) !important;
   box-shadow: 0 0 0 1px var(--tk-brand-glow);
 }
 .tk-submit-form { display: flex; flex-direction: column; gap: var(--tk-space-md); }
@@ -657,11 +660,56 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 .tk-meta-item { flex: 1; min-width: 0; }
 .tk-editor-item { position: relative; }
 
-.tk-input, .tk-textarea { width: 100%; padding: 8px 12px; font-size: 14px; font-family: inherit; color: inherit; background: transparent; border: 1px solid var(--tk-border-light); border-radius: var(--tk-r-input); outline: none; transition: border-color .15s, box-shadow .15s; box-sizing: border-box; }
-.tk-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
-.tk-input:hover, .tk-textarea:hover { border-color: var(--tk-border-strong); }
-.tk-input:focus,.tk-textarea:focus{ border-color: var(--tk-brand); }
+.tk-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: inherit;
+  background: var(--tk-bg-input);
+  border: 1px solid var(--tk-border-light);
+  border-radius: var(--tk-r-input);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+}
+.tk-input:hover { border-color: var(--tk-border-strong); }
+.tk-input:focus { border-color: var(--tk-brand); }
 .tk-input-error { border-color: var(--tk-danger) !important; }
+
+.tk-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--tk-border-light);
+  border-radius: var(--tk-r-input);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+.tk-textarea:hover { border-color: var(--tk-border-strong); }
+.tk-textarea:focus { border-color: var(--tk-brand); }
+
+/* Override textarea inside the card to be borderless & transparent */
+.tk-submit-card .tk-textarea {
+  border: none !important;
+  padding: 0 0 16px 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none !important;
+}
+.tk-submit-card .tk-textarea:hover,
+.tk-submit-card .tk-textarea:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .tk-field-error { font-size: 11px; color: var(--tk-danger); margin-top: 2px; display: block; }
 .tk-word-limit { position: absolute; bottom: 8px; right: 10px; font-size: 11px; opacity: .45; pointer-events: none; }
 .tk-image-uploading { display: flex; align-items: center; gap: 6px; font-size: 13px; color: inherit; opacity: .6; }
@@ -672,11 +720,18 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 .tk-error-msg { font-size: 12px; color: var(--tk-danger); line-height: 1.4; word-break: break-all; }
 .tk-avatar-preview { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 
-/* 设计稿：内嵌工具栏（textarea 与 toolbar 之间无视觉分隔，半透明融合） */
+/* 设计稿：内嵌工具栏（与 textarea 之间 1px border-top 分隔，负边距延展至卡片边缘） */
 .tk-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   flex-wrap: wrap;
+  border-top: 1px solid var(--tk-border-light);
+  margin-left: calc(-1 * var(--tk-space-md));
+  margin-right: calc(-1 * var(--tk-space-md));
+  margin-bottom: calc(-1 * var(--tk-space-md));
+  padding-left: var(--tk-space-md);
+  padding-right: var(--tk-space-md);
   padding-top: var(--tk-space-sm);
+  padding-bottom: var(--tk-space-sm);
 }
 .tk-toolbar-left { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .tk-toolbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
@@ -697,13 +752,13 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 .tk-btn-send:active { transform: scale(0.98); }
 .tk-btn-send:disabled { background: var(--tk-bg-hover); color: var(--tk-text-tertiary); cursor: not-allowed; }
 
-/* 设计稿：紧凑无边框 icon 按钮（用于图片/工具） */
+/* 设计稿：紧凑无边框 icon 按钮（与 Markdown 按钮 size 对齐） */
 .tk-btn-icon-ghost {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px;
+  width: 28px; height: 28px;
   background: transparent; border: none; border-radius: var(--tk-r-input);
   color: var(--tk-text-secondary);
-  cursor: pointer; opacity: .7; transition: all .15s;
+  cursor: pointer; opacity: .55; transition: all .15s;
 }
 .tk-btn-icon-ghost:hover { opacity: 1; background: var(--tk-bg-hover); color: var(--tk-text-primary); }
 
@@ -738,7 +793,16 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   /* 设计稿：meta-row 垂直堆叠（用户偏好：vertical stacking over horizontal） */
   .tk-meta-row { flex-direction: column; gap: 6px; }
   /* 设计稿：工具栏窄屏不强制换行（保留可见 send + image + 关键 md） */
-  .tk-toolbar { flex-direction: row; gap: 8px; align-items: center; }
+  .tk-toolbar {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    margin-left: -10px;
+    margin-right: -10px;
+    margin-bottom: -10px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
   .tk-toolbar-left { flex-wrap: wrap; overflow: visible; }
   .tk-toolbar-right { flex-shrink: 0; }
   .tk-btn-send-text { display: none; } /* 窄屏：发送按钮只显示图标 */
@@ -746,8 +810,8 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 }
 .tk-auth-meta {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; background: var(--tk-bg-muted, #f5f5f5);
-  border-radius: var(--tk-r-input, 8px); font-size: 13px;
+  padding: 8px 12px; background: var(--tk-bg-muted);
+  border-radius: var(--tk-r-input); font-size: 13px;
 }
 .tk-auth-avatar {
   width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
@@ -772,23 +836,28 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 }
 .tk-btn-guest-toggle {
   background: none;
-  border: 1px solid var(--tk-border-light, #e5e5e5);
-  border-radius: var(--tk-r-pill, 9999px);
+  border: 1px solid var(--tk-border-light);
+  border-radius: var(--tk-r-pill);
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--tk-text-secondary, #666);
+  color: var(--tk-text-secondary);
   cursor: pointer;
+  outline: none;
   transition: all .15s;
 }
 .tk-btn-guest-toggle:hover,
 .tk-btn-guest-toggle:focus {
-  background: var(--tk-bg-hover, #f5f5f5);
-  color: var(--tk-text-primary, #333);
+  background: var(--tk-bg-hover);
+  color: var(--tk-text-primary);
 }
 .tk-submit-card + .tk-auth-meta,
 .tk-submit-card + .tk-meta-row,
 .tk-submit-card + .tk-guest-info {
+  margin-top: var(--tk-space-sm, 10px);
+}
+.tk-guest-info + .tk-submit-actions,
+.tk-meta-row + .tk-submit-actions {
   margin-top: var(--tk-space-sm, 10px);
 }
 </style>
