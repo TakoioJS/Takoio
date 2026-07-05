@@ -2,14 +2,14 @@
 /**
  * useDraft 测试
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { useDraft } from '../useDraft'
 
 describe('useDraft', () => {
   const DRAFT_KEY = 'takoio-draft'
   const OLD_DRAFT_KEY = 'twikoo-draft'
   let form: { nick: string; mail: string; link: string; comment: string }
-  let toast: any
+  let toast: Mock
 
   beforeEach(() => {
     vi.useFakeTimers()

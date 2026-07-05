@@ -199,7 +199,7 @@ const onSubmit = async (): Promise<void> => {
 onMounted(async () => {
   fetchReactions()
   loadDraft()
-  if (form.nick || form.mail) {
+  if ((form.nick && form.nick.trim()) || (form.mail && form.mail.trim())) {
     isGuestActive.value = true
   }
   unsubscribeAuth = onAuthChange((state) => { isLoggedIn.value = !!state; currentUser.value = state?.user || null })
@@ -216,8 +216,13 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 </script>
 
 <template>
-  <!-- 设计稿：article-level reactions 移至 .tk-submit-card 之上（不在卡片内） -->
-  <div
+  <form
+    ref="formRef"
+    class="tk-submit"
+    @submit.prevent="onSubmit"
+  >
+    <!-- 设计稿：article-level reactions 移至 .tk-submit-card 之上（不在卡片内） -->
+    <div
     v-if="!replyTo && options.enableArticleReaction"
     class="tk-article-reactions"
   >
@@ -264,14 +269,10 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
   <!-- 设计稿：单一卡片容器，聚焦时品牌色外发光 -->
   <div
-    ref="formRef"
     class="tk-submit-card"
     :class="{ 'tk-submit-card-focus': isFocused }"
   >
-    <form
-      class="tk-submit-form"
-      @submit.prevent="onSubmit"
-    >
+    <div class="tk-submit-form">
       <div class="tk-editor-item">
         <textarea
           ref="editorRef"
@@ -421,7 +422,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           />
         </div>
       </div>
-    </form>
+    </div>
   </div>
 
   <!-- 已登录：显示用户信息（替代 3 个 input） -->
@@ -568,7 +569,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
   <!-- Action Buttons block: A new button container to toggle state or trigger login when not logged in -->
   <div
-    v-if="!isLoggedIn"
+    v-if="!isLoggedIn && (showLogin || (showGuestInfo && !isGuestActive))"
     class="tk-submit-actions"
   >
     <LoginDropdown
@@ -612,6 +613,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
     :env-id="options.envId"
     @success="() => { /* onAuthChange 自动触发，UI 已登录态自动切换 */ }"
   />
+  </form>
 </template>
 
 <style scoped>
@@ -854,10 +856,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 .tk-submit-card + .tk-auth-meta,
 .tk-submit-card + .tk-meta-row,
 .tk-submit-card + .tk-guest-info {
-  margin-top: var(--tk-space-sm, 10px);
-}
-.tk-guest-info + .tk-submit-actions,
-.tk-meta-row + .tk-submit-actions {
   margin-top: var(--tk-space-sm, 10px);
 }
 </style>
