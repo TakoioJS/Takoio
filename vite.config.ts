@@ -55,7 +55,8 @@ export default defineConfig(({ mode }) => {
     define: {
       __VUE_OPTIONS_API__: 'true',
       __VUE_PROD_DEVTOOLS__: 'false',
-      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false'
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+      __UMD__: mode === 'umd' ? 'true' : 'false'
     },
     build: {
       outDir: 'dist',

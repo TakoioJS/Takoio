@@ -47,3 +47,5 @@ declare module 'sql.js' {
   }>
   export default initSqlJs
 }
+
+declare const __UMD__: boolean;

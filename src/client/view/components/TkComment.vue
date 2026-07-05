@@ -303,10 +303,11 @@ watch(() => [props.comment.renderedComment, props.comment.comment], () => { rend
   padding:2px 8px;border-radius:var(--tk-r-pill);border:none;line-height:1.6;margin-left:6px;
   /* 设计稿 pill 标签：暗色底弱对比 */
   background:var(--tk-bg-hover); color:var(--tk-text-tertiary);}
-.tk-tag-warning{background:var(--tk-tag-warning-bg,color-mix(in srgb,var(--tk-warning) 14%,transparent));color:var(--tk-tag-warning-fg,var(--tk-warning));}
-.tk-tag-success{background:var(--tk-tag-success-bg,color-mix(in srgb,var(--tk-success) 14%,transparent));color:var(--tk-tag-success-fg,var(--tk-success));}
-.tk-tag-danger{background:var(--tk-tag-danger-bg,color-mix(in srgb,var(--tk-danger) 14%,transparent));color:var(--tk-tag-danger-fg,var(--tk-danger));}
-.tk-tag-info{background:var(--tk-tag-info-bg,color-mix(in srgb,var(--tk-info) 16%,transparent));color:var(--tk-tag-info-fg,var(--tk-text-2));}
+.tk-tag-warning{background:var(--tk-tag-warning-bg,rgba(185,138,75,0.14));background:var(--tk-tag-warning-bg,color-mix(in srgb,var(--tk-warning) 14%,transparent));color:var(--tk-tag-warning-fg,var(--tk-warning));}
+.tk-tag-success{background:var(--tk-tag-success-bg,rgba(94,140,106,0.14));background:var(--tk-tag-success-bg,color-mix(in srgb,var(--tk-success) 14%,transparent));color:var(--tk-tag-success-fg,var(--tk-success));}
+.tk-tag-danger{background:var(--tk-tag-danger-bg,rgba(176,82,79,0.14));background:var(--tk-tag-danger-bg,color-mix(in srgb,var(--tk-danger) 14%,transparent));color:var(--tk-tag-danger-fg,var(--tk-danger));}
+.tk-tag-info{background:var(--tk-tag-info-bg,rgba(0,0,0,0.09));background:var(--tk-tag-info-bg,color-mix(in srgb,var(--tk-info) 16%,transparent));color:var(--tk-tag-info-fg,var(--tk-text-2));}
+.tk-root[data-theme="dark"] .tk-tag-info{background:var(--tk-tag-info-bg,rgba(255,255,255,0.09));background:var(--tk-tag-info-bg,color-mix(in srgb,var(--tk-info) 16%,transparent));}
 .tk-time { font-size: 12px; color: inherit; opacity: .5; }
 .tk-comment-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .tk-btn-icon { display: inline-flex; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 6px; color: inherit; opacity: .55; transition: all .15s; border-radius: var(--tk-r-input); font-family: inherit; }

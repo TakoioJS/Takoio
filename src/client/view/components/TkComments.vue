@@ -494,7 +494,8 @@ onBeforeUnmount(() => { observer?.disconnect(); cancelOngoingFetch(); if (unsubs
 .tk-sort-btn.active { opacity: 1; color: var(--tk-brand); background: var(--tk-brand-light); }
 .tk-loading-skeleton { padding: 24px; }
 .tk-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--tk-r-card); background: var(--tk-bg-subtle); }
-.tk-skeleton-line { height: 14px; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb,currentColor 8%,transparent) 25%, color-mix(in srgb,currentColor 14%,transparent) 50%, color-mix(in srgb,currentColor 8%,transparent) 75%); background-size: 200% 100%; animation: tk-shimmer 1.5s infinite; }
+.tk-skeleton-line { height: 14px; border-radius: 4px; background: linear-gradient(90deg, rgba(0,0,0,0.08) 25%, rgba(0,0,0,0.14) 50%, rgba(0,0,0,0.08) 75%); background: linear-gradient(90deg, color-mix(in srgb,currentColor 8%,transparent) 25%, color-mix(in srgb,currentColor 14%,transparent) 50%, color-mix(in srgb,currentColor 8%,transparent) 75%); background-size: 200% 100%; animation: tk-shimmer 1.5s infinite; }
+.tk-root[data-theme="dark"] .tk-skeleton-line { background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.08) 75%); background: linear-gradient(90deg, color-mix(in srgb,currentColor 8%,transparent) 25%, color-mix(in srgb,currentColor 14%,transparent) 50%, color-mix(in srgb,currentColor 8%,transparent) 75%); }
 @keyframes tk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .tk-loading { text-align: center; padding: 24px 0; color: inherit; opacity: .6; font-size: 14px; }
 .tk-infinite-sentinel { text-align: center; padding: 16px 0; }

@@ -127,18 +127,23 @@ onMounted(() => {
   }
 
   if (typeof window !== 'undefined' && props.options.customCSS) {
-    // 严格过滤自定义 CSS：禁止 url()、import、expression、javascript: 等危险特性
-    // 注意：正则过滤存在局限，完全安全方案需要 CSS 解析器沙箱
-    const sanitized = props.options.customCSS
-      .replace(/url\s*\([^)]*\)/gi, '/* url() blocked */') // 禁止所有 url()
-      .replace(/@import/gi, '/* @import blocked */')         // 禁止 @import
-      .replace(/expression\s*\([^)]*\)/gi, '/* expression() blocked */') // 禁止 expression
-      .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')       // 禁止 binding
-      .replace(/javascript\s*:/gi, '/* javascript: blocked */')           // 禁止 javascript:
-      .replace(/vbscript\s*:/gi, '/* vbscript: blocked */')               // 禁止 vbscript:
-      .replace(/behavior\s*:/gi, '/* behavior blocked */')                // 禁止 behavior
-      .replace(/@keyframes\s+[^{]*\{/gi, '/* @keyframes blocked */')     // 禁止 @keyframes（可滥用）
-      .replace(/pointer-events?\s*:/gi, '/* pointer-events blocked */')   // 禁止 pointer-events（可遮挡按钮）
+    // 3 层纵深防御：解码 CSS hex 转义 → 剥离 CSS 注释 → 黑名单拒止
+    // 注意：黑名单方案固有局限，完全安全仍需服务端 PostCSS AST 白名单
+    const decodeCssEscapes = (css: string) =>
+      css.replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16)))
+    const stripComments = (css: string) =>
+      css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const sanitized = stripComments(decodeCssEscapes(props.options.customCSS))
+      .replace(/expression\s*\([^)]*\)/gi, '/* expression() blocked */')  // IE XSS (最高危害)
+      .replace(/javascript\s*:/gi, '/* javascript: blocked */')           // javascript: URI
+      .replace(/vbscript\s*:/gi, '/* vbscript: blocked */')               // vbscript: URI
+      .replace(/url\s*\([^)]*\)/gi, '/* url() blocked */')                // 禁止所有 url()
+      .replace(/@import/gi, '/* @import blocked */')                      // 禁止 @import
+      .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')        // XBL binding
+      .replace(/behavior\s*:/gi, '/* behavior blocked */')                // IE behavior
+      .replace(/@keyframes\s+[^{]*\{/gi, '/* @keyframes blocked */')      // @keyframes 可滥用
+      .replace(/pointer-events?\s*:/gi, '/* pointer-events blocked */')   // 可遮挡按钮
     const style = document.createElement('style')
     style.textContent = sanitized
     style.setAttribute('data-takoio-custom-css', '') // 标记来源便于审计
@@ -165,27 +170,40 @@ onBeforeUnmount(() => {
 .tk-root{
   /* —— 强调：松绿系（可被 options.brandColor 覆盖，见 index.ts:84）—— */
   --tk-brand:#5E8C6A; --tk-brand-hover:#52815C;
+  --tk-brand-light: rgba(94, 140, 106, 0.12);
   --tk-brand-light:color-mix(in srgb,var(--tk-brand) 12%,transparent);
+  --tk-brand-ring: rgba(94, 140, 106, 0.38);
   --tk-brand-ring: color-mix(in srgb,var(--tk-brand) 38%,transparent);
 
   /* —— 语义：颜料级降饱和 —— */
   --tk-success:#5E8C6A; --tk-warning:#B98A4B; --tk-danger:#B0524F;
+  --tk-info: rgba(0, 0, 0, 0.55);
   --tk-info:color-mix(in srgb,currentColor 55%,transparent);
 
   /* —— 纸的呼吸：中性层次（沿用 currentColor 派生，零侵入宿主）—— */
   --tk-text:inherit;
+  --tk-text-2: rgba(0, 0, 0, 0.62);
   --tk-text-2:color-mix(in srgb,currentColor 62%,transparent);
+  --tk-text-3: rgba(0, 0, 0, 0.42);
   --tk-text-3:color-mix(in srgb,currentColor 42%,transparent);
+  --tk-border: rgba(0, 0, 0, 0.12);
   --tk-border:color-mix(in srgb,currentColor 12%,transparent);
+  --tk-border-soft: rgba(0, 0, 0, 0.07);
   --tk-border-soft:color-mix(in srgb,currentColor 7%,transparent);
+  --tk-bg-subtle: rgba(0, 0, 0, 0.03);
   --tk-bg-subtle:color-mix(in srgb,currentColor 3%,transparent);
+  --tk-bg-muted: rgba(0, 0, 0, 0.06);
   --tk-bg-muted:color-mix(in srgb,currentColor 6%,transparent);
+  --tk-bg-inset: rgba(0, 0, 0, 0.04);
   --tk-bg-inset:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-bg-code: rgba(0, 0, 0, 0.04);
   --tk-bg-code:color-mix(in srgb,currentColor 4%,transparent);
 
   /* —— 纸的层次：统一柔影（替代散落硬阴影）—— */
+  --tk-shadow-paper: 0 1px 2px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.05);
   --tk-shadow-paper:0 1px 2px color-mix(in srgb,currentColor 8%,transparent),
                     0 6px 16px color-mix(in srgb,currentColor 5%,transparent);
+  --tk-shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.10), 0 12px 28px rgba(0, 0, 0, 0.08);
   --tk-shadow-lift:0 2px 4px color-mix(in srgb,currentColor 10%,transparent),
                    0 12px 28px color-mix(in srgb,currentColor 8%,transparent);
 
@@ -195,11 +213,13 @@ onBeforeUnmount(() => {
 
   /* —— 补齐此前未定义的变量（修复 TkAvatar:59 / TkComment:329）—— */
   --tk-dislike-color:#B0524F;
+  --tk-avatar-border: rgba(0, 0, 0, 0.14);
   --tk-avatar-border:color-mix(in srgb,currentColor 14%,transparent);
 
   /* —— 向后兼容别名（未在本计划触及的组件仍引用这些旧名）—— */
   --tk-text-secondary:var(--tk-text-2);
   --tk-text-tertiary:var(--tk-text-3);
+  --tk-border-strong: rgba(0, 0, 0, 0.25);
   --tk-border-strong:color-mix(in srgb,currentColor 25%,transparent);
 
   /* =========================================================
@@ -209,14 +229,21 @@ onBeforeUnmount(() => {
    *  - 这些值用于卡片背景、提交单容器、pill 标签、3 个元信息等
    * ========================================================= */
   --tk-bg-page:transparent;
+  --tk-bg-card: rgba(0, 0, 0, 0.04);
   --tk-bg-card:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-bg-elevated: rgba(0, 0, 0, 0.07);
   --tk-bg-elevated:color-mix(in srgb,currentColor 7%,transparent);
+  --tk-bg-input: rgba(0, 0, 0, 0.05);
   --tk-bg-input:color-mix(in srgb,currentColor 5%,transparent);
+  --tk-bg-hover: rgba(0, 0, 0, 0.08);
   --tk-bg-hover:color-mix(in srgb,currentColor 8%,transparent);
+  --tk-bg-overlay: rgba(0, 0, 0, 0.60);
   --tk-bg-overlay:color-mix(in srgb,#000 60%,transparent);
+  --tk-border-light: rgba(0, 0, 0, 0.16);
   --tk-border-light:color-mix(in srgb,currentColor 16%,transparent);
   --tk-shadow-card:0 1px 2px rgba(0,0,0,0.04);
-  --tk-shadow-float:0 4px 16px color-mix(in srgb,#000 12%,transparent);
+  --tk-shadow-float: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --tk-shadow-float:color-mix(in srgb,#000 12%,transparent);
   --tk-r-sm:4px;
   --tk-avatar-sm:32px;
   --tk-avatar-md:40px;
@@ -229,6 +256,7 @@ onBeforeUnmount(() => {
   --tk-space-2xl:24px;
   --tk-space-3xl:32px;
   /* 品牌色发光环：用于输入框聚焦外发光（设计稿 164 行） */
+  --tk-brand-glow: rgba(94, 140, 106, 0.15);
   --tk-brand-glow:color-mix(in srgb,var(--tk-brand) 15%,transparent);
 
   color:inherit; font-size:var(--tk-fs-base); line-height:var(--tk-lh);
@@ -248,6 +276,56 @@ onBeforeUnmount(() => {
   --tk-border-light:#e5e7eb;
 }
 .tk-root[data-theme="dark"]{
+  /* 旧版浏览器暗色降饱和补色降级 */
+  --tk-brand-light: rgba(94, 140, 106, 0.12);
+  --tk-brand-light:color-mix(in srgb,var(--tk-brand) 12%,transparent);
+  --tk-brand-ring: rgba(94, 140, 106, 0.38);
+  --tk-brand-ring: color-mix(in srgb,var(--tk-brand) 38%,transparent);
+  --tk-info: rgba(255, 255, 255, 0.55);
+  --tk-info:color-mix(in srgb,currentColor 55%,transparent);
+  --tk-text-2: rgba(255, 255, 255, 0.62);
+  --tk-text-2:color-mix(in srgb,currentColor 62%,transparent);
+  --tk-text-3: rgba(255, 255, 255, 0.42);
+  --tk-text-3:color-mix(in srgb,currentColor 42%,transparent);
+  --tk-border: rgba(255, 255, 255, 0.12);
+  --tk-border:color-mix(in srgb,currentColor 12%,transparent);
+  --tk-border-soft: rgba(255, 255, 255, 0.07);
+  --tk-border-soft:color-mix(in srgb,currentColor 7%,transparent);
+  --tk-bg-subtle: rgba(255, 255, 255, 0.03);
+  --tk-bg-subtle:color-mix(in srgb,currentColor 3%,transparent);
+  --tk-bg-muted: rgba(255, 255, 255, 0.06);
+  --tk-bg-muted:color-mix(in srgb,currentColor 6%,transparent);
+  --tk-bg-inset: rgba(255, 255, 255, 0.04);
+  --tk-bg-inset:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-bg-code: rgba(255, 255, 255, 0.04);
+  --tk-bg-code:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-avatar-border: rgba(255, 255, 255, 0.14);
+  --tk-avatar-border:color-mix(in srgb,currentColor 14%,transparent);
+  --tk-border-strong: rgba(255, 255, 255, 0.25);
+  --tk-border-strong:color-mix(in srgb,currentColor 25%,transparent);
+  --tk-bg-card: rgba(255, 255, 255, 0.04);
+  --tk-bg-card:color-mix(in srgb,currentColor 4%,transparent);
+  --tk-bg-elevated: rgba(255, 255, 255, 0.07);
+  --tk-bg-elevated:color-mix(in srgb,currentColor 7%,transparent);
+  --tk-bg-input: rgba(255, 255, 255, 0.05);
+  --tk-bg-input:color-mix(in srgb,currentColor 5%,transparent);
+  --tk-bg-hover: rgba(255, 255, 255, 0.08);
+  --tk-bg-hover:color-mix(in srgb,currentColor 8%,transparent);
+  --tk-bg-overlay: rgba(0, 0, 0, 0.60);
+  --tk-bg-overlay:color-mix(in srgb,#000 60%,transparent);
+  --tk-border-light: rgba(255, 255, 255, 0.16);
+  --tk-border-light:color-mix(in srgb,currentColor 16%,transparent);
+  --tk-shadow-float: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --tk-shadow-float:color-mix(in srgb,#000 12%,transparent);
+  --tk-brand-glow: rgba(94, 140, 106, 0.15);
+  --tk-brand-glow:color-mix(in srgb,var(--tk-brand) 15%,transparent);
+  --tk-shadow-paper: 0 1px 2px rgba(255, 255, 255, 0.08), 0 6px 16px rgba(255, 255, 255, 0.05);
+  --tk-shadow-paper:0 1px 2px color-mix(in srgb,currentColor 8%,transparent),
+                    0 6px 16px color-mix(in srgb,currentColor 5%,transparent);
+  --tk-shadow-lift: 0 2px 4px rgba(255, 255, 255, 0.1), 0 12px 28px rgba(255, 255, 255, 0.08);
+  --tk-shadow-lift:0 2px 4px color-mix(in srgb,currentColor 10%,transparent),
+                   0 12px 28px color-mix(in srgb,currentColor 8%,transparent);
+
   --tk-bg-popup:#1e1e1e;
   --tk-shadow:0 6px 16px rgba(0,0,0,0.35);
   --tk-shadow-lift:0 2px 4px rgba(0,0,0,.4),0 12px 28px rgba(0,0,0,0.32);

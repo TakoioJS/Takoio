@@ -39,6 +39,7 @@ defineEmits<{ (e: 'remove', idx: number): void }>()
 .tk-image-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .tk-image-thumb { position: relative; width: 64px; height: 64px; border-radius: var(--tk-r-input); overflow: hidden; border: 1px solid var(--tk-border); }
 .tk-image-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.tk-image-remove { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; border: none; background: color-mix(in srgb,var(--tk-text) 60%,transparent); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.tk-image-remove { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.6); background: color-mix(in srgb,var(--tk-text) 60%,transparent); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+:global(.tk-root[data-theme="dark"]) .tk-image-remove { background: rgba(255, 255, 255, 0.6); background: color-mix(in srgb,var(--tk-text) 60%,transparent); }
 .tk-image-remove:hover { background: var(--tk-danger); }
 </style>

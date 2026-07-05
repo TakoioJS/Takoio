@@ -8,8 +8,46 @@ type HljsCore = typeof import('highlight.js/lib/core').default
 let _hljs: HljsCore | null = null
 let _hljsReady = false
 
+const loadScript = (url: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (typeof document === 'undefined') return resolve()
+    const script = document.createElement('script')
+    script.src = url
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error(`Failed to load script: ${url}`))
+    document.head.appendChild(script)
+  })
+}
+
+let hljsLoadingPromise: Promise<HljsCore | null> | null = null
+
 async function getHljs (): Promise<HljsCore | null> {
   if (_hljsReady) return _hljs
+  if (typeof window === 'undefined') return null
+
+  if ((window as any).hljs) {
+    _hljs = (window as any).hljs
+    _hljsReady = true
+    return _hljs
+  }
+
+  if (typeof __UMD__ !== 'undefined' && __UMD__) {
+    if (hljsLoadingPromise) return hljsLoadingPromise
+    hljsLoadingPromise = (async () => {
+      try {
+        await loadScript('https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js')
+        _hljs = (window as any).hljs || null
+      } catch {
+        // ignore
+      }
+      _hljsReady = true
+      hljsLoadingPromise = null
+      return _hljs
+    })()
+    return hljsLoadingPromise
+  }
+
   try {
     const [coreMod, jsMod, tsMod, pyMod, goMod, rustMod, javaMod, cssMod, scssMod, sqlMod, bashMod, jsonMod, yamlMod, xmlMod, mdMod, diffMod] = await Promise.all([
       import('highlight.js/lib/core'),
