@@ -4,7 +4,6 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TkSubmit from '../TkSubmit.vue'
 import { submitComment } from '../../../utils'
-import { getAuthState } from '../../../utils/auth'
 
 // Mock dependencies
 vi.mock('../../../utils', () => ({
