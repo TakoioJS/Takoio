@@ -23,6 +23,11 @@ export const handleSetConfig = async (data: { _ip?: string; config?: Record<stri
   const { _ip, ...rest } = data
   const payload = rest.config ? rest.config : rest
 
+  // AI_PROVIDERS 前端发来的是数组，需在验证前转成 JSON 字符串
+  if (Array.isArray(payload.AI_PROVIDERS)) {
+    payload.AI_PROVIDERS = JSON.stringify(payload.AI_PROVIDERS)
+  }
+
   // Use centralized validation
   const { valid, skipped } = validateConfigBatch(payload)
   const filtered: Record<string, unknown> = {}
@@ -31,11 +36,6 @@ export const handleSetConfig = async (data: { _ip?: string; config?: Record<stri
     // 掩码值（前端回显的 `xxx****yyy`）静默忽略：相当于"未修改"，不写入也不计入 skipped
     // 这样前端保存时不必追踪哪些字段被改动，避免"部分设置项未保存"的误报
     if (SENSITIVE_CONFIG_KEYS.has(key) && typeof value === 'string' && value.includes('****')) {
-      continue
-    }
-    // AI_PROVIDERS: special case — array from frontend, serialize to JSON
-    if (key === 'AI_PROVIDERS' && Array.isArray(value)) {
-      filtered[key] = JSON.stringify(value)
       continue
     }
     filtered[key] = value

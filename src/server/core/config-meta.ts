@@ -138,8 +138,8 @@ export const CONFIG_META: ConfigMeta[] = [
   // ---- AI / LLM ----
   { key: 'AI_PROVIDERS',            type: 'string',  default: '[]',                                     masked: true, hidden: true },
   { key: 'AI_SUMMARY_ENABLED',      type: 'boolean', default: true,                                     public: true },
-  { key: 'AI_SUMMARY_PROVIDER',     type: 'string',  default: '',                                       hidden: true },
-  { key: 'AI_SUMMARY_MODEL',        type: 'string',  default: '',                                       hidden: true },
+  { key: 'AI_SUMMARY_PROVIDER',     type: 'string',  default: '',                                       public: true },
+  { key: 'AI_SUMMARY_MODEL',        type: 'string',  default: '',                                       public: true },
   { key: 'ENABLE_SUMMARY',          type: 'boolean', default: true,                                     public: true },
 
   // ---- Customization ----

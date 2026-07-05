@@ -107,12 +107,16 @@ function resolveCli(cwd, name) {
 // SQLite 数据库写入不触发重启，且无孙进程问题。
 const SERVER_DIR = resolve(root, 'src/server')
 const services = [
-  { name: 'server', color: '\x1b[32m', cwd: SERVER_DIR, cli: 'nitro', args: ['dev'] },
+  // CHOKIDAR_USEPOLLING=1 让 chokidar 用轮询代替文件系统事件，Windows 上更稳定
+  { name: 'server', color: '\x1b[32m', cwd: SERVER_DIR, cli: 'nitro', args: ['dev'], env: { CHOKIDAR_USEPOLLING: '1' } },
   { name: 'client', color: '\x1b[36m', cwd: root,       cli: 'vite', args: ['--config', 'vite.config.dev.ts', '--host', '127.0.0.1', '--port', '9820'] },
 ]
 
 // ─── 进程管理 ─────────────────────────────────────────────────────────────────
 const children = []
+const RESTART_DELAY = 1000
+const MAX_RESTARTS = 10
+let shuttingDown = false
 
 function log(svc, line) {
   process.stdout.write(`${svc.color}[${svc.name}]${ANSI.reset} ${line}\n`)
@@ -128,7 +132,7 @@ function startService(svc) {
   const child = spawn(cmd, args, {
     cwd: svc.cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, FORCE_COLOR: '1' },
+    env: { ...process.env, FORCE_COLOR: '1', ...(svc.env || {}) },
     windowsHide: true,
     ...(useShell ? { shell: true } : {}),
   })
@@ -138,10 +142,32 @@ function startService(svc) {
 
   child.stdout?.on('data', onData)
   child.stderr?.on('data', onData)
-  child.on('error', (err) => log(svc, `spawn error: ${err.message}`))
-  child.on('exit', (code) => log(svc, `exited (${code})`))
 
-  children.push(child)
+  // 重启计数
+  child._restartCount = (child._restartCount || 0) + 1
+
+  child.on('error', (err) => log(svc, `spawn error: ${err.message}`))
+  child.on('exit', (code, signal) => {
+    const idx = children.indexOf(child)
+    if (idx >= 0) children.splice(idx, 1)
+
+    log(svc, `exited (code=${code}, signal=${signal})`)
+
+    // 用户主动退出 或 正常退出 或 超过重启上限 → 不重启
+    if (shuttingDown || signal === 'SIGINT' || signal === 'SIGTERM' || code === 0) return
+    if (child._restartCount > MAX_RESTARTS) {
+      log(svc, `max restarts (${MAX_RESTARTS}) reached, giving up`)
+      return
+    }
+
+    log(svc, `restarting (${child._restartCount}/${MAX_RESTARTS})...`)
+    setTimeout(() => {
+      const newChild = startService(svc)
+      newChild._restartCount = child._restartCount
+      children.push(newChild)
+    }, RESTART_DELAY)
+  })
+
   return child
 }
 
@@ -152,7 +178,10 @@ async function main() {
   console.log(`${ANSI.bold}Takoio dev${ANSI.reset} ${ANSI.dim}starting...${ANSI.reset}\n`)
 
   // 并行启动两个服务
-  for (const svc of services) startService(svc)
+  for (const svc of services) {
+    const child = startService(svc)
+    children.push(child)
+  }
 
   console.log(
     `\n${ANSI.bold}Dev servers:${ANSI.reset}\n` +
@@ -166,6 +195,7 @@ main().catch((e) => { console.error(e); process.exit(1) })
 
 // ─── 退出清理 ─────────────────────────────────────────────────────────────────
 function cleanup() {
+  shuttingDown = true
   for (const c of children) {
     if (isWin) {
       spawn('cmd.exe', ['/d', '/c', 'taskkill', '/pid', String(c.pid), '/T', '/F'], { stdio: 'ignore' })
