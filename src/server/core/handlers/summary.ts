@@ -10,6 +10,7 @@ import { getConfig } from '../config'
 import { isRedisAvailable } from '../store/redis'
 import { isDev } from '../env'
 import { createModelInstance, type AiFormat } from '../ai-model'
+import { logger } from '../utils/logger'
 
 const SUMMARY_SYSTEM_PROMPT = `你是一个文章摘要生成助手。请根据用户提供的文章内容，生成一段简洁的中文摘要（100-200字），并提取3-5个核心关键词。
 
@@ -104,6 +105,8 @@ export async function handleArticleSummary (data: {
       keywords: parsed.keywords || [],
     }
   } catch (e: any) {
-    return { success: false, message: `摘要生成失败: ${e.message}`, summary: '', keywords: [] }
+    // 记录完整异常供服务端排查，但禁止将 LLM 原始错误/堆栈返回给客户端
+    logger.error({ error: e.message, stack: e.stack }, 'AI 摘要生成失败')
+    return { success: false, message: '摘要生成失败，请稍后重试', summary: '', keywords: [] }
   }
 }
