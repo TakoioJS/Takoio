@@ -27,7 +27,6 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ (e: 'posted', comment: Comment): void; (e: 'clear-reply'): void; (e: 'admin'): void }>()
 
 // --- Refs ---
-const formRef = ref<HTMLFormElement>()
 const editorRef = ref<HTMLTextAreaElement>()
 const errorMsg = ref('')
 const submitting = ref(false)
@@ -84,6 +83,7 @@ watch(form, () => {
 watch(form, () => { saveDraft() }, { deep: true })
 
 // --- Image upload (composable) ---
+// @ts-expect-error TS6133 — uploadRef used in template via ref="uploadRef" for file input
 const { imageUploading, uploadedImages, uploadRef, removeImage, triggerUpload, onFileChange, onPaste } = useImageUpload({
   envId: props.options.envId,
   editorRef,
@@ -216,7 +216,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
 
 <template>
   <form
-    ref="formRef"
     class="tk-submit"
     @submit.prevent="onSubmit"
   >

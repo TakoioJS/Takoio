@@ -42,7 +42,6 @@ describe('markMasterComments', () => {
   })
 
   it('marks children recursively', () => {
-    const md5 = crypto.createHash('sha256').update('admin@test.com').digest('hex')
     const comments: MarkableComment[] = [{
       nick: 'Someone',
       mailMd5: '',

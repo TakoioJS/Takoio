@@ -79,7 +79,7 @@ describe('import-export handlers', () => {
 
     it('stops at MAX_PAGES safety bound', async () => {
       // Force store to always report total > current accumulated length
-      vi.mocked(commentStore.getAllComments).mockImplementation(async (page, pageSize) => ({
+      vi.mocked(commentStore.getAllComments).mockImplementation(async (page, _pageSize) => ({
         data: [{ id: `c${page}`, url: `/p${page}`, nick: 'A', comment: 'test', state: 'visible', created: 1, like: 0, dislike: 0, isSpam: false, isTop: false, isPinned: false, isPrivate: false }],
         total: 999999, // never satisfied
       }))

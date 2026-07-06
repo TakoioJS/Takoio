@@ -131,7 +131,7 @@ interface ModerateCommentConfig {
 export async function moderateComment (
   text: string,
   nick?: string,
-  link?: string,
+  _link?: string,
   config?: ModerateCommentConfig
 ): Promise<ModerationResult> {
   if (!text || text.trim().length < 2) {

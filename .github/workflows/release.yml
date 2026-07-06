@@ -18,11 +18,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit
+        continue-on-error: true
 
       - name: Lint
         run: pnpm lint
@@ -32,6 +36,12 @@ jobs:
 
       - name: Unit tests
         run: pnpm test
+
+      - name: Build client (UMD + ESM)
+        run: pnpm build
+
+      - name: Check bundle size
+        run: pnpm build:check-size
 
   release:
     needs: quality
