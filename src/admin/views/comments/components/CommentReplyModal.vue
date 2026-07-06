@@ -5,28 +5,61 @@
     title="回复评论"
     style="max-width: 520px;"
   >
-    <div v-if="comment" class="reply-quote">
+    <div
+      v-if="comment"
+      class="reply-quote"
+    >
       <div class="quote-meta">
         <span class="quote-name">{{ comment.nick }}</span>
         <span class="quote-time">{{ formatTime(comment.created) }}</span>
       </div>
-      <div class="quote-content" v-html="comment._safeContent || ''" />
+      <div
+        class="quote-content"
+        v-html="comment._safeContent || ''"
+      />
     </div>
-    <n-form label-placement="left" label-width="60">
+    <n-form
+      label-placement="left"
+      label-width="60"
+    >
       <n-form-item label="昵称">
-        <n-input v-model:value="form.nick" placeholder="博主" />
+        <n-input
+          v-model:value="form.nick"
+          placeholder="博主"
+        />
       </n-form-item>
       <n-form-item label="邮箱">
-        <n-input v-model:value="form.mail" placeholder="博主邮箱（选填）" />
+        <n-input
+          v-model:value="form.mail"
+          placeholder="博主邮箱（选填）"
+        />
       </n-form-item>
       <n-form-item label="回复">
-        <n-input v-model:value="form.comment" type="textarea" :rows="5" placeholder="输入回复内容..." />
+        <n-input
+          v-model:value="form.comment"
+          type="textarea"
+          :rows="5"
+          placeholder="输入回复内容..."
+        />
       </n-form-item>
     </n-form>
     <template #footer>
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
-        <n-button size="small" @click="localVisible = false">取消</n-button>
-        <n-button size="small" type="primary" :loading="loading" :disabled="!form.comment.trim() || !form.nick.trim()" @click="$emit('send', { ...form })">发送回复</n-button>
+        <n-button
+          size="small"
+          @click="localVisible = false"
+        >
+          取消
+        </n-button>
+        <n-button
+          size="small"
+          type="primary"
+          :loading="loading"
+          :disabled="!form.comment.trim() || !form.nick.trim()"
+          @click="$emit('send', { ...form })"
+        >
+          发送回复
+        </n-button>
       </div>
     </template>
   </n-modal>

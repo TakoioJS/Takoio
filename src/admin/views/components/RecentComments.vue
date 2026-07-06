@@ -2,24 +2,59 @@
   <div class="panel-card recent-card">
     <div class="card-header">
       <span class="card-title">最近评论</span>
-      <router-link to="/comments" class="view-all-link">
+      <router-link
+        to="/comments"
+        class="view-all-link"
+      >
         查看全部
-        <n-icon size="14"><ArrowForwardOutline /></n-icon>
+        <n-icon size="14">
+          <ArrowForwardOutline />
+        </n-icon>
       </router-link>
     </div>
     <div class="card-body">
       <n-spin :show="loading">
-        <n-skeleton v-if="loading && !comments.length" :repeat="6" text style="margin-bottom: 12px" />
-        <div v-else-if="loadError" class="error-state">
-          <n-icon size="36" :depth="3"><AlertCircleOutline /></n-icon>
+        <n-skeleton
+          v-if="loading && !comments.length"
+          :repeat="6"
+          text
+          style="margin-bottom: 12px"
+        />
+        <div
+          v-else-if="loadError"
+          class="error-state"
+        >
+          <n-icon
+            size="36"
+            :depth="3"
+          >
+            <AlertCircleOutline />
+          </n-icon>
           <p>加载失败</p>
-          <n-button size="small" secondary @click="$emit('retry')">重试</n-button>
+          <n-button
+            size="small"
+            secondary
+            @click="$emit('retry')"
+          >
+            重试
+          </n-button>
         </div>
-        <div v-else-if="comments.length === 0" class="empty-state">
-          <n-icon size="40" :depth="3"><ChatbubblesOutline /></n-icon>
+        <div
+          v-else-if="comments.length === 0"
+          class="empty-state"
+        >
+          <n-icon
+            size="40"
+            :depth="3"
+          >
+            <ChatbubblesOutline />
+          </n-icon>
           <p>暂无评论</p>
         </div>
-        <div v-else class="recent-grid">
+        <div
+          v-else
+          class="recent-grid"
+        >
           <router-link
             v-for="c in comments"
             :key="c.id"
@@ -27,26 +62,83 @@
             class="recent-item"
           >
             <div class="recent-header">
-              <div class="avatar-wrap" :style="{ background: avatarColor(c.nick) }">
-                <img v-if="!c._avatarError" :src="getAvatar(c)" class="recent-avatar" :alt="c.nick ? `${c.nick} 的头像` : '用户头像'" @error="c._avatarError = true">
-                <span v-else class="avatar-letter">{{ (c.nick || '?').slice(0, 1).toUpperCase() }}</span>
+              <div
+                class="avatar-wrap"
+                :style="{ background: avatarColor(c.nick) }"
+              >
+                <img
+                  v-if="!c._avatarError"
+                  :src="getAvatar(c)"
+                  class="recent-avatar"
+                  :alt="c.nick ? `${c.nick} 的头像` : '用户头像'"
+                  @error="c._avatarError = true"
+                >
+                <span
+                  v-else
+                  class="avatar-letter"
+                >{{ (c.nick || '?').slice(0, 1).toUpperCase() }}</span>
               </div>
               <div class="recent-body">
                 <div class="recent-meta">
                   <span class="recent-name">{{ c.nick || '匿名' }}</span>
-                  <n-tag v-if="c.isTop" size="tiny" type="warning" round>置顶</n-tag>
-                  <n-tag v-if="c.state === 'pending'" size="tiny" type="default" round>待审</n-tag>
-                  <n-tag v-else-if="c.state === 'hidden'" size="tiny" type="warning" round>隐藏</n-tag>
-                  <n-tag v-else-if="c.isSpam" size="tiny" type="error" round>垃圾</n-tag>
+                  <n-tag
+                    v-if="c.isTop"
+                    size="tiny"
+                    type="warning"
+                    round
+                  >
+                    置顶
+                  </n-tag>
+                  <n-tag
+                    v-if="c.state === 'pending'"
+                    size="tiny"
+                    type="default"
+                    round
+                  >
+                    待审
+                  </n-tag>
+                  <n-tag
+                    v-else-if="c.state === 'hidden'"
+                    size="tiny"
+                    type="warning"
+                    round
+                  >
+                    隐藏
+                  </n-tag>
+                  <n-tag
+                    v-else-if="c.isSpam"
+                    size="tiny"
+                    type="error"
+                    round
+                  >
+                    垃圾
+                  </n-tag>
                   <span class="recent-time">{{ formatTime(c.created) }}</span>
                 </div>
-                <a v-if="c.url || c.href" :href="c.href || c.url" target="_blank" rel="noopener" class="recent-link" :title="c.href || c.url" @click.stop>
+                <a
+                  v-if="c.url || c.href"
+                  :href="c.href || c.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="recent-link"
+                  :title="c.href || c.url"
+                  @click.stop
+                >
                   <n-icon size="12"><LinkOutline /></n-icon>
                   <span>{{ c.url || c.href }}</span>
                 </a>
-                <div class="recent-content" v-html="c._safeContent || ''" />
+                <div
+                  class="recent-content"
+                  v-html="c._safeContent || ''"
+                />
               </div>
-              <n-icon size="16" class="recent-arrow" :depth="3"><ChevronForwardOutline /></n-icon>
+              <n-icon
+                size="16"
+                class="recent-arrow"
+                :depth="3"
+              >
+                <ChevronForwardOutline />
+              </n-icon>
             </div>
           </router-link>
         </div>

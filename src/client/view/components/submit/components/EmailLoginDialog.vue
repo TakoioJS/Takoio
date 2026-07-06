@@ -13,14 +13,35 @@
           @mousedown.stop
         >
           <div class="tk-email-dialog-header">
-            <h3 class="tk-email-dialog-title">{{ t('emailLoginTitle') || '邮箱登录' }}</h3>
+            <h3 class="tk-email-dialog-title">
+              {{ t('emailLoginTitle') || '邮箱登录' }}
+            </h3>
             <button
               type="button"
               class="tk-btn-icon-ghost"
               :aria-label="t('cancel') || '取消'"
               @click="onClose"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><line
+                x1="18"
+                y1="6"
+                x2="6"
+                y2="18"
+              /><line
+                x1="6"
+                y1="6"
+                x2="18"
+                y2="18"
+              /></svg>
             </button>
           </div>
 
@@ -44,7 +65,9 @@
             v-if="step === 1"
             class="tk-email-step-body"
           >
-            <p class="tk-email-hint">{{ t('emailLoginHint') || '输入邮箱，我们会发送 6 位验证码' }}</p>
+            <p class="tk-email-hint">
+              {{ t('emailLoginHint') || '输入邮箱，我们会发送 6 位验证码' }}
+            </p>
             <input
               v-model="form.email"
               type="email"

@@ -222,280 +222,28 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   >
     <!-- 设计稿：article-level reactions 移至 .tk-submit-card 之上（不在卡片内） -->
     <div
-    v-if="!replyTo && options.enableArticleReaction"
-    class="tk-article-reactions"
-  >
-    <ReactionBar
-      :emojis="defaultEmojis"
-      :reactions="reactions"
-      :my-reactions="myReactions"
-      @toggle="toggleReaction"
-    />
-  </div>
-
-  <div
-    v-if="replyTo"
-    class="tk-reply-to"
-  >
-    {{ t('replyTo') }} <strong>{{ replyTo.nick }}</strong>：
-    <button
-      type="button"
-      class="tk-btn-link tk-btn-sm"
-      :aria-label="t('cancel') || '取消'"
-      @click="emit('clear-reply')"
+      v-if="!replyTo && options.enableArticleReaction"
+      class="tk-article-reactions"
     >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <line
-          x1="18"
-          y1="6"
-          x2="6"
-          y2="18"
-        /><line
-          x1="6"
-          y1="6"
-          x2="18"
-          y2="18"
-        />
-      </svg>
-    </button>
-  </div>
-
-  <!-- 设计稿：单一卡片容器，聚焦时品牌色外发光 -->
-  <div
-    class="tk-submit-card"
-    :class="{ 'tk-submit-card-focus': isFocused }"
-  >
-    <div class="tk-submit-form">
-      <div class="tk-editor-item">
-        <textarea
-          ref="editorRef"
-          v-model="form.comment"
-          class="tk-textarea"
-          :aria-label="t('placeholder')"
-          :placeholder="t('placeholder')"
-          :maxlength="commentMaxLength"
-          rows="4"
-          @focus="isFocused = true"
-          @blur="isFocused = false"
-          @keydown.ctrl.enter="onSubmit"
-          @paste="onPaste"
-        />
-        <div class="tk-word-limit">
-          <span>{{ form.comment.length }}</span>/{{ commentMaxLength }}
-        </div>
-      </div>
-
-      <ImagePreview
-        :images="uploadedImages"
-        :alt-text="t('imageAlt')"
-        :remove-label="t('delete')"
-        @remove="removeImage"
+      <ReactionBar
+        :emojis="defaultEmojis"
+        :reactions="reactions"
+        :my-reactions="myReactions"
+        @toggle="toggleReaction"
       />
-
-      <div
-        v-if="imageUploading"
-        class="tk-image-uploading"
-      >
-        <svg
-          class="tk-spin"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle
-            cx="12"
-            cy="12"
-            r="10"
-            opacity=".25"
-          /><path
-            d="M12 2a10 10 0 0 1 10 10"
-            stroke-linecap="round"
-          />
-        </svg>
-        <span>{{ t('imageUploading') }}</span>
-      </div>
-
-      <div
-        v-if="errorMsg"
-        class="tk-error-row"
-      >
-        <span class="tk-error-msg">{{ errorMsg }}</span>
-      </div>
-
-      <!-- 设计稿：内嵌工具栏（与 textarea 之间 1px border-top 分隔） -->
-      <div class="tk-toolbar">
-        <div class="tk-toolbar-left">
-          <!-- 设计稿：pill 发送按钮（comment-input.html 263 行） -->
-          <button
-            type="submit"
-            class="tk-btn-send"
-            :disabled="submitting || (!isLoggedIn && showLogin && !isGuestActive)"
-            @click.prevent="onSubmit"
-          >
-            <svg
-              v-if="submitting"
-              class="tk-spin"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-            <svg
-              v-else
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><line
-              x1="22"
-              y1="2"
-              x2="11"
-              y2="13"
-            /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-            <span class="tk-btn-send-text">{{ submitting ? (t('submitting') || '提交中…') : (t('submit') || '发送') }}</span>
-          </button>
-
-          <!-- 图片上传按钮 -->
-          <button
-            v-if="showUploadBtn"
-            type="button"
-            class="tk-btn-icon-ghost"
-            :title="t('uploadImage')"
-            :aria-label="t('uploadImage')"
-            @click="triggerUpload"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line
-              x1="12"
-              y1="3"
-              x2="12"
-              y2="15"
-            /></svg>
-          </button>
-          <input
-            ref="uploadRef"
-            type="file"
-            accept="image/*"
-            class="tk-hidden-upload"
-            @change="onFileChange"
-          >
-
-          <!-- 设计稿：7 个 markdown 按钮以紧凑无边框方式排列 -->
-          <MarkdownToolbar
-            v-model="form.comment"
-            :editor-ref="{ value: editorRef }"
-            variant="compact"
-          />
-        </div>
-
-        <div class="tk-toolbar-right">
-          <!-- 公开 / 私密切换（设计稿 296–302 行） -->
-          <PrivacyToggle
-            :model-value="privateComment"
-            @update:model-value="privateComment = $event"
-            :public-label="t('public') || '公开'"
-            :private-label="t('private') || '私密'"
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 已登录：显示用户信息（替代 3 个 input） -->
-  <div
-    v-if="isLoggedIn"
-    class="tk-auth-meta"
-  >
-    <span class="tk-auth-avatar">
-      <img v-if="currentUser?.avatar" :src="currentUser.avatar" :alt="currentUser.name" referrerpolicy="no-referrer">
-      <span v-else class="tk-auth-avatar-placeholder">{{ (currentUser?.name || '?')[0] }}</span>
-    </span>
-    <span class="tk-auth-name">{{ currentUser?.name }}</span>
-    <span v-if="currentUser?.email" class="tk-auth-email">{{ currentUser.email }}</span>
-    <span class="tk-auth-provider">{{ currentUser?.provider }}</span>
-  </div>
-
-  <template v-if="!isLoggedIn && (isGuestActive || !showLogin)">
-    <!-- 顶部 meta-row：未登录态显示 nickname / email（已登录由 tk-auth-meta 替代） -->
-    <div
-      v-if="!showGuestInfo"
-      class="tk-meta-row"
-    >
-      <div class="tk-meta-item">
-        <input
-          v-model="form.nick"
-          :aria-label="t('nickname')"
-          :placeholder="t('nickname')"
-          class="tk-input"
-          :class="{ 'tk-input-error': errors.nick }"
-        >
-        <span
-          v-if="errors.nick"
-          class="tk-field-error"
-        >{{ errors.nick }}</span>
-      </div>
-      <div class="tk-meta-item">
-        <input
-          v-model="form.mail"
-          type="email"
-          :aria-label="t('email')"
-          :placeholder="t('email')"
-          class="tk-input"
-          :class="{ 'tk-input-error': errors.mail }"
-        >
-        <span
-          v-if="errors.mail"
-          class="tk-field-error"
-        >{{ errors.mail }}</span>
-      </div>
-      <div
-        v-if="options.enableLinkInput"
-        class="tk-meta-item"
-      >
-        <input
-          v-model="form.link"
-          :aria-label="t('link')"
-          :placeholder="t('link')"
-          class="tk-input"
-          :class="{ 'tk-input-error': errors.link }"
-        >
-        <span
-          v-if="errors.link"
-          class="tk-field-error"
-        >{{ errors.link }}</span>
-      </div>
     </div>
 
-    <!-- 设计稿：免登录态垂直堆叠（comment-input-guest.html 218-227 行） -->
     <div
-      v-else
-      class="tk-guest-info"
+      v-if="replyTo"
+      class="tk-reply-to"
     >
-      <div class="tk-guest-hint">
+      {{ t('replyTo') }} <strong>{{ replyTo.nick }}</strong>：
+      <button
+        type="button"
+        class="tk-btn-link tk-btn-sm"
+        :aria-label="t('cancel') || '取消'"
+        @click="emit('clear-reply')"
+      >
         <svg
           width="14"
           height="14"
@@ -503,20 +251,212 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           fill="none"
           stroke="currentColor"
           stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
-          cx="12"
-          cy="7"
-          r="4"
-        /></svg>
-        {{ t('guestInfoTitle') || '免登录评论需要填写以下信息' }}
+        >
+          <line
+            x1="18"
+            y1="6"
+            x2="6"
+            y2="18"
+          /><line
+            x1="6"
+            y1="6"
+            x2="18"
+            y2="18"
+          />
+        </svg>
+      </button>
+    </div>
+
+    <!-- 设计稿：单一卡片容器，聚焦时品牌色外发光 -->
+    <div
+      class="tk-submit-card"
+      :class="{ 'tk-submit-card-focus': isFocused }"
+    >
+      <div class="tk-submit-form">
+        <div class="tk-editor-item">
+          <textarea
+            ref="editorRef"
+            v-model="form.comment"
+            class="tk-textarea"
+            :aria-label="t('placeholder')"
+            :placeholder="t('placeholder')"
+            :maxlength="commentMaxLength"
+            rows="4"
+            @focus="isFocused = true"
+            @blur="isFocused = false"
+            @keydown.ctrl.enter="onSubmit"
+            @paste="onPaste"
+          />
+          <div class="tk-word-limit">
+            <span>{{ form.comment.length }}</span>/{{ commentMaxLength }}
+          </div>
+        </div>
+
+        <ImagePreview
+          :images="uploadedImages"
+          :alt-text="t('imageAlt')"
+          :remove-label="t('delete')"
+          @remove="removeImage"
+        />
+
+        <div
+          v-if="imageUploading"
+          class="tk-image-uploading"
+        >
+          <svg
+            class="tk-spin"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              opacity=".25"
+            /><path
+              d="M12 2a10 10 0 0 1 10 10"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>{{ t('imageUploading') }}</span>
+        </div>
+
+        <div
+          v-if="errorMsg"
+          class="tk-error-row"
+        >
+          <span class="tk-error-msg">{{ errorMsg }}</span>
+        </div>
+
+        <!-- 设计稿：内嵌工具栏（与 textarea 之间 1px border-top 分隔） -->
+        <div class="tk-toolbar">
+          <div class="tk-toolbar-left">
+            <!-- 设计稿：pill 发送按钮（comment-input.html 263 行） -->
+            <button
+              type="submit"
+              class="tk-btn-send"
+              :disabled="submitting || (!isLoggedIn && showLogin && !isGuestActive)"
+              @click.prevent="onSubmit"
+            >
+              <svg
+                v-if="submitting"
+                class="tk-spin"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              ><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+              <svg
+                v-else
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><line
+                x1="22"
+                y1="2"
+                x2="11"
+                y2="13"
+              /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+              <span class="tk-btn-send-text">{{ submitting ? (t('submitting') || '提交中…') : (t('submit') || '发送') }}</span>
+            </button>
+
+            <!-- 图片上传按钮 -->
+            <button
+              v-if="showUploadBtn"
+              type="button"
+              class="tk-btn-icon-ghost"
+              :title="t('uploadImage')"
+              :aria-label="t('uploadImage')"
+              @click="triggerUpload"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line
+                x1="12"
+                y1="3"
+                x2="12"
+                y2="15"
+              /></svg>
+            </button>
+            <input
+              ref="uploadRef"
+              type="file"
+              accept="image/*"
+              class="tk-hidden-upload"
+              @change="onFileChange"
+            >
+
+            <!-- 设计稿：7 个 markdown 按钮以紧凑无边框方式排列 -->
+            <MarkdownToolbar
+              v-model="form.comment"
+              :editor-ref="{ value: editorRef }"
+              variant="compact"
+            />
+          </div>
+
+          <div class="tk-toolbar-right">
+            <!-- 公开 / 私密切换（设计稿 296–302 行） -->
+            <PrivacyToggle
+              :model-value="privateComment"
+              :public-label="t('public') || '公开'"
+              :private-label="t('private') || '私密'"
+              @update:model-value="privateComment = $event"
+            />
+          </div>
+        </div>
       </div>
-      <div class="tk-guest-fields">
+    </div>
+
+    <!-- 已登录：显示用户信息（替代 3 个 input） -->
+    <div
+      v-if="isLoggedIn"
+      class="tk-auth-meta"
+    >
+      <span class="tk-auth-avatar">
+        <img
+          v-if="currentUser?.avatar"
+          :src="currentUser.avatar"
+          :alt="currentUser.name"
+          referrerpolicy="no-referrer"
+        >
+        <span
+          v-else
+          class="tk-auth-avatar-placeholder"
+        >{{ (currentUser?.name || '?')[0] }}</span>
+      </span>
+      <span class="tk-auth-name">{{ currentUser?.name }}</span>
+      <span
+        v-if="currentUser?.email"
+        class="tk-auth-email"
+      >{{ currentUser.email }}</span>
+      <span class="tk-auth-provider">{{ currentUser?.provider }}</span>
+    </div>
+
+    <template v-if="!isLoggedIn && (isGuestActive || !showLogin)">
+      <!-- 顶部 meta-row：未登录态显示 nickname / email（已登录由 tk-auth-meta 替代） -->
+      <div
+        v-if="!showGuestInfo"
+        class="tk-meta-row"
+      >
         <div class="tk-meta-item">
-          <label class="tk-field-label">
-            {{ t('nickname') }} <span class="tk-required">*</span>
-          </label>
           <input
             v-model="form.nick"
             :aria-label="t('nickname')"
@@ -530,9 +470,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           >{{ errors.nick }}</span>
         </div>
         <div class="tk-meta-item">
-          <label class="tk-field-label">
-            {{ t('email') }} <span class="tk-required">*</span>
-          </label>
           <input
             v-model="form.mail"
             type="email"
@@ -550,7 +487,6 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           v-if="options.enableLinkInput"
           class="tk-meta-item"
         >
-          <label class="tk-field-label">{{ t('link') }}</label>
           <input
             v-model="form.link"
             :aria-label="t('link')"
@@ -564,55 +500,130 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
           >{{ errors.link }}</span>
         </div>
       </div>
-    </div>
-  </template>
 
-  <!-- Action Buttons block: A new button container to toggle state or trigger login when not logged in -->
-  <div
-    v-if="!isLoggedIn && showLogin && !isGuestActive"
-    class="tk-submit-actions"
-  >
-    <LoginDropdown
-      v-if="showLogin"
-      :providers="loginProviders"
-      :env-id="options.envId || ''"
-      class="tk-toolbar-login"
-      @select="onSelectProvider"
-    />
-    <button
-      v-if="showGuestInfo && !isGuestActive"
-      type="button"
-      class="tk-btn-guest-toggle"
-      @click="isGuestActive = true"
+      <!-- 设计稿：免登录态垂直堆叠（comment-input-guest.html 218-227 行） -->
+      <div
+        v-else
+        class="tk-guest-info"
+      >
+        <div class="tk-guest-hint">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
+            cx="12"
+            cy="7"
+            r="4"
+          /></svg>
+          {{ t('guestInfoTitle') || '免登录评论需要填写以下信息' }}
+        </div>
+        <div class="tk-guest-fields">
+          <div class="tk-meta-item">
+            <label class="tk-field-label">
+              {{ t('nickname') }} <span class="tk-required">*</span>
+            </label>
+            <input
+              v-model="form.nick"
+              :aria-label="t('nickname')"
+              :placeholder="t('nickname')"
+              class="tk-input"
+              :class="{ 'tk-input-error': errors.nick }"
+            >
+            <span
+              v-if="errors.nick"
+              class="tk-field-error"
+            >{{ errors.nick }}</span>
+          </div>
+          <div class="tk-meta-item">
+            <label class="tk-field-label">
+              {{ t('email') }} <span class="tk-required">*</span>
+            </label>
+            <input
+              v-model="form.mail"
+              type="email"
+              :aria-label="t('email')"
+              :placeholder="t('email')"
+              class="tk-input"
+              :class="{ 'tk-input-error': errors.mail }"
+            >
+            <span
+              v-if="errors.mail"
+              class="tk-field-error"
+            >{{ errors.mail }}</span>
+          </div>
+          <div
+            v-if="options.enableLinkInput"
+            class="tk-meta-item"
+          >
+            <label class="tk-field-label">{{ t('link') }}</label>
+            <input
+              v-model="form.link"
+              :aria-label="t('link')"
+              :placeholder="t('link')"
+              class="tk-input"
+              :class="{ 'tk-input-error': errors.link }"
+            >
+            <span
+              v-if="errors.link"
+              class="tk-field-error"
+            >{{ errors.link }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Action Buttons block: A new button container to toggle state or trigger login when not logged in -->
+    <div
+      v-if="!isLoggedIn && showLogin && !isGuestActive"
+      class="tk-submit-actions"
     >
-      {{ t('guestComment') || '免登录评论' }}
-    </button>
-  </div>
+      <LoginDropdown
+        v-if="showLogin"
+        :providers="loginProviders"
+        :env-id="options.envId || ''"
+        class="tk-toolbar-login"
+        @select="onSelectProvider"
+      />
+      <button
+        v-if="showGuestInfo && !isGuestActive"
+        type="button"
+        class="tk-btn-guest-toggle"
+        @click="isGuestActive = true"
+      >
+        {{ t('guestComment') || '免登录评论' }}
+      </button>
+    </div>
 
-  <div
-    v-show="showPreview"
-    ref="previewRef"
-    class="tk-preview"
-    v-html="previewHtml"
-  />
+    <div
+      v-show="showPreview"
+      ref="previewRef"
+      class="tk-preview"
+      v-html="previewHtml"
+    />
 
-  <!-- Captcha -->
-  <CaptchaWidget
-    v-if="options.enableCaptcha"
-    :provider="(options.captchaProvider as any)"
-    :site-key="(options.captchaSiteKey as string)"
-    :theme="'auto'"
-    :captcha-type="(options.captchaType as any)"
-    :model-value="captchaToken"
-    @update:model-value="captchaToken = $event"
-    @error="captchaError = $event"
-  />
-  <!-- Email login dialog -->
-  <EmailLoginDialog
-    v-model="emailDialogOpen"
-    :env-id="options.envId || ''"
-    @success="() => { /* onAuthChange 自动触发，UI 已登录态自动切换 */ }"
-  />
+    <!-- Captcha -->
+    <CaptchaWidget
+      v-if="options.enableCaptcha"
+      :provider="(options.captchaProvider as any)"
+      :site-key="(options.captchaSiteKey as string)"
+      :theme="'auto'"
+      :captcha-type="(options.captchaType as any)"
+      :model-value="captchaToken"
+      @update:model-value="captchaToken = $event"
+      @error="captchaError = $event"
+    />
+    <!-- Email login dialog -->
+    <EmailLoginDialog
+      v-model="emailDialogOpen"
+      :env-id="options.envId || ''"
+      @success="() => { /* onAuthChange 自动触发，UI 已登录态自动切换 */ }"
+    />
   </form>
 </template>
 

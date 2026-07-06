@@ -31,7 +31,10 @@
   />
 
   <!-- Color -->
-  <div v-else-if="field.type === 'color'" class="color-row">
+  <div
+    v-else-if="field.type === 'color'"
+    class="color-row"
+  >
     <n-input
       :value="modelValue"
       :placeholder="field.placeholder"
@@ -50,7 +53,10 @@
   </div>
 
   <!-- Slider -->
-  <div v-else-if="field.type === 'slider'" class="slider-row">
+  <div
+    v-else-if="field.type === 'slider'"
+    class="slider-row"
+  >
     <n-slider
       :value="modelValue"
       :min="field.min"
@@ -114,7 +120,7 @@
 import type { ConfigField } from '../schema'
 import SensitiveInput from '../../../components/SensitiveInput.vue'
 
-const props = defineProps<{
+defineProps<{
   field: ConfigField
   modelValue: any
   hasSavedValue?: boolean

@@ -1,7 +1,10 @@
 <template>
   <div class="settings-page">
     <div class="settings-layout">
-      <div ref="contentRef" class="settings-content">
+      <div
+        ref="contentRef"
+        class="settings-content"
+      >
         <n-spin :show="loading">
           <div
             v-for="section in sections"
@@ -18,18 +21,29 @@
               @keydown.enter="toggleSection(section.key)"
               @keydown.space.prevent="toggleSection(section.key)"
             >
-              <h2 class="section-title">{{ section.label }}</h2>
-              <n-icon size="16" class="collapse-icon">
+              <h2 class="section-title">
+                {{ section.label }}
+              </h2>
+              <n-icon
+                size="16"
+                class="collapse-icon"
+              >
                 <ChevronDownOutline v-if="!isCollapsed(section.key)" />
                 <ChevronForwardOutline v-else />
               </n-icon>
             </div>
 
             <transition name="collapse">
-              <div v-show="!isCollapsed(section.key)" class="section-body">
+              <div
+                v-show="!isCollapsed(section.key)"
+                class="section-body"
+              >
                 <!-- 普通配置项 -->
                 <template v-if="section.key !== 'push' && section.key !== 'socialAuth'">
-                  <template v-for="(field, idx) in section.fields" :key="field.key">
+                  <template
+                    v-for="(field, idx) in section.fields"
+                    :key="field.key"
+                  >
                     <div
                       v-if="!field.condition || field.condition(config)"
                       :class="['field-row', { 'full-row': isFullRow(field), 'last': isLastVisible(section, idx), 'switch-row': field.type === 'switch' }]"
@@ -37,14 +51,27 @@
                       <div class="field-label-col">
                         <div class="field-label">
                           {{ field.label }}
-                          <n-tooltip v-if="field.hint" trigger="hover">
+                          <n-tooltip
+                            v-if="field.hint"
+                            trigger="hover"
+                          >
                             <template #trigger>
-                              <n-icon size="12" class="help-icon"><HelpCircleOutline /></n-icon>
+                              <n-icon
+                                size="12"
+                                class="help-icon"
+                              >
+                                <HelpCircleOutline />
+                              </n-icon>
                             </template>
                             {{ field.hint }}
                           </n-tooltip>
                         </div>
-                        <p v-if="field.description" class="field-desc">{{ field.description }}</p>
+                        <p
+                          v-if="field.description"
+                          class="field-desc"
+                        >
+                          {{ field.description }}
+                        </p>
                       </div>
                       <div class="field-control-col">
                         <FieldRenderer
@@ -64,9 +91,15 @@
 
                 <!-- 推送通道配置 -->
                 <template v-else-if="section.key === 'push'">
-                  <div v-for="key in push.active.value" :key="key" class="field-row">
+                  <div
+                    v-for="key in push.active.value"
+                    :key="key"
+                    class="field-row"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">{{ pushFieldLabel(key) }}</div>
+                      <div class="field-label">
+                        {{ pushFieldLabel(key) }}
+                      </div>
                     </div>
                     <div class="field-control-col push-control-col">
                       <SensitiveInput
@@ -75,18 +108,39 @@
                         :placeholder="'输入 ' + pushFieldLabel(key) + ' 配置'"
                         style="flex: 1;"
                       />
-                      <n-button size="small" quaternary circle type="error" title="移除此通道" @click="push.remove(key, () => { config['PUSH_CHANNEL_' + key.toUpperCase()] = '' })">
-                        <template #icon><n-icon size="16"><TrashOutline /></n-icon></template>
+                      <n-button
+                        size="small"
+                        quaternary
+                        circle
+                        type="error"
+                        title="移除此通道"
+                        @click="push.remove(key, () => { config['PUSH_CHANNEL_' + key.toUpperCase()] = '' })"
+                      >
+                        <template #icon>
+                          <n-icon size="16">
+                            <TrashOutline />
+                          </n-icon>
+                        </template>
                       </n-button>
                     </div>
                   </div>
-                  <div v-if="push.active.value.length === 0" class="field-row empty-push-row">
+                  <div
+                    v-if="push.active.value.length === 0"
+                    class="field-row empty-push-row"
+                  >
                     <span class="empty-text">未启用任何推送通知通道</span>
                   </div>
-                  <div v-if="push.available.value.length > 0" class="field-row add-push-row last">
+                  <div
+                    v-if="push.available.value.length > 0"
+                    class="field-row add-push-row last"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">添加推送通道</div>
-                      <p class="field-desc">选择要启用的第三方推送平台</p>
+                      <div class="field-label">
+                        添加推送通道
+                      </div>
+                      <p class="field-desc">
+                        选择要启用的第三方推送平台
+                      </p>
                     </div>
                     <div class="field-control-col add-push-controls">
                       <n-select
@@ -96,8 +150,15 @@
                         size="small"
                         style="flex: 1; max-width: 260px;"
                       />
-                      <n-button type="primary" size="small" :disabled="!selectedPushKeyToAdd" @click="doAddPush">
-                        <template #icon><n-icon><AddOutline /></n-icon></template>
+                      <n-button
+                        type="primary"
+                        size="small"
+                        :disabled="!selectedPushKeyToAdd"
+                        @click="doAddPush"
+                      >
+                        <template #icon>
+                          <n-icon><AddOutline /></n-icon>
+                        </template>
                         启用
                       </n-button>
                     </div>
@@ -106,9 +167,15 @@
 
                 <!-- 社交登录配置 -->
                 <template v-else-if="section.key === 'socialAuth'">
-                  <div v-for="provider in auth.active.value" :key="provider" class="field-row">
+                  <div
+                    v-for="provider in auth.active.value"
+                    :key="provider"
+                    class="field-row"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">{{ authLabel(provider) }}</div>
+                      <div class="field-label">
+                        {{ authLabel(provider) }}
+                      </div>
                     </div>
                     <div class="field-control-col push-control-col">
                       <n-switch
@@ -116,18 +183,35 @@
                         size="small"
                         @update:value="config['SOCIAL_AUTH_' + provider.toUpperCase() + '_ENABLED'] = $event"
                       />
-                      <n-button size="tiny" type="error" quaternary @click="auth.remove(provider)">
-                        <template #icon><n-icon><TrashOutline /></n-icon></template>
+                      <n-button
+                        size="tiny"
+                        type="error"
+                        quaternary
+                        @click="auth.remove(provider)"
+                      >
+                        <template #icon>
+                          <n-icon><TrashOutline /></n-icon>
+                        </template>
                       </n-button>
                     </div>
                   </div>
-                  <div v-if="auth.active.value.length === 0" class="field-row empty-push-row">
+                  <div
+                    v-if="auth.active.value.length === 0"
+                    class="field-row empty-push-row"
+                  >
                     <span class="empty-text">未启用任何社交登录方式</span>
                   </div>
-                  <div v-if="auth.available.value.length > 0" class="field-row">
+                  <div
+                    v-if="auth.available.value.length > 0"
+                    class="field-row"
+                  >
                     <div class="field-label-col">
-                      <div class="field-label">添加登录方式</div>
-                      <p class="field-desc">选择要启用的社交登录提供商</p>
+                      <div class="field-label">
+                        添加登录方式
+                      </div>
+                      <p class="field-desc">
+                        选择要启用的社交登录提供商
+                      </p>
                     </div>
                     <div class="field-control-col add-push-controls">
                       <n-select
@@ -137,8 +221,15 @@
                         size="small"
                         style="flex: 1; max-width: 260px;"
                       />
-                      <n-button type="primary" size="small" :disabled="!selectedAuthToAdd" @click="doAddAuth">
-                        <template #icon><n-icon><AddOutline /></n-icon></template>
+                      <n-button
+                        type="primary"
+                        size="small"
+                        :disabled="!selectedAuthToAdd"
+                        @click="doAddAuth"
+                      >
+                        <template #icon>
+                          <n-icon><AddOutline /></n-icon>
+                        </template>
                         启用
                       </n-button>
                     </div>
@@ -149,9 +240,26 @@
           </div>
         </n-spin>
 
-        <div v-if="isDirty" class="save-bar">
-          <n-button size="small" :disabled="loading" @click="onReset">重置</n-button>
-          <n-button v-if="isDirty" size="small" type="primary" :loading="saving" @click="onSave">保存更改</n-button>
+        <div
+          v-if="isDirty"
+          class="save-bar"
+        >
+          <n-button
+            size="small"
+            :disabled="loading"
+            @click="onReset"
+          >
+            重置
+          </n-button>
+          <n-button
+            v-if="isDirty"
+            size="small"
+            type="primary"
+            :loading="saving"
+            @click="onSave"
+          >
+            保存更改
+          </n-button>
         </div>
       </div>
     </div>
@@ -161,7 +269,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
-  NInput, NButton, NSelect, NSwitch, NSpin, NIcon, NTooltip, useMessage, useDialog,
+  NButton, NSelect, NSwitch, NSpin, NIcon, NTooltip, useMessage, useDialog,
 } from 'naive-ui'
 import { HelpCircleOutline, TrashOutline, AddOutline, ChevronDownOutline, ChevronForwardOutline } from '@vicons/ionicons5'
 import { configApi } from '../../api/config'
