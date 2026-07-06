@@ -29,7 +29,9 @@ function resolveLevel (): Level {
 }
 
 function isPlainObject (value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Error)
+  if (Object.prototype.toString.call(value) !== '[object Object]') return false
+  const proto = Object.getPrototypeOf(value as object)
+  return proto === Object.prototype || proto === null
 }
 
 /** 深度脱敏：命中 SENSITIVE_CONFIG_KEYS 的 key 统一替换为 [REDACTED] */
