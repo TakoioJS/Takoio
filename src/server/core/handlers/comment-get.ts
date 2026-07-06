@@ -42,17 +42,29 @@ export const handleCommentGet = async (data: GetCommentData) => {
     commentStore.getComments(targetUrl, page, pageSize, sort)
   )
 
-  // 二次过滤：私密评论。
+  // 二次过滤：私密评论（含嵌套回复）。
   // 先浅克隆每一项，避免 markMasterComments 直接修改缓存中的原始对象引用。
-  const filteredData = (result.data as any[]).map((c: any) => {
-    const clone = { ...c }
-    if (!clone.isPrivate) return clone
+  // 必须递归处理 children：store 的 getComments 会把所有可见回复（含私密回复）
+  // 挂到 children 上，stripPrivate 仅移除 ip/mail，不会替换正文。若不递归过滤，
+  // 私密回复的 comment/renderedComment 会原样泄露给所有访问者。
+  const PRIVATE_PLACEHOLDER = '🔒 私密评论'
+  const PRIVATE_PLACEHOLDER_HTML = '<p>🔒 私密评论，仅博主与作者本人可见</p>'
+  const filterPrivateComment = (c: any): any => {
+    if (!c.isPrivate) return c
     // 博主可见
-    if (isMasterViewer) return clone
+    if (isMasterViewer) return c
     // 作者本人可见（mailMd5 匹配）
-    if (viewerMailMd5 && clone.mailMd5 && clone.mailMd5 === viewerMailMd5) return clone
+    if (viewerMailMd5 && c.mailMd5 && c.mailMd5 === viewerMailMd5) return c
     // 其他视角：用占位替换 content，避免泄露正文
-    return { ...clone, comment: '🔒 私密评论', renderedComment: '<p>🔒 私密评论，仅博主与作者本人可见</p>' }
+    return { ...c, comment: PRIVATE_PLACEHOLDER, renderedComment: PRIVATE_PLACEHOLDER_HTML }
+  }
+  const filteredData = (result.data as any[]).map((c: any) => {
+    const clone = filterPrivateComment({ ...c })
+    // 递归过滤回复：私密回复同样需要对非授权视角隐藏正文
+    if (Array.isArray(clone.children)) {
+      clone.children = clone.children.map((child: any) => filterPrivateComment({ ...child }))
+    }
+    return clone
   })
 
   const rawCfg = await getConfig()

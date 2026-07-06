@@ -114,6 +114,16 @@ describe('setVerifyCode / consumeVerifyCode', () => {
     expect(await consumeVerifyCode('uuid-3', '654321')).toBeNull()
   })
 
+  it('deletes the code after a wrong guess (prevents brute-force within TTL)', async () => {
+    // Regression: previously a wrong guess left the code intact, allowing unlimited
+    // retries against the 6-digit code within its 5-minute TTL.
+    await setVerifyCode('uuid-bf', '123456', sampleUser)
+    // Wrong guess must invalidate the code immediately
+    expect(await consumeVerifyCode('uuid-bf', '000000')).toBeNull()
+    // Even the correct code can no longer be used — single attempt only
+    expect(await consumeVerifyCode('uuid-bf', '123456')).toBeNull()
+  })
+
   it('keeps verify codes for different uuids isolated', async () => {
     await setVerifyCode('uuid-a', '111111', sampleUser)
     await setVerifyCode('uuid-b', '222222', { ...sampleUser, id: 'user-2' })

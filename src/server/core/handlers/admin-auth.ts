@@ -8,7 +8,7 @@ import { safeValidate, LoginSchema, PasswordSetSchema } from '../schemas'
 import type { LoginData, PasswordSetData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig } from '../config'
-import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha, requireAdmin } from '../auth'
+import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha, requireAdmin, invalidateAdminTokenCache } from '../auth'
 import { verifyPassword, needsRehash } from '../utils/crypto'
 import { logger } from '../utils/logger'
 import { AppError } from '../errors'
@@ -85,6 +85,8 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
 
 export const handleLogout = async (data: { token?: string }) => {
   if (data.token) await sessionStore.removeToken(data.token)
+  // 失效 admin token 缓存：登出后旧 token 不应在 60s 缓存窗口内继续通过 isAdminAsync
+  invalidateAdminTokenCache(data.token)
   return { success: true }
 }
 
@@ -115,6 +117,8 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
   updateAuthHashCache(newHash)
   // Invalidate all existing sessions on password change
   await sessionStore.removeAllTokens()
+  // 失效 admin token 缓存：密码修改后所有旧 token 立即失效，避免 60s 缓存窗口内被用于读取私密评论
+  invalidateAdminTokenCache()
   logger.info(existingHash ? 'Admin password updated (all sessions invalidated)' : 'Admin password created (first-time setup)')
 
   // Return a session token so the user is auto-logged in after setup

@@ -29,6 +29,7 @@ vi.mock('../../auth', () => ({
   hashPassword: vi.fn().mockResolvedValue('new-hash'),
   updateAuthHashCache: vi.fn(),
   invalidateAuthHashCache: vi.fn(),
+  invalidateAdminTokenCache: vi.fn(),
   checkLoginRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
   recordLoginFailure: vi.fn().mockResolvedValue(undefined),
   clearLoginFailures: vi.fn().mockResolvedValue(undefined),
@@ -158,6 +159,12 @@ describe('Admin Handlers', () => {
       expect(result.success).toBe(true)
       expect(sessionStore.removeToken).toHaveBeenCalledWith('test-token')
     })
+
+    it('invalidates admin token cache on logout (no 60s stale window)', async () => {
+      const { invalidateAdminTokenCache } = await import('../../auth')
+      await handleLogout({ token: 'test-token' })
+      expect(invalidateAdminTokenCache).toHaveBeenCalledWith('test-token')
+    })
   })
 
   describe('handleGetConfig', () => {
@@ -202,6 +209,14 @@ describe('Admin Handlers', () => {
       })
       expect(result.success).toBe(true)
       expect(result.token).toBe('test-token')
+    })
+
+    it('invalidates admin token cache on password change', async () => {
+      const { getAuthHash, invalidateAdminTokenCache } = await import('../../auth')
+      vi.mocked(getAuthHash).mockResolvedValueOnce(null) // first-time setup path
+      await handlePasswordSet({ password: 'new-password-123', setupToken: 'test-setup-token' })
+      // Cache must be cleared so revoked tokens can't read private comments for 60s
+      expect(invalidateAdminTokenCache).toHaveBeenCalled()
     })
   })
 

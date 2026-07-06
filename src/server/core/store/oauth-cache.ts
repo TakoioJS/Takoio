@@ -129,17 +129,19 @@ export async function consumeVerifyCode (uuid: string, code: string): Promise<Au
       const raw = await c.get(key)
       if (raw === null) return false
       const parsed = JSON.parse(raw) as { code: string; user: AuthUser }
-      if (parsed.code !== code) return false
+      // 验证码一次性使用：无论匹配与否都立即删除，防止在 TTL 内暴力枚举 6 位码
       await c.del(key)
+      if (parsed.code !== code) return false
       return parsed.user
     })
     if (matched !== null && matched !== false) return matched
     // Not matched in Redis (or Redis unavailable) — fall through to memory
   } catch { /* fall through to memory */ }
   const mem = _memCodeCache.get(key)
-  if (mem && mem.expire > Date.now() && mem.value.code === code) {
+  if (mem && mem.expire > Date.now()) {
+    // 一次性使用：无论匹配与否都删除，防止在 TTL 内暴力枚举
     _memCodeCache.delete(key)
-    return mem.value.user
+    if (mem.value.code === code) return mem.value.user
   }
   return null
 }

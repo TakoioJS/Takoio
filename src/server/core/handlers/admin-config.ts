@@ -8,7 +8,7 @@ import { safeValidate, TypeSetSchema } from '../schemas'
 import type { TypeSetData } from '../schemas'
 import { configStore, sessionStore, commentStore } from '../store/index'
 import { getConfig, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS, DEFAULT_CONFIG, invalidateConfig, validateConfigBatch } from '../config'
-import { invalidateAuthHashCache } from '../auth'
+import { invalidateAuthHashCache, invalidateAdminTokenCache } from '../auth'
 import { lookupIpRegion } from '../ip-region'
 import { logger } from '../utils/logger'
 import { AppError } from '../errors'
@@ -55,6 +55,8 @@ export const handleConfigReset = async () => {
   // 防止旧 admin token 在 AUTH_HASH 被清后仍能通过 requireAdmin 校验（权限维持漏洞）
   await sessionStore.removeAllTokens()
   invalidateAuthHashCache()
+  // 失效 admin token 缓存：重置后 AUTH_HASH 被清，旧 token 不应在 60s 缓存窗口内继续生效
+  invalidateAdminTokenCache()
   invalidateConfig()
   logger.info('Config reset — all sessions invalidated, AUTH_HASH cache cleared')
   return { success: true }

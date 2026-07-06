@@ -59,11 +59,18 @@ vi.mock('../../utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
+// isAdminAsync defaults to false (matches real behavior for undefined token).
+// Individual tests override via vi.mocked(isAdminAsync).mockResolvedValueOnce(true).
+vi.mock('../../auth', () => ({
+  isAdminAsync: vi.fn().mockResolvedValue(false),
+}))
+
 // ========== Imports ==========
 
 import { handleCommentGet } from '../comment-get'
 import { commentStore } from '../../store/index'
 import { getOrSetCommentListCache } from '../../store/redis'
+import { isAdminAsync } from '../../auth'
 import { AppError } from '../../errors'
 
 // ========== Tests ==========
@@ -155,5 +162,87 @@ describe('handleCommentGet', () => {
     // data should be returned as-is from store (mock doesn't match MASTER)
     expect(result.data.length).toBeGreaterThan(0)
     expect(result.data[0]).toHaveProperty('id')
+  })
+
+  // Regression: private replies (children) must have their content masked for
+  // unauthorized viewers. Previously the filter only ran on top-level comments,
+  // leaking private reply bodies via the children array.
+  it('masks private reply content in children for unauthorized viewers', async () => {
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'parent-1',
+          url: '/test',
+          nick: 'Alice',
+          mailMd5: 'aaa',
+          comment: 'public top-level',
+          renderedComment: '<p>public top-level</p>',
+          isPrivate: false,
+          children: [
+            {
+              id: 'reply-1',
+              nick: 'Bob',
+              mailMd5: 'bbb',
+              comment: 'secret private reply',
+              renderedComment: '<p>secret private reply</p>',
+              isPrivate: true,
+            },
+            {
+              id: 'reply-2',
+              nick: 'Carol',
+              mailMd5: 'ccc',
+              comment: 'public reply',
+              renderedComment: '<p>public reply</p>',
+              isPrivate: false,
+            },
+          ],
+        },
+      ],
+      total: 1,
+    })
+
+    const result = await handleCommentGet({ url: '/test' } as any)
+    const parent = result.data[0]
+    const privateReply = parent.children.find((c: any) => c.id === 'reply-1')
+    const publicReply = parent.children.find((c: any) => c.id === 'reply-2')
+
+    // Private reply content must be masked — NOT the original secret body
+    expect(privateReply.comment).not.toBe('secret private reply')
+    expect(privateReply.comment).toBe('🔒 私密评论')
+    expect(privateReply.renderedComment).toContain('仅博主与作者本人可见')
+    // Public reply content stays intact
+    expect(publicReply.comment).toBe('public reply')
+  })
+
+  it('keeps private reply content visible to the master viewer (adminToken)', async () => {
+    vi.mocked(isAdminAsync).mockResolvedValueOnce(true)
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'parent-1',
+          url: '/test',
+          nick: 'Alice',
+          mailMd5: 'aaa',
+          comment: 'public top-level',
+          isPrivate: false,
+          children: [
+            {
+              id: 'reply-1',
+              nick: 'Bob',
+              mailMd5: 'bbb',
+              comment: 'secret private reply',
+              renderedComment: '<p>secret private reply</p>',
+              isPrivate: true,
+            },
+          ],
+        },
+      ],
+      total: 1,
+    })
+
+    const result = await handleCommentGet({ url: '/test', adminToken: 'valid-admin' } as any)
+    const privateReply = result.data[0].children[0]
+    // Master viewer sees the real content of private replies
+    expect(privateReply.comment).toBe('secret private reply')
   })
 })
