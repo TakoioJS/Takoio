@@ -588,9 +588,16 @@ export const userStore: UserStore = {
       loginCount: 1,
     })
     return {
-      id, provider: data.provider, providerId: data.providerId,
-      email: data.email, name: data.name, avatar: data.avatar || null,
-      role: 'user', createdAt: now, lastLoginAt: now, loginCount: 1,
+      id,
+      provider: data.provider,
+      providerId: data.providerId,
+      email: data.email,
+      name: data.name,
+      avatar: data.avatar || null,
+      role: 'user',
+      createdAt: now,
+      lastLoginAt: now,
+      loginCount: 1,
     } as User
   },
 
@@ -611,10 +618,16 @@ export const userStore: UserStore = {
     const rows = await coll.find(filterDoc)
       .sort({ lastLoginAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray()
     const data: User[] = rows.map(r => ({
-      id: r._id, provider: r.provider, providerId: r.providerId,
-      email: r.email, name: r.name, avatar: r.avatar || null,
-      role: r.role || 'user', createdAt: r.createdAt,
-      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+      id: r._id,
+      provider: r.provider,
+      providerId: r.providerId,
+      email: r.email,
+      name: r.name,
+      avatar: r.avatar || null,
+      role: r.role || 'user',
+      createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt,
+      loginCount: r.loginCount ?? 1,
     }))
     return { data, total }
   },
@@ -624,10 +637,16 @@ export const userStore: UserStore = {
     const r = await col(db, 'users').findOne({ _id: id })
     if (!r) return undefined
     return {
-      id: r._id, provider: r.provider, providerId: r.providerId,
-      email: r.email, name: r.name, avatar: r.avatar || null,
-      role: r.role || 'user', createdAt: r.createdAt,
-      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+      id: r._id,
+      provider: r.provider,
+      providerId: r.providerId,
+      email: r.email,
+      name: r.name,
+      avatar: r.avatar || null,
+      role: r.role || 'user',
+      createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt,
+      loginCount: r.loginCount ?? 1,
     } as User
   },
 
@@ -636,10 +655,16 @@ export const userStore: UserStore = {
     const r = await col(db, 'users').findOne({ email: email.toLowerCase() })
     if (!r) return undefined
     return {
-      id: r._id, provider: r.provider, providerId: r.providerId,
-      email: r.email, name: r.name, avatar: r.avatar || null,
-      role: r.role || 'user', createdAt: r.createdAt,
-      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+      id: r._id,
+      provider: r.provider,
+      providerId: r.providerId,
+      email: r.email,
+      name: r.name,
+      avatar: r.avatar || null,
+      role: r.role || 'user',
+      createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt,
+      loginCount: r.loginCount ?? 1,
     } as User
   },
 

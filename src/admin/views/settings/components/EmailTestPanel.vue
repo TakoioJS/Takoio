@@ -1,8 +1,12 @@
 <template>
   <div class="field-row full-row email-test-row">
     <div class="field-label-col">
-      <div class="field-label">测试发送</div>
-      <p class="field-desc">发送一封测试邮件验证 SMTP 配置</p>
+      <div class="field-label">
+        测试发送
+      </div>
+      <p class="field-desc">
+        发送一封测试邮件验证 SMTP 配置
+      </p>
     </div>
     <div class="field-control-col">
       <div class="email-test-controls">
@@ -25,12 +29,17 @@
           @click="onSend"
         >
           <template #icon>
-            <n-icon size="14"><MailOutline /></n-icon>
+            <n-icon size="14">
+              <MailOutline />
+            </n-icon>
           </template>
           发送
         </n-button>
       </div>
-      <div v-if="log" class="email-test-log">
+      <div
+        v-if="log"
+        class="email-test-log"
+      >
         <pre>{{ log }}</pre>
       </div>
     </div>

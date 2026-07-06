@@ -230,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import { NCheckbox, NTag, NIcon, NButton, NDropdown, NTooltip } from 'naive-ui'
+import { NCheckbox, NTag, NIcon, NButton, NDropdown } from 'naive-ui'
 import {
   MailOutline, LinkOutline, DocumentTextOutline, RefreshCircleOutline, EllipsisHorizontal,
 } from '@vicons/ionicons5'

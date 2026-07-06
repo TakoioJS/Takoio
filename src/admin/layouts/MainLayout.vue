@@ -19,7 +19,11 @@
           </n-button>
           <div class="brand-section">
             <div class="brand-logo">
-              <img :src="iconUrl" alt="Takoio" class="brand-img">
+              <img
+                :src="iconUrl"
+                alt="Takoio"
+                class="brand-img"
+              >
             </div>
             <span class="brand-text">Takoio</span>
           </div>
@@ -27,23 +31,58 @@
 
         <!-- 中间 导航栏（桌面端） -->
         <nav class="header-nav">
-          <template v-for="item in menuItems" :key="item.path">
-            <div v-if="item.children" class="nav-item-group" :class="{ active: route.path.startsWith(item.path) }">
-              <button class="nav-item nav-item-main" @click="toggleAiMenu">
-                <n-icon size="16"><component :is="item.icon" /></n-icon>
+          <template
+            v-for="item in menuItems"
+            :key="item.path"
+          >
+            <div
+              v-if="item.children"
+              class="nav-item-group"
+              :class="{ active: route.path.startsWith(item.path) }"
+            >
+              <button
+                class="nav-item nav-item-main"
+                @click="toggleAiMenu"
+              >
+                <n-icon size="16">
+                  <component :is="item.icon" />
+                </n-icon>
                 <span class="nav-label">{{ item.title }}</span>
-                <n-icon size="12" class="nav-arrow" :class="{ rotated: aiMenuOpen }"><ChevronDownOutline /></n-icon>
+                <n-icon
+                  size="12"
+                  class="nav-arrow"
+                  :class="{ rotated: aiMenuOpen }"
+                >
+                  <ChevronDownOutline />
+                </n-icon>
               </button>
               <transition name="submenu">
-                <div v-show="aiMenuOpen" class="nav-submenu">
-                  <router-link v-for="child in item.children" :key="child.path" :to="child.path" class="nav-item nav-sub-item" :class="{ active: route.path === child.path }" @click="aiMenuOpen = false">
+                <div
+                  v-show="aiMenuOpen"
+                  class="nav-submenu"
+                >
+                  <router-link
+                    v-for="child in item.children"
+                    :key="child.path"
+                    :to="child.path"
+                    class="nav-item nav-sub-item"
+                    :class="{ active: route.path === child.path }"
+                    @click="aiMenuOpen = false"
+                  >
                     <span class="nav-label">{{ child.title }}</span>
                   </router-link>
                 </div>
               </transition>
             </div>
-            <router-link v-else :to="item.path" class="nav-item" :class="{ active: route.path.startsWith(item.path) }">
-              <n-icon size="16"><component :is="item.icon" /></n-icon>
+            <router-link
+              v-else
+              :to="item.path"
+              class="nav-item"
+              :class="{ active: route.path.startsWith(item.path) }"
+            >
+              <n-icon size="16">
+                <component :is="item.icon" />
+              </n-icon>
               <span class="nav-label">{{ item.title }}</span>
             </router-link>
           </template>
@@ -51,53 +90,134 @@
 
         <!-- 右侧 操作按钮 -->
         <div class="header-actions">
-          <n-button quaternary circle title="GitHub" tag="a" href="https://github.com/TakoioJS/Takoio" target="_blank" rel="noopener">
-            <template #icon><n-icon size="18"><LogoGithub /></n-icon></template>
+          <n-button
+            quaternary
+            circle
+            title="GitHub"
+            tag="a"
+            href="https://github.com/TakoioJS/Takoio"
+            target="_blank"
+            rel="noopener"
+          >
+            <template #icon>
+              <n-icon size="18">
+                <LogoGithub />
+              </n-icon>
+            </template>
           </n-button>
-          <n-button quaternary circle :title="appStore.isDark ? '切换浅色' : '切换深色'" @click="appStore.toggleDark">
-            <template #icon><n-icon size="18"><SunnyOutline v-if="appStore.isDark" /><MoonOutline v-else /></n-icon></template>
+          <n-button
+            quaternary
+            circle
+            :title="appStore.isDark ? '切换浅色' : '切换深色'"
+            @click="appStore.toggleDark"
+          >
+            <template #icon>
+              <n-icon size="18">
+                <SunnyOutline v-if="appStore.isDark" /><MoonOutline v-else />
+              </n-icon>
+            </template>
           </n-button>
-          <n-button quaternary circle title="修改密码" @click="showPasswordDialog = true">
-            <template #icon><n-icon size="18"><KeyOutline /></n-icon></template>
+          <n-button
+            quaternary
+            circle
+            title="修改密码"
+            @click="showPasswordDialog = true"
+          >
+            <template #icon>
+              <n-icon size="18">
+                <KeyOutline />
+              </n-icon>
+            </template>
           </n-button>
-          <n-button quaternary circle title="退出登录" @click="onLogout">
-            <template #icon><n-icon size="18"><LogOutOutline /></n-icon></template>
+          <n-button
+            quaternary
+            circle
+            title="退出登录"
+            @click="onLogout"
+          >
+            <template #icon>
+              <n-icon size="18">
+                <LogOutOutline />
+              </n-icon>
+            </template>
           </n-button>
         </div>
       </div>
     </header>
 
     <!-- 移动端侧边导航抽屉 -->
-    <n-drawer v-model:show="drawerOpen" :width="280" placement="left">
+    <n-drawer
+      v-model:show="drawerOpen"
+      :width="280"
+      placement="left"
+    >
       <n-drawer-content closable>
         <template #header>
           <div class="brand-section">
             <div class="brand-logo">
-              <img :src="iconUrl" alt="Takoio" class="brand-img">
+              <img
+                :src="iconUrl"
+                alt="Takoio"
+                class="brand-img"
+              >
             </div>
             <span class="brand-text">Takoio</span>
           </div>
         </template>
         <nav class="drawer-nav">
-          <template v-for="item in menuItems" :key="item.path">
-            <div v-if="item.children" class="drawer-nav-group" :class="{ active: route.path.startsWith(item.path) }">
-              <button class="drawer-nav-item drawer-nav-item-main" @click="toggleAiMenu">
+          <template
+            v-for="item in menuItems"
+            :key="item.path"
+          >
+            <div
+              v-if="item.children"
+              class="drawer-nav-group"
+              :class="{ active: route.path.startsWith(item.path) }"
+            >
+              <button
+                class="drawer-nav-item drawer-nav-item-main"
+                @click="toggleAiMenu"
+              >
                 <span class="drawer-nav-item-left">
                   <n-icon size="18"><component :is="item.icon" /></n-icon>
                   <span class="nav-label">{{ item.title }}</span>
                 </span>
-                <n-icon size="12" class="nav-arrow" :class="{ rotated: aiMenuOpen }"><ChevronDownOutline /></n-icon>
+                <n-icon
+                  size="12"
+                  class="nav-arrow"
+                  :class="{ rotated: aiMenuOpen }"
+                >
+                  <ChevronDownOutline />
+                </n-icon>
               </button>
               <transition name="submenu-slide">
-                <div v-show="aiMenuOpen" class="drawer-nav-submenu">
-                  <router-link v-for="child in item.children" :key="child.path" :to="child.path" class="drawer-nav-item drawer-nav-sub-item" :class="{ active: route.path === child.path }" @click="drawerOpen = false">
+                <div
+                  v-show="aiMenuOpen"
+                  class="drawer-nav-submenu"
+                >
+                  <router-link
+                    v-for="child in item.children"
+                    :key="child.path"
+                    :to="child.path"
+                    class="drawer-nav-item drawer-nav-sub-item"
+                    :class="{ active: route.path === child.path }"
+                    @click="drawerOpen = false"
+                  >
                     <span class="nav-label">{{ child.title }}</span>
                   </router-link>
                 </div>
               </transition>
             </div>
-            <router-link v-else :to="item.path" class="drawer-nav-item" :class="{ active: route.path.startsWith(item.path) }" @click="drawerOpen = false">
-              <n-icon size="18"><component :is="item.icon" /></n-icon>
+            <router-link
+              v-else
+              :to="item.path"
+              class="drawer-nav-item"
+              :class="{ active: route.path.startsWith(item.path) }"
+              @click="drawerOpen = false"
+            >
+              <n-icon size="18">
+                <component :is="item.icon" />
+              </n-icon>
               <span class="nav-label">{{ item.title }}</span>
             </router-link>
           </template>
@@ -109,7 +229,10 @@
     <div class="admin-main">
       <main class="admin-content">
         <router-view v-slot="{ Component }">
-          <transition name="page-fade" mode="out-in">
+          <transition
+            name="page-fade"
+            mode="out-in"
+          >
             <component :is="Component" />
           </transition>
         </router-view>
@@ -117,22 +240,49 @@
     </div>
 
     <!-- 修改密码弹窗 -->
-    <n-modal v-model:show="showPasswordDialog" preset="card" title="修改密码" style="max-width: 420px;">
+    <n-modal
+      v-model:show="showPasswordDialog"
+      preset="card"
+      title="修改密码"
+      style="max-width: 420px;"
+    >
       <n-form>
         <n-form-item label="旧密码">
-          <n-input v-model:value="pwdOld" type="password" show-password-on="click" />
+          <n-input
+            v-model:value="pwdOld"
+            type="password"
+            show-password-on="click"
+          />
         </n-form-item>
         <n-form-item label="新密码">
-          <n-input v-model:value="pwdNew" type="password" show-password-on="click" placeholder="至少8位" />
+          <n-input
+            v-model:value="pwdNew"
+            type="password"
+            show-password-on="click"
+            placeholder="至少8位"
+          />
         </n-form-item>
         <n-form-item label="确认新密码">
-          <n-input v-model:value="pwdConfirm" type="password" show-password-on="click" @keydown.enter="onChangePassword" />
+          <n-input
+            v-model:value="pwdConfirm"
+            type="password"
+            show-password-on="click"
+            @keydown.enter="onChangePassword"
+          />
         </n-form-item>
       </n-form>
       <template #footer>
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <n-button @click="showPasswordDialog = false">取消</n-button>
-          <n-button type="primary" :loading="changingPassword" @click="onChangePassword">保存</n-button>
+          <n-button @click="showPasswordDialog = false">
+            取消
+          </n-button>
+          <n-button
+            type="primary"
+            :loading="changingPassword"
+            @click="onChangePassword"
+          >
+            保存
+          </n-button>
         </div>
       </template>
     </n-modal>
@@ -189,7 +339,9 @@ const menuItems = [
   { path: '/users', title: '用户', icon: PeopleOutline },
   { path: '/settings', title: '配置', icon: SettingsOutline },
   {
-    path: '/ai', title: 'AI 功能', icon: CubeOutline,
+    path: '/ai',
+    title: 'AI 功能',
+    icon: CubeOutline,
     children: [
       { path: '/ai', title: 'AI 配置' },
       { path: '/ai/summary', title: '文章摘要管理' },
@@ -206,7 +358,10 @@ const changingPassword = ref(false)
 
 const onLogout = () => {
   dialog.warning({
-    title: '确认退出', content: '确定要退出登录吗？', positiveText: '退出', negativeText: '取消',
+    title: '确认退出',
+    content: '确定要退出登录吗？',
+    positiveText: '退出',
+    negativeText: '取消',
     onPositiveClick: async () => { await auth.logout(); router.push('/login'); message.success(t('loggedOut')) },
   })
 }
@@ -218,8 +373,7 @@ const onChangePassword = async () => {
   changingPassword.value = true
   try {
     const result = await auth.changePassword(pwdOld.value, pwdNew.value)
-    if (result.success) { showPasswordDialog.value = false; message.success(t('changePasswordSuccess')) }
-    else { message.error(result.message || t('operationFailed')) }
+    if (result.success) { showPasswordDialog.value = false; message.success(t('changePasswordSuccess')) } else { message.error(result.message || t('operationFailed')) }
   } finally { changingPassword.value = false }
 }
 </script>

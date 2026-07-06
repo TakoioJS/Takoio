@@ -5,7 +5,10 @@
     title="编辑评论"
     style="max-width: 520px;"
   >
-    <n-form label-placement="left" label-width="60">
+    <n-form
+      label-placement="left"
+      label-width="60"
+    >
       <n-form-item label="昵称">
         <n-input v-model:value="form.nick" />
       </n-form-item>
@@ -16,13 +19,29 @@
         <n-input v-model:value="form.link" />
       </n-form-item>
       <n-form-item label="内容">
-        <n-input v-model:value="form.comment" type="textarea" :rows="6" />
+        <n-input
+          v-model:value="form.comment"
+          type="textarea"
+          :rows="6"
+        />
       </n-form-item>
     </n-form>
     <template #footer>
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
-        <n-button size="small" @click="localVisible = false">取消</n-button>
-        <n-button size="small" type="primary" :loading="saving" @click="$emit('save', { ...form })">保存</n-button>
+        <n-button
+          size="small"
+          @click="localVisible = false"
+        >
+          取消
+        </n-button>
+        <n-button
+          size="small"
+          type="primary"
+          :loading="saving"
+          @click="$emit('save', { ...form })"
+        >
+          保存
+        </n-button>
       </div>
     </template>
   </n-modal>

@@ -476,7 +476,7 @@ export const userStore: UserStore = {
       const kw = `%${search.toLowerCase()}%`
       conditions.push(or(
         like(sql`LOWER(${users.name})`, kw),
-        like(sql`LOWER(${users.email})`, kw),
+        like(sql`LOWER(${users.email})`, kw)
       ))
     }
     if (filter === 'banned') conditions.push(eq(users.role, 'banned'))

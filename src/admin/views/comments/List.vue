@@ -41,11 +41,38 @@
         class="batch-bar"
       >
         <span class="batch-count">已选 {{ selectedIds.length }} 条</span>
-        <n-button size="small" @click="batchApprove">通过</n-button>
-        <n-button size="small" @click="batchShow">显示</n-button>
-        <n-button size="small" @click="batchHide">隐藏</n-button>
-        <n-button size="small" type="warning" @click="batchSpam">垃圾</n-button>
-        <n-button size="small" type="error" @click="batchDelete">删除</n-button>
+        <n-button
+          size="small"
+          @click="batchApprove"
+        >
+          通过
+        </n-button>
+        <n-button
+          size="small"
+          @click="batchShow"
+        >
+          显示
+        </n-button>
+        <n-button
+          size="small"
+          @click="batchHide"
+        >
+          隐藏
+        </n-button>
+        <n-button
+          size="small"
+          type="warning"
+          @click="batchSpam"
+        >
+          垃圾
+        </n-button>
+        <n-button
+          size="small"
+          type="error"
+          @click="batchDelete"
+        >
+          删除
+        </n-button>
       </div>
     </div>
 
@@ -57,7 +84,12 @@
             v-if="comments.length === 0 && !loading"
             class="empty-state"
           >
-            <n-icon size="40" :depth="3"><ChatbubblesOutline /></n-icon>
+            <n-icon
+              size="40"
+              :depth="3"
+            >
+              <ChatbubblesOutline />
+            </n-icon>
             <p>暂无评论</p>
           </div>
 

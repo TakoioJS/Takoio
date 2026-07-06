@@ -1,18 +1,30 @@
 <template>
   <div class="system-status">
-    <n-tag size="small" :type="sysStatus.dev ? 'warning' : 'success'" round>
+    <n-tag
+      size="small"
+      :type="sysStatus.dev ? 'warning' : 'success'"
+      round
+    >
       <template #icon>
         <n-icon><component :is="sysStatus.dev ? FlameOutline : CheckmarkCircleOutline" /></n-icon>
       </template>
       {{ sysStatus.dev ? '热开发环境' : '生产环境' }}
     </n-tag>
-    <n-tag size="small" :type="redisTagType" round>
+    <n-tag
+      size="small"
+      :type="redisTagType"
+      round
+    >
       <template #icon>
         <n-icon><component :is="redisTagIcon" /></n-icon>
       </template>
       {{ redisTagLabel }}
     </n-tag>
-    <n-tag size="small" type="info" round>
+    <n-tag
+      size="small"
+      type="info"
+      round
+    >
       <template #icon>
         <n-icon><component :is="dbTagIcon" /></n-icon>
       </template>
@@ -54,8 +66,11 @@ const redisTagIcon = computed(() => {
 
 const dbTagLabel = computed(() => {
   const map: Record<string, string> = {
-    sqlite: 'SQLite', postgres: 'PostgreSQL', postgresql: 'PostgreSQL',
-    pg: 'PostgreSQL', mongodb: 'MongoDB',
+    sqlite: 'SQLite',
+    postgres: 'PostgreSQL',
+    postgresql: 'PostgreSQL',
+    pg: 'PostgreSQL',
+    mongodb: 'MongoDB',
   }
   return map[props.sysStatus.dbType.toLowerCase()] || props.sysStatus.dbType.toUpperCase()
 })

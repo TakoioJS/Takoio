@@ -3,12 +3,26 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <h1 class="page-title">欢迎回来</h1>
+        <h1 class="page-title">
+          欢迎回来
+        </h1>
       </div>
       <div class="header-right">
-        <span v-if="lastRefreshTs" class="refresh-time">{{ formatRefreshTime(lastRefreshTs) }}</span>
-        <n-button size="small" quaternary circle :title="`最后刷新：${lastRefreshTs ? formatRefreshTime(lastRefreshTs) : '未知'}`" :loading="refreshing" @click="onRefresh">
-          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+        <span
+          v-if="lastRefreshTs"
+          class="refresh-time"
+        >{{ formatRefreshTime(lastRefreshTs) }}</span>
+        <n-button
+          size="small"
+          quaternary
+          circle
+          :title="`最后刷新：${lastRefreshTs ? formatRefreshTime(lastRefreshTs) : '未知'}`"
+          :loading="refreshing"
+          @click="onRefresh"
+        >
+          <template #icon>
+            <n-icon><RefreshOutline /></n-icon>
+          </template>
         </n-button>
       </div>
     </div>
@@ -18,15 +32,43 @@
 
     <!-- 统计卡片 -->
     <div class="stats-grid">
-      <component :is="stat.clickable ? 'router-link' : 'div'" v-for="stat in stats" :key="stat.key" :to="stat.clickable ? stat.to : undefined" class="stat-card" :class="{ clickable: stat.clickable }" :tabindex="stat.clickable ? 0 : undefined" :role="stat.clickable ? 'button' : undefined" :aria-label="stat.clickable ? `${stat.label}：${stat.value}，点击查看详情` : `${stat.label}：${stat.value}`" @keydown.enter="stat.clickable && stat.to && goTo(stat.to)">
-        <div class="stat-icon" :style="{ background: stat.bgColor }">
-          <n-icon size="22" :color="stat.iconColor"><component :is="stat.icon" /></n-icon>
+      <component
+        :is="stat.clickable ? 'router-link' : 'div'"
+        v-for="stat in stats"
+        :key="stat.key"
+        :to="stat.clickable ? stat.to : undefined"
+        class="stat-card"
+        :class="{ clickable: stat.clickable }"
+        :tabindex="stat.clickable ? 0 : undefined"
+        :role="stat.clickable ? 'button' : undefined"
+        :aria-label="stat.clickable ? `${stat.label}：${stat.value}，点击查看详情` : `${stat.label}：${stat.value}`"
+        @keydown.enter="stat.clickable && stat.to && goTo(stat.to)"
+      >
+        <div
+          class="stat-icon"
+          :style="{ background: stat.bgColor }"
+        >
+          <n-icon
+            size="22"
+            :color="stat.iconColor"
+          >
+            <component :is="stat.icon" />
+          </n-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-label">{{ stat.label }}</div>
+          <div class="stat-label">
+            {{ stat.label }}
+          </div>
           <div class="stat-value">
-            <n-skeleton v-if="statsLoading" text :width="56" :repeat="1" />
-            <template v-else>{{ formatNumber(stat.value) }}</template>
+            <n-skeleton
+              v-if="statsLoading"
+              text
+              :width="56"
+              :repeat="1"
+            />
+            <template v-else>
+              {{ formatNumber(stat.value) }}
+            </template>
           </div>
         </div>
       </component>
@@ -105,9 +147,7 @@ const writeCache = (data: Omit<CachedData, 'ts'>) => {
 // 数据加载
 const loadStats = async () => {
   statsLoading.value = true
-  try { statsData.value = await commentsApi.getDashboard() }
-  catch (e: any) { message.error(t('statsLoadFailed') + '：' + (e.message || '')) }
-  finally { statsLoading.value = false }
+  try { statsData.value = await commentsApi.getDashboard() } catch (e: any) { message.error(t('statsLoadFailed') + '：' + (e.message || '')) } finally { statsLoading.value = false }
 }
 
 const loadComments = async () => {
@@ -119,8 +159,7 @@ const loadComments = async () => {
       item._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
     }))
     recentComments.value = data
-  } catch (e: any) { loadError.value = true; message.error(t('commentsLoadFailed') + '：' + (e.message || '')) }
-  finally { commentsLoading.value = false }
+  } catch (e: any) { loadError.value = true; message.error(t('commentsLoadFailed') + '：' + (e.message || '')) } finally { commentsLoading.value = false }
 }
 
 const loadAll = async (force = false) => {
@@ -141,8 +180,7 @@ const loadAll = async (force = false) => {
 }
 
 const loadSystemStatus = async () => {
-  try { sysStatus.value = await api.get<SystemStatusData>('/api/admin/system') }
-  catch { /* silent */ }
+  try { sysStatus.value = await api.get<SystemStatusData>('/api/admin/system') } catch { /* silent */ }
 }
 
 const onRefresh = () => loadAll(true)
