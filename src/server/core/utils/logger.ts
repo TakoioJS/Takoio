@@ -16,6 +16,7 @@
  */
 
 import { isDev, LOG_LEVEL } from '../env'
+import { SENSITIVE_CONFIG_KEYS } from '../config-mask'
 
 type Level = 'debug' | 'info' | 'warn' | 'error'
 
@@ -25,6 +26,29 @@ function resolveLevel (): Level {
   const env = LOG_LEVEL
   if (env && ORDER[env] !== undefined) return env
   return isDev() ? 'debug' : 'info'
+}
+
+function isPlainObject (value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Error)
+}
+
+/** 深度脱敏：命中 SENSITIVE_CONFIG_KEYS 的 key 统一替换为 [REDACTED] */
+function redactValue (value: unknown): unknown {
+  if (isPlainObject(value)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = SENSITIVE_CONFIG_KEYS.has(k) ? '[REDACTED]' : redactValue(v)
+    }
+    return out
+  }
+  if (Array.isArray(value)) {
+    return value.map(redactValue)
+  }
+  return value
+}
+
+function redactArgs (args: any[]): any[] {
+  return args.map(redactValue)
 }
 
 const _level = resolveLevel()
@@ -72,7 +96,7 @@ const format = _isDev ? formatDev : formatJson
 
 function log (level: Level, ...args: any[]): void {
   if (ORDER[_level] > ORDER[level]) return
-  const line = format(level, args)
+  const line = format(level, redactArgs(args))
   if (level === 'error') {
     process.stderr.write(line + '\n')
   } else {

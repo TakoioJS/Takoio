@@ -27,7 +27,6 @@ export default definePlugin((nitroApp) => {
     let code: string
     let message: string
     let statusCode: number
-    let details: any
 
     if (error instanceof AppError) {
       code = error.code
@@ -43,10 +42,8 @@ export default definePlugin((nitroApp) => {
       code = 'INTERNAL'
       message = '服务器内部错误'
       statusCode = 500
-      if (process.env.NODE_ENV !== 'production') {
-        details = { originalMessage: error.message, stack: error.stack?.split('\n').slice(0, 3) }
-      }
-      logger.error({ code, error: error.message }, 'Unhandled error')
+      // 内部异常详情仅记录服务端日志，绝不返回给客户端（包括开发环境）
+      logger.error({ code, error: error.message, stack: error.stack }, 'Unhandled error')
     } else {
       code = 'INTERNAL'
       message = '服务器内部错误'
@@ -54,7 +51,7 @@ export default definePlugin((nitroApp) => {
     }
 
     // Override the response
-    const body = { error: { code, message, ...(details ? { details } : {}) } }
+    const body = { error: { code, message } }
     setResponseStatus(event, statusCode)
     setResponseHeader(event, 'Content-Type', 'application/json')
     event.node.res.end(JSON.stringify(body))

@@ -29,3 +29,6 @@ overrides:
   # pushoo 上次发布于 2022 年疑似停维，强制升级 axios 到 1.x 最新稳定版
   # pushoo 仅用 axios 发 POST 请求，1.x 向后兼容基本 API
   axios: '1.18.1'
+  # 修复 GHSA-67mh-4wv8-2f99：esbuild <=0.24.2 开发服务器存在跨源请求泄露风险
+  # drizzle-kit / vite 等均依赖 esbuild，强制升级到已修复的最新稳定版
+  esbuild: '^0.28.1'
