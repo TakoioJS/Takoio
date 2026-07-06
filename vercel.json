@@ -1,6 +1,6 @@
 {
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm build:admin && pnpm --filter takoio-server build:vercel && rm -rf .vercel/output && cp -r src/server/.vercel/output .vercel/output",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter takoio-admin build && pnpm --filter takoio-server build:vercel && rm -rf .vercel/output && cp -r src/server/.vercel/output .vercel/output",
   "framework": null,
   "rewrites": [
     { "source": "/admin/:path*", "destination": "/admin/index.html" }
