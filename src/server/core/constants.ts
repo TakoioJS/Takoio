@@ -49,6 +49,22 @@ export const COMMENT_WINDOW_MS = 60_000 // 60 seconds
 /** cfg.COMMENT_RATE_LIMIT 缺省时的 fallback 默认值（单条评论最小间隔） */
 export const COMMENT_RATE_LIMIT_DEFAULT = 30_000 // 30 seconds
 
+// ========== Global Rate Limit Buckets (store/rate-limit.ts) ==========
+
+/** 限流 action 分桶标识 */
+export type RateLimitAction = 'default' | 'comment' | 'login' | 'admin' | 'upload' | 'reaction'
+
+/** 各 action 默认阈值（maxRequests / windowMs）
+ * 可通过环境变量覆盖，例如 TAKOIO_RATE_LIMIT_COMMENT=5:60000 */
+export const RATE_LIMIT_BUCKETS: Record<RateLimitAction, { maxRequests: number; windowMs: number }> = {
+  default: { maxRequests: 60, windowMs: 60_000 },
+  comment: { maxRequests: 3, windowMs: 60_000 },
+  login: { maxRequests: 5, windowMs: 15 * 60_000 },
+  admin: { maxRequests: 30, windowMs: 60_000 },
+  upload: { maxRequests: 10, windowMs: 60_000 },
+  reaction: { maxRequests: 20, windowMs: 60_000 },
+}
+
 // ========== Store Batch Insert (store/utils.ts) ==========
 
 /** SQLite 批量插入分批大小 */

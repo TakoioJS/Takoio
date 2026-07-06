@@ -12,11 +12,14 @@ import { AppError } from './errors'
 
 // ========== AI Provider Config (Structured) ==========
 
+/** AI 提供商接口格式，与 @ai-sdk/* 提供商标识保持一致 */
+export type AIProviderFormat = 'openai' | 'anthropic' | 'gemini'
+
 export interface AIProviderConfig {
   name: string
   endpoint: string
   key: string
-  format: 'openai' | 'anthropic' | 'google'
+  format: AIProviderFormat
   models: string[]
 }
 

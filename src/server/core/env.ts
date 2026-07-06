@@ -58,6 +58,9 @@ export const MONGODB_DB = process.env.MONGODB_DB
 /** Redis 连接 URL */
 export const REDIS_URL = process.env.REDIS_URL
 
+/** SSE 实时通知模式：'redis' 启用 Redis pub/sub（多实例一致），'memory' 为显式单机模式 */
+export const SSE_MODE = (process.env.SSE_MODE || 'memory') as 'redis' | 'memory'
+
 // ========== 社交登录 / JWT 配置 ==========
 // 以下配置在测试中会动态覆盖 process.env，因此使用 getter 函数而非模块级常量，
 // 既保证统一入口，又保留运行时可覆盖性。
@@ -91,6 +94,36 @@ export function getGoogleClientSecret (): string | undefined {
 
 /** 人工延迟（毫秒），默认 0 */
 export const TAKOIO_THROTTLE_MS = parseInt(process.env.TAKOIO_THROTTLE || '0', 10)
+
+import { RATE_LIMIT_BUCKETS, type RateLimitAction } from './constants'
+
+/**
+ * 解析限流桶环境变量覆盖。
+ * 格式：TAKOIO_RATE_LIMIT_<ACTION>=<maxRequests>:<windowMs>
+ * 例如 TAKOIO_RATE_LIMIT_COMMENT=5:60000
+ */
+function parseRateLimitOverride (action: RateLimitAction): { maxRequests: number; windowMs: number } {
+  const envKey = `TAKOIO_RATE_LIMIT_${action.toUpperCase()}`
+  const raw = process.env[envKey]
+  const base = RATE_LIMIT_BUCKETS[action]
+  if (!raw) return base
+  const [maxStr, windowStr] = raw.split(':')
+  const maxRequests = parseInt(maxStr, 10)
+  const windowMs = parseInt(windowStr, 10)
+  if (Number.isFinite(maxRequests) && maxRequests > 0 && Number.isFinite(windowMs) && windowMs > 0) {
+    return { maxRequests, windowMs }
+  }
+  return base
+}
+
+/** 获取合并环境变量覆盖后的限流桶配置 */
+export function getRateLimitConfig (): Record<RateLimitAction, { maxRequests: number; windowMs: number }> {
+  const result = { ...RATE_LIMIT_BUCKETS }
+  for (const action of Object.keys(RATE_LIMIT_BUCKETS) as RateLimitAction[]) {
+    result[action] = parseRateLimitOverride(action)
+  }
+  return result
+}
 
 // ========== 日志配置 ==========
 

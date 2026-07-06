@@ -114,5 +114,6 @@ export * from './schemas'
 export * from './utils/logger'
 export * from './utils/ip'
 
-// ========== 类型 re-export ==========
+// ========== 常量与类型 re-export ==========
+export * from './constants'
 export * from './ports'

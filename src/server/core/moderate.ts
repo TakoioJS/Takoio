@@ -17,6 +17,7 @@ import { generateObject } from 'ai'
 import { z } from 'zod/v3'
 import { logger } from './utils/logger'
 import { createModelInstance, type AiFormat } from './ai-model'
+import type { AIProviderFormat } from './config-schema'
 
 // ========== Schema ==========
 
@@ -35,6 +36,14 @@ export interface ModerationResult {
 }
 
 export type AuditMode = 'pass' | 'audit' | 'reject'
+
+const VALID_AI_FORMATS: AIProviderFormat[] = ['openai', 'anthropic', 'gemini']
+
+function normalizeAiFormat (format?: string): AiFormat {
+  if (format === 'google') return 'gemini'
+  if (format && VALID_AI_FORMATS.includes(format as AIProviderFormat)) return format as AiFormat
+  return 'openai'
+}
 
 // ========== 第一层：本地规则引擎 ==========
 
@@ -158,7 +167,7 @@ export async function moderateComment (
     try {
       return await llmCheck(
         text,
-        (config.format as AiFormat) || 'openai',
+        normalizeAiFormat(config.format),
         config.endpoint,
         config.key,
         config.model || 'gpt-4o-mini',

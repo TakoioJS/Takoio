@@ -88,7 +88,7 @@ export default defineHandler(async (event) => {
   // POST /api/comments — submit a new comment
   if (method === 'POST' && !slug) {
     const data = await validateBody(event, SubmitCommentSchema)
-    return handleCommentSubmit({ ...data, _ip: await getClientIp(buildRequestContext(event)), token: getToken(event), event })
+    return handleCommentSubmit({ ...data, _ip: await getClientIp(buildRequestContext(event)), token: getToken(event) })
   }
 
   throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })

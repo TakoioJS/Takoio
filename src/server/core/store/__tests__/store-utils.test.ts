@@ -24,10 +24,10 @@ import {
   commentToDoc,
   COMMENT_STATE,
 } from '../utils'
-import type { Comment } from '../types'
+import type { Comment, CommentInput } from '../types'
 
-/** 构造一个完整的 Comment 对象用于测试 */
-function makeComment (overrides: Partial<Comment> = {}): Comment {
+/** 构造一个完整的 CommentInput 对象用于测试 */
+function makeComment (overrides: Partial<CommentInput> = {}): CommentInput {
   return {
     id: 'test-id',
     url: '/test',

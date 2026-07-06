@@ -380,8 +380,26 @@ describe('03.rate-limit middleware', () => {
 
     // getClientIp 应该被调用一次（参数是 buildRequestContext 的结果）
     expect(coreMocks.getClientIp).toHaveBeenCalledTimes(1)
-    // checkRateLimit 应该用得到的 IP 调用
-    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('1.2.3.4')
+    // checkRateLimit 应该用得到的 IP 和默认 action 调用
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('1.2.3.4', 'default')
+  })
+
+  it('resolves comment action for POST /api/comments', async () => {
+    const event = makeEvent({ method: 'POST', path: '/api/comments' })
+    vi.mocked(coreMocks.rateLimitStore.checkRateLimit).mockResolvedValueOnce(true)
+
+    await rateLimit(event)
+
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'comment')
+  })
+
+  it('resolves login action for /api/auth/*', async () => {
+    const event = makeEvent({ path: '/api/auth/email/send' })
+    vi.mocked(coreMocks.rateLimitStore.checkRateLimit).mockResolvedValueOnce(true)
+
+    await rateLimit(event)
+
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'login')
   })
 })
 

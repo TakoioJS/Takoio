@@ -9,7 +9,8 @@ import { generateText } from 'ai'
 import { getConfig } from '../config'
 import { isRedisAvailable } from '../store/redis'
 import { isDev } from '../env'
-import { createModelInstance, type AiFormat } from '../ai-model'
+import { createModelInstance } from '../ai-model'
+import { deserializeAIProviders } from '../config-ai'
 
 const SUMMARY_SYSTEM_PROMPT = `你是一个文章摘要生成助手。请根据用户提供的文章内容，生成一段简洁的中文摘要（100-200字），并提取3-5个核心关键词。
 
@@ -51,15 +52,11 @@ export async function handleArticleSummary (data: {
   }
 
   // Resolve AI provider
-  let providers: any[] = []
-  try {
-    const raw = cfg.AI_PROVIDERS || '[]'
-    providers = typeof raw === 'string' ? JSON.parse(raw) : Array.isArray(raw) ? raw : []
-  } catch { providers = [] }
+  const providers = deserializeAIProviders(cfg.AI_PROVIDERS || '[]')
 
   // Try specified provider first, then config default, then first available
-  const providerName = data.provider || cfg.AI_SUMMARY_PROVIDER || (providers[0]?.name as string | undefined)
-  const provider = providers.find((p: any) => p.name === providerName)
+  const providerName = data.provider || cfg.AI_SUMMARY_PROVIDER || providers[0]?.name
+  const provider = providers.find(p => p.name === providerName)
 
   if (!provider || !provider.key || !provider.endpoint) {
     return { success: false, message: '未找到可用的 AI 提供商，请先在 AI 页面配置', summary: '', keywords: [] }
@@ -69,7 +66,7 @@ export async function handleArticleSummary (data: {
 
   try {
     const modelInstance = createModelInstance(
-      provider.format as AiFormat,
+      provider.format,
       provider.endpoint,
       provider.key,
       modelName

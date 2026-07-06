@@ -11,6 +11,7 @@
 import type { SSESink } from './ports'
 import { MAX_LISTENERS, LISTENER_TIMEOUT_MS } from './constants'
 import { logger } from './utils/logger'
+import { REDIS_URL, SSE_MODE } from './env'
 
 interface Listener {
   url: string
@@ -19,9 +20,10 @@ interface Listener {
 }
 
 const listeners = new Set<Listener>()
+const SSE_REDIS_CHANNEL = 'takoio:events'
 
-/** Broadcast a comment event to all connected clients watching the given URL */
-export function notifyComment (url: string, event: string, payload: any) {
+/** 内存模式：直接广播到本进程 listener */
+function broadcastLocally (url: string, event: string, payload: any) {
   const data = JSON.stringify({ event, url, ...payload })
   for (const listener of listeners) {
     if (listener.url === url || listener.url === '*') {
@@ -30,12 +32,67 @@ export function notifyComment (url: string, event: string, payload: any) {
   }
 }
 
+/** Broadcast a comment event to all connected clients watching the given URL.
+ *  Redis 模式下发布到频道，由订阅方本地转发；内存模式下直接进程内广播。 */
+export async function notifyComment (url: string, event: string, payload: any) {
+  if (SSE_MODE === 'redis' && REDIS_URL) {
+    try {
+      const { withRedis } = await import('./store/redis')
+      const message = JSON.stringify({ url, event, payload })
+      await withRedis(async (c) => { await c.publish(SSE_REDIS_CHANNEL, message); return true })
+      return
+    } catch (e: any) {
+      logger.warn({ error: e.message }, '[SSE] Redis publish failed, falling back to memory broadcast')
+    }
+  }
+  broadcastLocally(url, event, payload)
+}
+
+// ========== Redis pub/sub subscription for multi-instance SSE ==========
+
+let _redisSubscriber: any = null
+let _subscriberPromise: Promise<void> | null = null
+
+async function ensureRedisSubscriber (): Promise<void> {
+  if (_redisSubscriber || !REDIS_URL || SSE_MODE !== 'redis') return
+  if (_subscriberPromise) return _subscriberPromise
+
+  _subscriberPromise = (async () => {
+    try {
+      const Redis = (await import('ioredis')).default
+      const client = new Redis(REDIS_URL)
+      client.on('message', (_channel: string, message: string) => {
+        try {
+          const parsed = JSON.parse(message)
+          if (parsed.url && parsed.event) {
+            broadcastLocally(parsed.url, parsed.event, parsed.payload)
+          }
+        } catch (e: any) {
+          logger.warn({ error: e.message }, '[SSE] Invalid Redis message')
+        }
+      })
+      await client.subscribe(SSE_REDIS_CHANNEL)
+      _redisSubscriber = client
+      logger.info('[SSE] Redis pub/sub subscriber connected')
+    } catch (e: any) {
+      logger.warn({ error: e.message }, '[SSE] Redis subscriber failed, falling back to memory mode')
+    }
+  })()
+
+  return _subscriberPromise
+}
+
 /**
  * Pure SSE business logic — framework-agnostic.
  * The `sink` (built by nitro's buildSSESink) handles response headers,
  * the underlying ReadableStream, and disconnect detection mechanism.
  */
-export function runSSEStream (sink: SSESink, query: Record<string, string>) {
+export async function runSSEStream (sink: SSESink, query: Record<string, string>) {
+  // Redis 模式下提前启动订阅（失败已内部兜底）
+  if (SSE_MODE === 'redis' && REDIS_URL) {
+    await ensureRedisSubscriber().catch(() => {})
+  }
+
   const url = query.url || '*'
 
   // Send initial connection event
