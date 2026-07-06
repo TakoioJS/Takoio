@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hashPassword, verifyPassword } from '../utils/crypto'
+import { hashPassword, verifyPassword, generateSessionToken, hashSessionToken, verifySessionToken } from '../utils/crypto'
 
 describe('Password hashing (scrypt)', () => {
   it('hashes a password and returns an encoded string', async () => {
@@ -29,5 +29,36 @@ describe('Password hashing (scrypt)', () => {
   it('handles invalid hash gracefully', async () => {
     const valid = await verifyPassword('not-a-valid-hash', 'password')
     expect(valid).toBe(false)
+  })
+})
+
+describe('Admin session token helpers', () => {
+  it('generates a 64-character hex token', () => {
+    const token = generateSessionToken()
+    expect(token).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('produces different tokens on each call', () => {
+    const t1 = generateSessionToken()
+    const t2 = generateSessionToken()
+    expect(t1).not.toBe(t2)
+  })
+
+  it('hashes a token with scrypt', async () => {
+    const token = generateSessionToken()
+    const hash = await hashSessionToken(token)
+    expect(hash).toContain('$scrypt$')
+  })
+
+  it('verifies a token against its hash', async () => {
+    const token = generateSessionToken()
+    const hash = await hashSessionToken(token)
+    expect(await verifySessionToken(token, hash)).toBe(true)
+    expect(await verifySessionToken(generateSessionToken(), hash)).toBe(false)
+  })
+
+  it('rejects invalid hash format without throwing', async () => {
+    const token = generateSessionToken()
+    expect(await verifySessionToken(token, 'not-a-scrypt-hash')).toBe(false)
   })
 })

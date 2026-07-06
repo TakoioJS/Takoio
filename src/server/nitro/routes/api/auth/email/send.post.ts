@@ -13,6 +13,7 @@ import {
   getClientIp,
   safeValidate,
 } from '#core'
+import { buildRequestContext } from '../../../../utils/request-context'
 
 export default defineHandler(async (event) => {
   const cfg = await getConfig()
@@ -23,7 +24,8 @@ export default defineHandler(async (event) => {
   if (!v.success) throw createError({ statusCode: 400, statusMessage: v.error })
 
   // 频率限制：5 次/IP/小时
-  const ip = getClientIp(event)
+  // getClientIp 是异步函数，必须 await，否则限流 key 会是 Promise 对象而失效
+  const ip = await getClientIp(buildRequestContext(event))
   const allowed = await redisRateLimit(`oauth:email-send:${ip}`, 5, 60 * 60 * 1000)
   if (!allowed) throw createError({ statusCode: 429, statusMessage: '请求过于频繁，请稍后再试' })
 

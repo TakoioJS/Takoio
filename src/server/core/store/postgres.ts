@@ -31,6 +31,7 @@ import type {
 } from './index'
 import { COMMENT_STATE, relTime, stripPrivate, fromRowPg as fromRow } from './utils'
 import { buildGetCommentsQuery } from './query-helpers'
+import { generateSessionToken, hashSessionToken, verifySessionToken } from '../utils/crypto'
 
 const db = () => getDb()
 
@@ -337,48 +338,53 @@ export const visitorStore: VisitorStore = {
 
 export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
-    const { randomUUID, createHash } = await import('node:crypto')
-    const token = randomUUID()
-    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token
-    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const token = generateSessionToken()
+    const tokenHash = await hashSessionToken(token)
     await db().insert(sessions).values({ token: tokenHash, createdAt: Date.now() })
     return token
   },
 
   async validateToken (token: string): Promise<boolean> {
     if (!token) return false
-    const { createHash } = await import('node:crypto')
-    const tokenHash = createHash('sha256').update(token).digest('hex')
-    const rows = await db().select().from(sessions).where(eq(sessions.token, tokenHash)).limit(1)
-    if (!rows[0]) return false
-    // ponytail: 24h TTL, matches cleanupSessions window
-    return Date.now() - rows[0].createdAt < 24 * 60 * 60 * 1000
+    const rows = await db().select().from(sessions)
+    const now = Date.now()
+    const ttl = 24 * 60 * 60 * 1000
+    for (const row of rows) {
+      if (now - row.createdAt >= ttl) continue
+      if (await verifySessionToken(token, row.token)) return true
+    }
+    return false
   },
 
   async removeToken (token: string): Promise<void> {
     if (!token) return
-    const { createHash } = await import('node:crypto')
-    const tokenHash = createHash('sha256').update(token).digest('hex')
-    await db().delete(sessions).where(eq(sessions.token, tokenHash))
+    const rows = await db().select().from(sessions)
+    for (const row of rows) {
+      if (await verifySessionToken(token, row.token)) {
+        await db().delete(sessions).where(eq(sessions.token, row.token))
+        return
+      }
+    }
   },
 
   async rotateToken (oldToken: string): Promise<string | null> {
     if (!oldToken) return null
-    const { randomUUID, createHash } = await import('node:crypto')
-    const oldHash = createHash('sha256').update(oldToken).digest('hex')
-    const newToken = randomUUID()
-    const newHash = createHash('sha256').update(newToken).digest('hex')
+    const rows = await db().select().from(sessions)
     const now = Date.now()
     const ttl = 24 * 60 * 60 * 1000
-    // Atomic check-and-swap: delete old token only if it exists and is not expired.
-    // Using RETURNING to confirm the deletion happened atomically.
-    const deleted = await db().delete(sessions)
-      .where(and(eq(sessions.token, oldHash), sql`${sessions.createdAt} > ${now - ttl}`))
-      .returning({ token: sessions.token })
-    // If no row was deleted, the old token was invalid or expired.
-    if (deleted.length === 0) return null
-    await db().insert(sessions).values({ token: newHash, createdAt: now })
-    return newToken
+    for (const row of rows) {
+      if (now - row.createdAt >= ttl) continue
+      if (await verifySessionToken(oldToken, row.token)) {
+        const newToken = generateSessionToken()
+        const newHash = await hashSessionToken(newToken)
+        await db().transaction(async (tx) => {
+          await tx.delete(sessions).where(eq(sessions.token, row.token))
+          await tx.insert(sessions).values({ token: newHash, createdAt: now })
+        })
+        return newToken
+      }
+    }
+    return null
   },
 
   async removeAllTokens (): Promise<void> {
@@ -462,7 +468,7 @@ export const userStore: UserStore = {
       const kw = `%${search.toLowerCase()}%`
       conditions.push(or(
         like(sql`LOWER(${users.name})`, kw),
-        like(sql`LOWER(${users.email})`, kw),
+        like(sql`LOWER(${users.email})`, kw)
       ))
     }
     if (filter === 'banned') conditions.push(eq(users.role, 'banned'))

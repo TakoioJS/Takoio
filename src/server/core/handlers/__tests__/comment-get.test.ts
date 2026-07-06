@@ -8,9 +8,12 @@
  *   - URL 过滤
  *   - 空结果
  *   - 校验失败
+ *   - 私密评论可见性
+ *   - 被封禁用户 viewerToken 拒绝访问私密评论
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as crypto from 'node:crypto'
 
 // ========== Mocks ==========
 
@@ -32,6 +35,9 @@ vi.mock('../../store/index', () => ({
       page: _page,
       pageSize,
     })),
+  },
+  userStore: {
+    getUserByEmail: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -59,18 +65,31 @@ vi.mock('../../utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
+vi.mock('../../auth-social', () => ({
+  verifyToken: vi.fn(),
+}))
+
+vi.mock('../../auth', () => ({
+  isAdminAsync: vi.fn().mockResolvedValue(false),
+}))
+
 // ========== Imports ==========
 
 import { handleCommentGet } from '../comment-get'
-import { commentStore } from '../../store/index'
+import { commentStore, userStore } from '../../store/index'
 import { getOrSetCommentListCache } from '../../store/redis'
 import { AppError } from '../../errors'
+import { verifyToken } from '../../auth-social'
+import { isAdminAsync } from '../../auth'
 
 // ========== Tests ==========
 
 describe('handleCommentGet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(isAdminAsync).mockResolvedValue(false)
+    vi.mocked(verifyToken).mockResolvedValue(null)
+    vi.mocked(userStore.getUserByEmail).mockResolvedValue(undefined)
   })
 
   it('uses default pagination (page=1, pageSize=10)', async () => {
@@ -155,5 +174,48 @@ describe('handleCommentGet', () => {
     // data should be returned as-is from store (mock doesn't match MASTER)
     expect(result.data.length).toBeGreaterThan(0)
     expect(result.data[0]).toHaveProperty('id')
+  })
+
+  it('hides private comments from anonymous viewers', async () => {
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [{ id: 'p1', url: '/test', nick: 'Author', mailMd5: 'md5', comment: 'secret', isPrivate: true, created: 1 }],
+      total: 1,
+    } as any)
+    const result = await handleCommentGet({ url: '/test' } as any)
+    expect(result.data[0].comment).toBe('🔒 私密评论')
+    expect(result.data[0].renderedComment).toContain('🔒 私密评论')
+  })
+
+  it('shows private comments to the author via viewerToken', async () => {
+    const email = 'author@example.com'
+    const mailMd5 = crypto.createHash('sha256').update(email).digest('hex')
+    vi.mocked(verifyToken).mockResolvedValue({ provider: 'email', id: email, name: 'Author', email })
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [{ id: 'p1', url: '/test', nick: 'Author', mailMd5, comment: 'secret', isPrivate: true, created: 1 }],
+      total: 1,
+    } as any)
+    const result = await handleCommentGet({ url: '/test', viewerToken: 'valid-token' } as any)
+    expect(result.data[0].comment).toBe('secret')
+  })
+
+  it('shows private comments to admin via adminToken', async () => {
+    vi.mocked(isAdminAsync).mockResolvedValue(true)
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [{ id: 'p1', url: '/test', nick: 'Author', mailMd5: 'md5', comment: 'secret', isPrivate: true, created: 1 }],
+      total: 1,
+    } as any)
+    const result = await handleCommentGet({ url: '/test', adminToken: 'admin-token' } as any)
+    expect(result.data[0].comment).toBe('secret')
+  })
+
+  it('rejects banned viewer from accessing private comments', async () => {
+    const email = 'banned@example.com'
+    vi.mocked(verifyToken).mockResolvedValue({ provider: 'email', id: email, name: 'Banned', email })
+    vi.mocked(userStore.getUserByEmail).mockResolvedValue({ id: 'u1', email, role: 'banned' } as any)
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [{ id: 'p1', url: '/test', nick: 'Author', mailMd5: crypto.createHash('sha256').update(email).digest('hex'), comment: 'secret', isPrivate: true, created: 1 }],
+      total: 1,
+    } as any)
+    await expect(handleCommentGet({ url: '/test', viewerToken: 'banned-token' } as any)).rejects.toMatchObject({ code: 'USER_BANNED' })
   })
 })

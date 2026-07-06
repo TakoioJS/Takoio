@@ -1,5 +1,5 @@
 import { MongoClient, type Db, type Collection } from 'mongodb'
-import { randomUUID, createHash } from 'node:crypto'
+import { generateSessionToken, hashSessionToken, verifySessionToken } from '../utils/crypto'
 import type {
   Comment,
   CommentInput,
@@ -457,9 +457,8 @@ const toMs = (v: Date | number): number =>
 export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
     const db = await getDb()
-    const token = randomUUID()
-    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token
-    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const token = generateSessionToken()
+    const tokenHash = await hashSessionToken(token)
     await col(db, 'sessions').insertOne({ _id: tokenHash, createdAt: new Date() })
     return token
   },
@@ -467,17 +466,25 @@ export const sessionStore: SessionStore = {
   async validateToken (token: string): Promise<boolean> {
     if (!token) return false
     const db = await getDb()
-    const tokenHash = createHash('sha256').update(token).digest('hex')
-    const row = await col(db, 'sessions').findOne({ _id: tokenHash })
-    if (!row) return false
-    return Date.now() - toMs(row.createdAt) < SESSION_TTL_MS
+    const rows = await col(db, 'sessions').find({}).toArray()
+    const now = Date.now()
+    for (const row of rows) {
+      if (now - toMs(row.createdAt) >= SESSION_TTL_MS) continue
+      if (await verifySessionToken(token, row._id)) return true
+    }
+    return false
   },
 
   async removeToken (token: string): Promise<void> {
     if (!token) return
     const db = await getDb()
-    const tokenHash = createHash('sha256').update(token).digest('hex')
-    await col(db, 'sessions').deleteOne({ _id: tokenHash })
+    const rows = await col(db, 'sessions').find({}).toArray()
+    for (const row of rows) {
+      if (await verifySessionToken(token, row._id)) {
+        await col(db, 'sessions').deleteOne({ _id: row._id })
+        return
+      }
+    }
   },
 
   async cleanupSessions (): Promise<void> {
@@ -500,18 +507,19 @@ export const sessionStore: SessionStore = {
   async rotateToken (oldToken: string): Promise<string | null> {
     if (!oldToken) return null
     const db = await getDb()
-    const oldHash = createHash('sha256').update(oldToken).digest('hex')
-    const newToken = randomUUID()
-    const newHash = createHash('sha256').update(newToken).digest('hex')
+    const rows = await col(db, 'sessions').find({}).toArray()
     const cutoff = Date.now() - SESSION_TTL_MS
-    // Atomic check-and-swap: findAndModify deletes the old token only if it exists and is not expired.
-    const result = await col(db, 'sessions').findOneAndDelete(
-      { _id: oldHash, createdAt: { $gte: new Date(cutoff) } }
-    )
-    // If no matching document was found and deleted, the old token was invalid or expired.
-    if (!result) return null
-    await col(db, 'sessions').insertOne({ _id: newHash, createdAt: new Date() })
-    return newToken
+    for (const row of rows) {
+      if (toMs(row.createdAt) < cutoff) continue
+      if (await verifySessionToken(oldToken, row._id)) {
+        const newToken = generateSessionToken()
+        const newHash = await hashSessionToken(newToken)
+        await col(db, 'sessions').deleteOne({ _id: row._id })
+        await col(db, 'sessions').insertOne({ _id: newHash, createdAt: new Date() })
+        return newToken
+      }
+    }
+    return null
   },
 }
 
@@ -588,9 +596,16 @@ export const userStore: UserStore = {
       loginCount: 1,
     })
     return {
-      id, provider: data.provider, providerId: data.providerId,
-      email: data.email, name: data.name, avatar: data.avatar || null,
-      role: 'user', createdAt: now, lastLoginAt: now, loginCount: 1,
+      id,
+      provider: data.provider,
+      providerId: data.providerId,
+      email: data.email,
+      name: data.name,
+      avatar: data.avatar || null,
+      role: 'user',
+      createdAt: now,
+      lastLoginAt: now,
+      loginCount: 1,
     } as User
   },
 
@@ -611,10 +626,16 @@ export const userStore: UserStore = {
     const rows = await coll.find(filterDoc)
       .sort({ lastLoginAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray()
     const data: User[] = rows.map(r => ({
-      id: r._id, provider: r.provider, providerId: r.providerId,
-      email: r.email, name: r.name, avatar: r.avatar || null,
-      role: r.role || 'user', createdAt: r.createdAt,
-      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+      id: r._id,
+      provider: r.provider,
+      providerId: r.providerId,
+      email: r.email,
+      name: r.name,
+      avatar: r.avatar || null,
+      role: r.role || 'user',
+      createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt,
+      loginCount: r.loginCount ?? 1,
     }))
     return { data, total }
   },
@@ -624,10 +645,16 @@ export const userStore: UserStore = {
     const r = await col(db, 'users').findOne({ _id: id })
     if (!r) return undefined
     return {
-      id: r._id, provider: r.provider, providerId: r.providerId,
-      email: r.email, name: r.name, avatar: r.avatar || null,
-      role: r.role || 'user', createdAt: r.createdAt,
-      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+      id: r._id,
+      provider: r.provider,
+      providerId: r.providerId,
+      email: r.email,
+      name: r.name,
+      avatar: r.avatar || null,
+      role: r.role || 'user',
+      createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt,
+      loginCount: r.loginCount ?? 1,
     } as User
   },
 
@@ -636,10 +663,16 @@ export const userStore: UserStore = {
     const r = await col(db, 'users').findOne({ email: email.toLowerCase() })
     if (!r) return undefined
     return {
-      id: r._id, provider: r.provider, providerId: r.providerId,
-      email: r.email, name: r.name, avatar: r.avatar || null,
-      role: r.role || 'user', createdAt: r.createdAt,
-      lastLoginAt: r.lastLoginAt, loginCount: r.loginCount ?? 1,
+      id: r._id,
+      provider: r.provider,
+      providerId: r.providerId,
+      email: r.email,
+      name: r.name,
+      avatar: r.avatar || null,
+      role: r.role || 'user',
+      createdAt: r.createdAt,
+      lastLoginAt: r.lastLoginAt,
+      loginCount: r.loginCount ?? 1,
     } as User
   },
 

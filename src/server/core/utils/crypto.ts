@@ -50,3 +50,42 @@ export const needsRehash = (hash: string): boolean => {
   if (!parts) return false
   return parts.N < SCRYPT_N
 }
+
+// ========== Admin session token helpers ==========
+
+/** Session token entropy: 32 random bytes = 256 bits. */
+const SESSION_TOKEN_BYTES = 32
+
+/**
+ * Generate a high-entropy admin session token using a CSPRNG.
+ * The token is a 64-character hex string; the caller is responsible
+ * for returning it to the client exactly once.
+ */
+export const generateSessionToken = (): string => {
+  return randomBytes(SESSION_TOKEN_BYTES).toString('hex')
+}
+
+/**
+ * Hash a session token with scrypt for database storage.
+ * Uses the same OWASP-recommended parameters as password hashing.
+ */
+export const hashSessionToken = async (token: string): Promise<string> => {
+  const salt = randomBytes(16)
+  const key = scryptSync(Buffer.from(token), salt, SCRYPT_KEYLEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: SCRYPT_MAXMEM })
+  return encodeScrypt(SCRYPT_N, SCRYPT_R, SCRYPT_P, salt, key)
+}
+
+/**
+ * Verify a session token against a scrypt hash using constant-time comparison.
+ * Returns false for malformed hashes to avoid leaking storage format.
+ */
+export const verifySessionToken = async (token: string, hash: string): Promise<boolean> => {
+  const parts = parseScrypt(hash)
+  if (!parts) return false
+  try {
+    const derived = scryptSync(Buffer.from(token), parts.salt, parts.key.length, { N: parts.N, r: parts.r, p: parts.p, maxmem: SCRYPT_MAXMEM })
+    return timingSafeEqual(derived, parts.key)
+  } catch {
+    return false
+  }
+}

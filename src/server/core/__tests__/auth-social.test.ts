@@ -6,6 +6,7 @@ import {
   getAuthUserFromRequest,
   createOAuthProviders,
 } from '../auth-social'
+import { validateAuthJwtSecret, AUTH_JWT_SECRET_MIN_LEN } from '../env'
 import type { TakoioConfig } from '../config'
 
 // Mock Redis to return null (no Redis available in tests)
@@ -13,8 +14,9 @@ vi.mock('../store/redis', () => ({
   withRedis: vi.fn().mockResolvedValue(null),
 }))
 
-// AUTH_JWT_SECRET is required by signToken/verifyToken
-process.env.AUTH_JWT_SECRET = 'test-secret-for-vitest'
+// AUTH_JWT_SECRET is required by signToken/verifyToken — must be >= 32 bytes
+const TEST_SECRET = 'test-secret-for-vitest-must-be-at-least-32-bytes-long'
+process.env.AUTH_JWT_SECRET = TEST_SECRET
 
 const baseUser = {
   provider: 'github' as const,
@@ -23,6 +25,26 @@ const baseUser = {
   email: 'test@example.com',
   avatar: 'https://example.com/a.png',
 }
+
+describe('validateAuthJwtSecret', () => {
+  it('accepts a secret with at least 32 bytes', () => {
+    expect(() => validateAuthJwtSecret()).not.toThrow()
+  })
+
+  it('rejects a missing secret', () => {
+    const old = process.env.AUTH_JWT_SECRET
+    delete process.env.AUTH_JWT_SECRET
+    expect(() => validateAuthJwtSecret()).toThrow('AUTH_JWT_SECRET environment variable is required')
+    process.env.AUTH_JWT_SECRET = old
+  })
+
+  it('rejects a secret shorter than 32 bytes', () => {
+    const old = process.env.AUTH_JWT_SECRET
+    process.env.AUTH_JWT_SECRET = 'too-short'
+    expect(() => validateAuthJwtSecret()).toThrow(`minimum required is ${AUTH_JWT_SECRET_MIN_LEN} bytes`)
+    process.env.AUTH_JWT_SECRET = old
+  })
+})
 
 describe('generateVerifyCode', () => {
   it('returns a 6-digit numeric string', () => {
@@ -57,20 +79,20 @@ describe('generateVerifyCode', () => {
 })
 
 describe('signToken / verifyToken round-trip', () => {
-  it('round-trips a basic user', () => {
-    const token = signToken(baseUser)
-    const decoded = verifyToken(token)
+  it('round-trips a basic user', async () => {
+    const token = await signToken(baseUser)
+    const decoded = await verifyToken(token)
     expect(decoded).not.toBeNull()
     expect(decoded).toEqual(baseUser)
   })
 
-  it('produces a 3-part JWT', () => {
-    const token = signToken(baseUser)
+  it('produces a 3-part JWT', async () => {
+    const token = await signToken(baseUser)
     expect(token.split('.')).toHaveLength(3)
   })
 
-  it('embeds the user payload (provider, id, name, email, avatar)', () => {
-    const token = signToken(baseUser)
+  it('embeds the user payload (provider, id, name, email, avatar)', async () => {
+    const token = await signToken(baseUser)
     const [, payloadB64] = token.split('.')
     const payload = JSON.parse(
       Buffer.from(payloadB64, 'base64url').toString()
@@ -82,127 +104,121 @@ describe('signToken / verifyToken round-trip', () => {
     expect(payload.avatar).toBe(baseUser.avatar)
   })
 
-  it('embeds iat and exp timestamps', () => {
-    const before = Date.now()
-    const token = signToken(baseUser)
-    const after = Date.now()
+  it('embeds iat and exp timestamps', async () => {
+    const beforeSec = Math.floor(Date.now() / 1000)
+    const token = await signToken(baseUser)
+    const afterSec = Math.floor(Date.now() / 1000)
     const [, payloadB64] = token.split('.')
     const payload = JSON.parse(
       Buffer.from(payloadB64, 'base64url').toString()
     )
     expect(typeof payload.iat).toBe('number')
     expect(typeof payload.exp).toBe('number')
-    expect(payload.iat).toBeGreaterThanOrEqual(before)
-    expect(payload.iat).toBeLessThanOrEqual(after)
-    // 30-day expiry
-    expect(payload.exp - payload.iat).toBe(30 * 24 * 3600 * 1000)
+    expect(payload.iat).toBeGreaterThanOrEqual(beforeSec)
+    expect(payload.iat).toBeLessThanOrEqual(afterSec)
+    // 30-day expiry (in seconds)
+    expect(payload.exp - payload.iat).toBe(30 * 24 * 3600)
   })
 
-  it('returns null for a tampered token', () => {
-    const token = signToken(baseUser)
+  it('returns null for a tampered token', async () => {
+    const token = await signToken(baseUser)
     const tampered = token.slice(0, -2) + (token.endsWith('A') ? 'BB' : 'AA')
-    expect(verifyToken(tampered)).toBeNull()
+    expect(await verifyToken(tampered)).toBeNull()
   })
 
-  it('returns null for a token signed with a different secret', () => {
-    const token = signToken(baseUser)
+  it('returns null for a token signed with a different secret', async () => {
+    const token = await signToken(baseUser)
     const oldSecret = process.env.AUTH_JWT_SECRET
     try {
-      process.env.AUTH_JWT_SECRET = 'another-secret'
-      expect(verifyToken(token)).toBeNull()
+      process.env.AUTH_JWT_SECRET = 'another-secret-must-be-at-least-32-bytes'
+      expect(await verifyToken(token)).toBeNull()
     } finally {
       process.env.AUTH_JWT_SECRET = oldSecret
     }
   })
 
-  it('returns null for an expired token', () => {
-    const token = signToken(baseUser)
-    const [headerB64, , sigB64] = token.split('.')
-    // Build an expired payload (exp in the past)
-    const expiredPayload = {
-      ...baseUser,
-      iat: Date.now() - 10_000,
-      exp: Date.now() - 1_000,
-    }
-    const expiredB64 = Buffer
-      .from(JSON.stringify(expiredPayload))
-      .toString('base64url')
-    // Re-sign with the current secret so only the expiry changes
-    // (verifyToken checks signature first, then exp)
-    const crypto = require('node:crypto') as typeof import('node:crypto')
-    const newSig = crypto
-      .createHmac('sha256', process.env.AUTH_JWT_SECRET!)
-      .update(`${headerB64}.${expiredB64}`)
-      .digest()
-      .toString('base64url')
-    const expiredToken = `${headerB64}.${expiredB64}.${newSig}`
-    expect(verifyToken(expiredToken)).toBeNull()
-    // sanity: the original is still valid (sigB64 仅用于占位说明三部分结构)
-    expect(verifyToken(token)).not.toBeNull()
-    expect(sigB64).toBeDefined()
+  it('returns null for an expired token', async () => {
+    const token = await signToken(baseUser)
+    // Build an expired token (exp in the past)
+    const expiredToken = await signJWTForTest(baseUser, Date.now() - 1000)
+    expect(await verifyToken(expiredToken)).toBeNull()
+    // sanity: the original is still valid
+    expect(await verifyToken(token)).not.toBeNull()
   })
 
-  it('returns null for a malformed token (not 3 parts)', () => {
-    expect(verifyToken('not.a.real.jwt.token')).toBeNull()
-    expect(verifyToken('onepart')).toBeNull()
-    expect(verifyToken('two.parts')).toBeNull()
-    expect(verifyToken('')).toBeNull()
+  it('returns null for a malformed token (not 3 parts)', async () => {
+    expect(await verifyToken('not.a.real.jwt.token')).toBeNull()
+    expect(await verifyToken('onepart')).toBeNull()
+    expect(await verifyToken('two.parts')).toBeNull()
+    expect(await verifyToken('')).toBeNull()
   })
 })
 
+// Helper: sign a test payload directly with jose using the current secret
+async function signJWTForTest (payload: any, expMs?: number): Promise<string> {
+  const { SignJWT } = await import('jose')
+  const secret = new TextEncoder().encode(process.env.AUTH_JWT_SECRET!)
+  const jwt = new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+  if (expMs !== undefined) {
+    jwt.setExpirationTime(Math.floor(expMs / 1000))
+  }
+  return jwt.sign(secret)
+}
+
 describe('getAuthUserFromRequest', () => {
-  it('extracts user from Authorization: Bearer <token>', () => {
-    const token = signToken(baseUser)
+  it('extracts user from Authorization: Bearer <token>', async () => {
+    const token = await signToken(baseUser)
     const event = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? `Bearer ${token}` : null },
       node: { req: { url: '/' } },
     }
-    expect(getAuthUserFromRequest(event)).toEqual(baseUser)
+    expect(await getAuthUserFromRequest(event)).toEqual(baseUser)
   })
 
-  it('extracts user from ?token=<token> query', () => {
-    const token = signToken(baseUser)
+  it('extracts user from ?token=<token> query', async () => {
+    const token = await signToken(baseUser)
     const event = {
       headers: { get: () => null },
       node: { req: { url: `/api/auth/github/callback?token=${token}` } },
     }
-    expect(getAuthUserFromRequest(event)).toEqual(baseUser)
+    expect(await getAuthUserFromRequest(event)).toEqual(baseUser)
   })
 
-  it('prefers Authorization header over ?token= query', () => {
-    const headerToken = signToken({ ...baseUser, id: 'header' })
-    const queryToken = signToken({ ...baseUser, id: 'query' })
+  it('prefers Authorization header over ?token= query', async () => {
+    const headerToken = await signToken({ ...baseUser, id: 'header' })
+    const queryToken = await signToken({ ...baseUser, id: 'query' })
     const event = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? `Bearer ${headerToken}` : null },
       node: { req: { url: `/?token=${queryToken}` } },
     }
-    expect(getAuthUserFromRequest(event)?.id).toBe('header')
+    expect((await getAuthUserFromRequest(event))?.id).toBe('header')
   })
 
-  it('returns null when no token is present', () => {
+  it('returns null when no token is present', async () => {
     const event = {
       headers: { get: () => null },
       node: { req: { url: '/' } },
     }
-    expect(getAuthUserFromRequest(event)).toBeNull()
+    expect(await getAuthUserFromRequest(event)).toBeNull()
   })
 
-  it('returns null when token is invalid', () => {
+  it('returns null when token is invalid', async () => {
     const event = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? 'Bearer not.a.valid.jwt' : null },
       node: { req: { url: '/' } },
     }
-    expect(getAuthUserFromRequest(event)).toBeNull()
+    expect(await getAuthUserFromRequest(event)).toBeNull()
   })
 
-  it('resolves via header even when node.req.url is absent (no query fallback)', () => {
-    const token = signToken(baseUser)
+  it('resolves via header even when node.req.url is absent (no query fallback)', async () => {
+    const token = await signToken(baseUser)
     const event = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? `Bearer ${token}` : null },
       node: undefined,
     }
     // Header is present → should still resolve
-    expect(getAuthUserFromRequest(event)).toEqual(baseUser)
+    expect(await getAuthUserFromRequest(event)).toEqual(baseUser)
   })
 })
 
