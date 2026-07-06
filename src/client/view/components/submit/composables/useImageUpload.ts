@@ -49,7 +49,7 @@ export const useImageUpload = (opts: UseImageUploadOptions) => {
     const url = uploadedImages.value[idx]
     uploadedImages.value.splice(idx, 1)
     const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    opts.form.comment = opts.form.comment.replace(new RegExp(`\n!\\[image\\]\\(${escaped}\\)\n`, 'g'), '')
+    opts.form.comment = opts.form.comment.replace(new RegExp(`\r?\n?!\\[image\\]\\(${escaped}\\)\r?\n?`, 'g'), '')
   }
 
   const triggerUpload = (): void => { uploadRef.value?.click() }

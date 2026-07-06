@@ -148,22 +148,45 @@ const notifyHost = () => {
   })
 }
 
+let lastFetchedContent = ''
+let lastFetchedUrl = ''
+let lastFetchedTitle = ''
+let lastFetchedEnabled = false
+
 const generateSummary = async () => {
-  // 双控：宿主 enableSummary 与后台 ENABLE_SUMMARY 任一为 false 则不生成
-  if (!props.options.articleContent || !props.options.enableSummary || !serverEnabled()) {
+  const enabled = !!props.options.articleContent && !!props.options.enableSummary && serverEnabled()
+  if (!enabled) {
     state.value = 'hidden'
     notifyHost()
     return
   }
 
+  const url = getUrl(props.options.path, { pathNormalize: props.options.pathNormalize, pathTransform: props.options.pathTransform })
+  const content = props.options.articleContent || ''
+  const title = props.options.title || ''
+
+  if (
+    (state.value === 'success' || state.value === 'loading') &&
+    lastFetchedContent === content &&
+    lastFetchedUrl === url &&
+    lastFetchedTitle === title &&
+    lastFetchedEnabled === enabled
+  ) {
+    return
+  }
+
+  lastFetchedContent = content
+  lastFetchedUrl = url
+  lastFetchedTitle = title
+  lastFetchedEnabled = enabled
+
   state.value = 'loading'
   notifyHost()
   try {
-    const url = getUrl(props.options.path, { pathNormalize: props.options.pathNormalize, pathTransform: props.options.pathTransform })
     const result = await getArticleSummary(props.options.envId, {
-      content: props.options.articleContent,
+      content,
       url,
-      title: props.options.title,
+      title,
     })
 
     if (result.success && result.summary) {

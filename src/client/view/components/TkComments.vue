@@ -38,7 +38,8 @@
           :key="opt.value"
           :class="['tk-sort-btn', { active: sort === opt.value }]"
           role="tab"
-          :aria-pressed="sort === opt.value"
+          :aria-selected="sort === opt.value"
+          :aria-label="`按${opt.label}排序`"
           @click="sort = opt.value"
         >
           {{ opt.label }}

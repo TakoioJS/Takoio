@@ -2,10 +2,13 @@
   <div
     v-if="total > pageSize"
     class="tk-pagination"
+    role="navigation"
+    aria-label="分页导航"
   >
     <button
       class="tk-page-btn"
       :disabled="current === 1"
+      aria-label="上一页"
       @click="go(current - 1)"
     >
       ‹
@@ -14,6 +17,8 @@
       v-for="p in pages"
       :key="p"
       :class="['tk-page-btn', { active: p === current }]"
+      :aria-label="`第 ${p} 页`"
+      :aria-current="p === current ? 'page' : undefined"
       @click="go(p)"
     >
       {{ p }}
@@ -21,6 +26,7 @@
     <button
       class="tk-page-btn"
       :disabled="current === last"
+      aria-label="下一页"
       @click="go(current + 1)"
     >
       ›
@@ -32,6 +38,7 @@
         :min="1"
         :max="last"
         :value="current"
+        aria-label="跳转到指定页码"
         @change="onJump"
       >
     </span>

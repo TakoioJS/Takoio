@@ -191,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { timeago, t, sanitizeUrl } from '../../utils'
 import { renderMarkdown } from '../../utils/marked'
 import { renderLinks, renderTex } from '../../utils'
@@ -241,6 +241,8 @@ const displayIpRegion = computed(() => {
   return parts.join(' ')
 })
 
+const observer = ref<IntersectionObserver | null>(null)
+
 const renderContent = async (): Promise<void> => {
   // 服务端已预渲染（Shiki + DOMPurify），直接使用，跳过客户端 renderMarkdown
   // 这样首屏评论列表不会触发 highlight.js 加载，只有 TkSubmit 实时预览才需要
@@ -250,10 +252,33 @@ const renderContent = async (): Promise<void> => {
     renderedContent.value = await renderMarkdown(props.comment.comment || '')
   }
   await nextTick()
-  if (contentRef.value) {
+  if (!contentRef.value) return
+
+  if (typeof IntersectionObserver === 'undefined') {
     renderLinks(contentRef.value)
     await renderTex(contentRef.value, props.options.texRenderer)
+    return
   }
+
+  if (observer.value) {
+    observer.value.disconnect()
+  }
+
+  observer.value = new IntersectionObserver(async (entries) => {
+    const entry = entries[0]
+    if (entry && entry.isIntersecting) {
+      if (contentRef.value) {
+        renderLinks(contentRef.value)
+        await renderTex(contentRef.value, props.options.texRenderer)
+      }
+      if (observer.value) {
+        observer.value.disconnect()
+        observer.value = null
+      }
+    }
+  }, { rootMargin: '100px' })
+
+  observer.value.observe(contentRef.value)
 }
 const formatDate = (ts: number): string => {
   if (!ts) return ''
@@ -268,6 +293,12 @@ const formatDate = (ts: number): string => {
 }
 
 watch(() => [props.comment.renderedComment, props.comment.comment], () => { renderContent() }, { immediate: true })
+
+onUnmounted(() => {
+  if (observer.value) {
+    observer.value.disconnect()
+  }
+})
 </script>
 
 <style scoped>

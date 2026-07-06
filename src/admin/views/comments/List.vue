@@ -170,7 +170,7 @@ const loadComments = async () => {
     const r = await commentsApi.list(params)
     const data = r.data || []
     await Promise.all(data.map(async (item: Comment) => {
-      item._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
+      item._safeContent = item.renderedComment || await renderMarkdown(item.comment || '')
     }))
     comments.value = data
     total.value = r.total || 0

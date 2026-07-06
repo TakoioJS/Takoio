@@ -78,14 +78,29 @@ export default defineConfig(({ mode }) => {
         formats
       },
       rollupOptions: {
-        external: ['vue'],
+        external: (id) => {
+          if (id === 'vue') return true
+          if (mode === 'umd') {
+            return [
+              'marked',
+              'dompurify',
+              'highlight.js',
+              'highlight.js/lib/core'
+            ].some(dep => id === dep || id.startsWith(dep + '/'))
+          }
+          return false
+        },
         output: {
           assetFileNames: (assetInfo) => {
             if (assetInfo.name?.endsWith('.css')) return 'takoio.min.css'
             return '[name][extname]'
           },
-          globals: {
-            vue: 'Vue'
+          globals: (id) => {
+            if (id === 'vue') return 'Vue'
+            if (id === 'marked') return 'marked'
+            if (id === 'dompurify') return 'DOMPurify'
+            if (id === 'highlight.js' || id.startsWith('highlight.js/')) return 'hljs'
+            return id
           },
           // ESM 模式：合并 highlight.js 语言模块为单个 chunk，减少首屏并行请求数
           // UMD 模式为单文件输出，manualChunks 不生效（全部 inline）
