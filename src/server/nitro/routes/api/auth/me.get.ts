@@ -5,6 +5,6 @@
 import { getAuthUserFromRequest } from '#core'
 
 export default defineHandler(async (event) => {
-  const user = getAuthUserFromRequest(event)
+  const user = await getAuthUserFromRequest(event)
   return { user }
 })

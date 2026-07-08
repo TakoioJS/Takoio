@@ -5,13 +5,14 @@
  * - 默认：isPrivate 评论对所有人隐藏
  * - 博主视角：携带有效 adminToken 时可见所有 isPrivate 评论
  * - 作者本人：携带有效 viewerToken 且该 token 解出的 mailMd5 与评论的 mailMd5 一致时可见
+ *   （viewerToken 由 jose 校验，防止伪造 email 导致的 IDOR）
  */
 
 import * as crypto from 'node:crypto'
 import { safeValidate } from '../schemas'
 import { GetCommentSchema } from '../schemas'
 import type { GetCommentData } from '../schemas'
-import { commentStore } from '../store/index'
+import { commentStore, userStore } from '../store/index'
 import { getConfig, publicConfigSubset } from '../config'
 import { getOrSetCommentListCache } from '../store/redis'
 import { markMasterComments } from './_comment-shared'
@@ -29,9 +30,14 @@ export const handleCommentGet = async (data: GetCommentData) => {
   const isMasterViewer = await isAdminAsync(adminToken)
   let viewerMailMd5 = ''
   if (viewerToken) {
-    const viewer = verifyToken(viewerToken)
+    const viewer = await verifyToken(viewerToken)
     if (viewer?.email) {
-      viewerMailMd5 = crypto.createHash('sha256').update(viewer.email.trim().toLowerCase()).digest('hex')
+      // 被封禁用户仅失去"作者本人"私密评论查看特权（不生成 viewerMailMd5），
+      // 仍可作为访客正常阅读公开评论，不阻断整个请求。
+      const userRecord = await userStore.getUserByEmail(viewer.email).catch(() => null)
+      if (userRecord?.role !== 'banned') {
+        viewerMailMd5 = crypto.createHash('sha256').update(viewer.email.trim().toLowerCase()).digest('hex')
+      }
     }
   }
 
@@ -49,7 +55,7 @@ export const handleCommentGet = async (data: GetCommentData) => {
     if (!clone.isPrivate) return clone
     // 博主可见
     if (isMasterViewer) return clone
-    // 作者本人可见（mailMd5 匹配）
+    // 作者本人可见（mailMd5 匹配，且 viewer 未被封禁）
     if (viewerMailMd5 && clone.mailMd5 && clone.mailMd5 === viewerMailMd5) return clone
     // 其他视角：用占位替换 content，避免泄露正文
     return { ...clone, comment: '🔒 私密评论', renderedComment: '<p>🔒 私密评论，仅博主与作者本人可见</p>' }

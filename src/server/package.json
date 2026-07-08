@@ -15,7 +15,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:import": "tsx scripts/import-from-json.ts"
+    "db:import": "tsx scripts/import-from-json.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.0",
@@ -27,6 +28,7 @@
     "h3": "2.0.1-rc.22",
     "ioredis": "^5.11.1",
     "ip2region-ts": "^2.0.1",
+    "jose": "^6.0.0",
     "mongodb": "^7.4.0",
     "nitro": "3.0.260610-beta",
     "nodemailer": "^9.0.1",

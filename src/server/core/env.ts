@@ -65,9 +65,26 @@ export const SSE_MODE = (process.env.SSE_MODE || 'memory') as 'redis' | 'memory'
 // 以下配置在测试中会动态覆盖 process.env，因此使用 getter 函数而非模块级常量，
 // 既保证统一入口，又保留运行时可覆盖性。
 
+/** JWT 签名密钥最小长度（字节） */
+export const AUTH_JWT_SECRET_MIN_LEN = 32
+
 /** JWT 签名密钥（社交登录、邮箱验证码 Token） */
 export function getAuthJwtSecret (): string | undefined {
   return process.env.AUTH_JWT_SECRET
+}
+
+/**
+ * 校验 AUTH_JWT_SECRET 强度。
+ * 启动时调用，密钥缺失或长度不足时直接抛出，防止使用弱密钥导致 JWT 被伪造。
+ */
+export function validateAuthJwtSecret (): void {
+  const secret = getAuthJwtSecret()
+  if (!secret) {
+    throw new Error('AUTH_JWT_SECRET environment variable is required. Please set a strong secret (>= 32 bytes) before starting the server.')
+  }
+  if (Buffer.byteLength(secret) < AUTH_JWT_SECRET_MIN_LEN) {
+    throw new Error(`AUTH_JWT_SECRET is too weak: ${Buffer.byteLength(secret)} bytes, minimum required is ${AUTH_JWT_SECRET_MIN_LEN} bytes.`)
+  }
 }
 
 /** GitHub OAuth Client ID */

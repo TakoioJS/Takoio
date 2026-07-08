@@ -9,13 +9,16 @@ import { initPassword } from '#core'
 import { initIpSearcher } from '#core'
 import { closeRedis } from '#core'
 import { logger } from '#core'
-import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN } from '#core'
+import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN, validateAuthJwtSecret } from '#core'
 import { closeDb } from '#core'
 
 let initialized = false
 
 export default definePlugin(async () => {
   if (initialized) return
+
+  // C1(deploy): Validate JWT secret strength before anything else
+  validateAuthJwtSecret()
 
   // C1(deploy): Fail fast on serverless if DB_TYPE is sqlite — ephemeral filesystem causes data loss
   const dbType = DB_TYPE
