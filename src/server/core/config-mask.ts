@@ -6,24 +6,22 @@
  */
 
 import {
-  buildHiddenKeys,
-  buildMaskedKeys,
-  buildPublicKeys,
+  PUBLIC_CONFIG_KEYS,
+  HIDDEN_CONFIG_KEYS,
+  MASKED_CONFIG_KEYS,
 } from './config-meta'
 import { type TakoioConfig, ALLOWED_CONFIG_KEYS } from './config-schema'
 
-const PUBLIC_KEYS = buildPublicKeys()
+// ========== Config Classification (module-level from CONFIG_META) ==========
 
-// ========== Config Classification (auto-generated from CONFIG_META) ==========
+/** Keys allowed in public API (GET /api/comments?) */
+const PUBLIC_KEYS = PUBLIC_CONFIG_KEYS
 
-const HIDDEN_KEYS = buildHiddenKeys()
-const MASKED_KEYS = buildMaskedKeys()
+/** Sensitive config keys whose values are masked */
+export const SENSITIVE_CONFIG_KEYS = MASKED_CONFIG_KEYS
 
-/** 敏感配置键集合（用于掩码处理） */
-export const SENSITIVE_CONFIG_KEYS = MASKED_KEYS
-
-/** 公开 API 中必须排除的键（完全隐藏） */
-export const PUBLIC_EXCLUDED_KEYS = HIDDEN_KEYS
+/** Keys completely excluded from all API responses */
+export const PUBLIC_EXCLUDED_KEYS = HIDDEN_CONFIG_KEYS
 
 // ========== Sensitive Config Masking ==========
 
