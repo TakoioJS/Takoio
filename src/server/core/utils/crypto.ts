@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto'
 
 // OWASP 2023 推荐 scrypt N >= 2^17 (131072) 用于密码哈希。
 // 旧版用 N=16384 (2^14) 偏低，现代 GPU 可每秒数万次尝试；升级到 2^17 约 100-200ms/次。
@@ -49,4 +49,30 @@ export const needsRehash = (hash: string): boolean => {
   const parts = parseScrypt(hash)
   if (!parts) return false
   return parts.N < SCRYPT_N
+}
+
+// ========== Admin session token helpers ==========
+
+/** Session token entropy: 32 random bytes = 256 bits. */
+const SESSION_TOKEN_BYTES = 32
+
+/**
+ * Generate a high-entropy admin session token using a CSPRNG.
+ * The token is a 64-character hex string; the caller is responsible
+ * for returning it to the client exactly once.
+ */
+export const generateSessionToken = (): string => {
+  return randomBytes(SESSION_TOKEN_BYTES).toString('hex')
+}
+
+/**
+ * Hash a session token with SHA-256 for database storage.
+ *
+ * 高熵 CSPRNG token（256-bit）的熵空间为 2^256，离线暴力破解在物理上不可行，
+ * 因此无需使用 scrypt 等慢哈希（慢哈希是为低熵人类密码设计的）。
+ * 使用快速、确定性、单向的 SHA-256 即可：既能保证 DB 泄露后不暴露原始 token，
+ * 又支持以哈希值为主键/索引做 O(1) 查询，避免全表扫描 + 同步慢哈希导致的 CPU 耗尽 DoS。
+ */
+export const hashSessionToken = (token: string): string => {
+  return createHash('sha256').update(token).digest('hex')
 }

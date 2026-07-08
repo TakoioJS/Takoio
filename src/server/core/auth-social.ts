@@ -26,9 +26,11 @@
  */
 
 import * as crypto from 'node:crypto'
+import { SignJWT, jwtVerify } from 'jose'
 import type { TakoioConfig } from './config'
 import {
   getAuthJwtSecret,
+  validateAuthJwtSecret,
   getGithubClientId,
   getGithubClientSecret,
   getGoogleClientId,
@@ -43,7 +45,7 @@ export { setState, getState, consumeState, setVerifyCode, consumeVerifyCode }
 // ========== JWT ==========
 
 const JWT_ALG = 'HS256'
-const JWT_EXPIRY = 30 * 24 * 3600 * 1000 // 30 days
+const JWT_EXPIRY = '30d'
 
 export interface AuthUser {
   provider: 'github' | 'google' | 'email'
@@ -58,63 +60,42 @@ interface JwtPayload extends AuthUser {
   exp: number
 }
 
-function getSecret (): string {
+/** 将密钥字符串转为 Uint8Array（jose 要求） */
+function secretBuffer (): Uint8Array {
   const secret = getAuthJwtSecret()
   if (!secret) {
     throw new Error('AUTH_JWT_SECRET environment variable is required for social auth. Please set it before starting the server.')
   }
-  return secret
+  return new TextEncoder().encode(secret)
 }
 
-function base64UrlEncode (buf: Buffer): string {
-  return buf.toString('base64url')
+export async function signToken (user: AuthUser): Promise<string> {
+  // 启动时校验一次；运行时若未校验则兜底校验
+  validateAuthJwtSecret()
+  return new SignJWT({ ...user })
+    .setProtectedHeader({ alg: JWT_ALG, typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime(JWT_EXPIRY)
+    .sign(secretBuffer())
 }
 
-function base64UrlDecode (str: string): Buffer {
-  return Buffer.from(str, 'base64url')
-}
-
-export function signToken (user: AuthUser): string {
-  const header = { alg: JWT_ALG, typ: 'JWT' }
-  const payload: JwtPayload = { ...user, iat: Date.now(), exp: Date.now() + JWT_EXPIRY }
-
-  const headerB64 = base64UrlEncode(Buffer.from(JSON.stringify(header)))
-  const payloadB64 = base64UrlEncode(Buffer.from(JSON.stringify(payload)))
-  const signature = crypto.createHmac('sha256', getSecret())
-    .update(`${headerB64}.${payloadB64}`)
-    .digest()
-  const sigB64 = base64UrlEncode(signature)
-
-  return `${headerB64}.${payloadB64}.${sigB64}`
-}
-
-export function verifyToken (token: string): AuthUser | null {
+export async function verifyToken (token: string): Promise<AuthUser | null> {
   try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-
-    const [headerB64, payloadB64, sigB64] = parts
-    const expectedSig = base64UrlEncode(
-      crypto.createHmac('sha256', getSecret()).update(`${headerB64}.${payloadB64}`).digest()
-    )
-    if (expectedSig !== sigB64) return null
-
-    const payload: JwtPayload = JSON.parse(base64UrlDecode(payloadB64).toString())
-    if (payload.exp < Date.now()) return null
-
+    const { payload } = await jwtVerify(token, secretBuffer(), {
+      algorithms: [JWT_ALG],
+    })
+    const p = payload as unknown as JwtPayload
     return {
-      provider: payload.provider,
-      id: payload.id,
-      name: payload.name,
-      email: payload.email,
-      avatar: payload.avatar,
+      provider: p.provider,
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      avatar: p.avatar,
     }
   } catch {
     return null
   }
 }
-
-// ========== OAuth Providers ==========
 
 export interface OAuthProvider {
   name: string
@@ -122,6 +103,8 @@ export interface OAuthProvider {
   getToken: (code: string) => Promise<string>
   getUser: (accessToken: string) => Promise<AuthUser>
 }
+
+// ========== OAuth Providers ==========
 
 function generateState (): string {
   return crypto.randomBytes(16).toString('hex')
@@ -226,7 +209,7 @@ export function generateVerifyCode (): string {
  * 从 H3Event 提取 token（Authorization 头 或 ?token= query）并 verifyToken。
  * @returns AuthUser or null
  */
-export function getAuthUserFromRequest (event: any): AuthUser | null {
+export async function getAuthUserFromRequest (event: any): Promise<AuthUser | null> {
   // 1. Authorization: Bearer <token>
   const authHeader = event.headers?.get?.('authorization') || ''
   let token = ''

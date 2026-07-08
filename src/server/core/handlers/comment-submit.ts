@@ -34,7 +34,7 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
   // Social auth: if token is provided but invalid, reject. Valid token auto-populates user info.
   let authUser = null
   if (token) {
-    authUser = verifyToken(token)
+    authUser = await verifyToken(token)
     if (!authUser) {
       throw new AppErrorClass('AUTH_INVALID', '登录已过期，请重新登录', 401)
     }

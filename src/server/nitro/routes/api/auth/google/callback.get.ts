@@ -37,7 +37,7 @@ export default defineHandler(async (event) => {
   const user = await providers.google.getUser(accessToken)
   // 持久化用户（首次登录自动创建）
   await userStore.upsertUser(user).catch(() => {})
-  const token = signToken(user)
+  const token = await signToken(user)
 
   // 仅 token 跳转，user 信息由前端通过 /me 拿（避免 Referer 泄漏）
   return sendRedirect(event, `/__takoio_auth?token=${encodeURIComponent(token)}`)

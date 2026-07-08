@@ -31,6 +31,7 @@ import type {
 } from './index'
 import { COMMENT_STATE, relTime, stripPrivate, fromRow, commentToSqliteRow, BATCH_SIZE_SQLITE } from './utils'
 import { buildGetCommentsQuery } from './query-helpers'
+import { generateSessionToken, hashSessionToken } from '../utils/crypto'
 
 const db = () => getDb()
 
@@ -350,45 +351,41 @@ export const visitorStore: VisitorStore = {
 
 export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
-    const { randomUUID, createHash } = await import('node:crypto')
-    const token = randomUUID()
-    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token
-    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const token = generateSessionToken()
+    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token。
+    // 256-bit 高熵 token 离线暴力破解在物理上不可行，无需 scrypt 慢哈希；
+    // 用确定性 sha256 哈希做主键索引，保证 O(1) 查询，避免全表扫描 + 同步慢哈希导致 CPU 耗尽 DoS。
+    const tokenHash = hashSessionToken(token)
     await db().insert(sessions).values({ token: tokenHash, createdAt: Date.now() }).run()
     return token
   },
 
   async validateToken (token: string): Promise<boolean> {
     if (!token) return false
-    const { createHash } = await import('node:crypto')
-    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const tokenHash = hashSessionToken(token)
     const row = await db().select().from(sessions).where(eq(sessions.token, tokenHash)).get()
     if (!row) return false
-    // ponytail: 24h TTL, matches cleanupSessions window
+    // 24h TTL, matches cleanupSessions window
     return Date.now() - row.createdAt < 24 * 60 * 60 * 1000
   },
 
   async removeToken (token: string): Promise<void> {
     if (!token) return
-    const { createHash } = await import('node:crypto')
-    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const tokenHash = hashSessionToken(token)
     await db().delete(sessions).where(eq(sessions.token, tokenHash)).run()
   },
 
   async rotateToken (oldToken: string): Promise<string | null> {
     if (!oldToken) return null
-    const { randomUUID, createHash } = await import('node:crypto')
-    const oldHash = createHash('sha256').update(oldToken).digest('hex')
-    const newToken = randomUUID()
-    const newHash = createHash('sha256').update(newToken).digest('hex')
+    const oldHash = hashSessionToken(oldToken)
+    const newToken = generateSessionToken()
+    const newHash = hashSessionToken(newToken)
     const now = Date.now()
     const ttl = 24 * 60 * 60 * 1000
     // Atomic: delete old token only if it exists and is not expired, then insert new token.
-    // Using a raw SQL statement to perform the check-and-swap atomically.
     const result = await db().run(
       sql`DELETE FROM ${sessions} WHERE ${sessions.token} = ${oldHash} AND ${sessions.createdAt} > ${now - ttl}`
     )
-    // If no row was deleted, the old token was invalid or expired.
     if (result.rowsAffected === 0) return null
     await db().insert(sessions).values({ token: newHash, createdAt: now }).run()
     return newToken
@@ -476,7 +473,7 @@ export const userStore: UserStore = {
       const kw = `%${search.toLowerCase()}%`
       conditions.push(or(
         like(sql`LOWER(${users.name})`, kw),
-        like(sql`LOWER(${users.email})`, kw),
+        like(sql`LOWER(${users.email})`, kw)
       ))
     }
     if (filter === 'banned') conditions.push(eq(users.role, 'banned'))
