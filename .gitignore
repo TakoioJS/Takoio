@@ -75,9 +75,9 @@ comment-section-ui/
 .workbuddy
 .trae
 .omc
+.agents
 
-# 安全审计测试（本地运行，不提交公开仓库）
+# 安全审计测试
 src/server/core/__tests__/email-auth-exploit.test.ts
-
 src/client/utils/__tests__/
 .superpowers/
