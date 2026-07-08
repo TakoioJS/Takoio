@@ -6,11 +6,11 @@
  */
 
 import { generateText } from 'ai'
-import { getConfig } from '../config'
+import { getConfig, deserializeAIProviders } from '../config'
 import { isRedisAvailable } from '../store/redis'
 import { isDev } from '../env'
 import { createModelInstance } from '../ai-model'
-import { deserializeAIProviders } from '../config-ai'
+import { logger } from '../utils/logger'
 
 const SUMMARY_SYSTEM_PROMPT = `你是一个文章摘要生成助手。请根据用户提供的文章内容，生成一段简洁的中文摘要（100-200字），并提取3-5个核心关键词。
 

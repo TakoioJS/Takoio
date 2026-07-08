@@ -21,7 +21,7 @@ const parseOrigins = (value: string | string[] | undefined): string[] => {
 }
 
 export default defineMiddleware(async (event) => {
-  const cfg = await getConfig(event)
+  const cfg = await getConfig()
   const origins = parseOrigins(cfg.CORS_ORIGINS)
   const origin = getRequestHeader(event, 'origin') || ''
 
