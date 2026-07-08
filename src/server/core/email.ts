@@ -86,7 +86,8 @@ export async function sendEmail (
     }
 
     const from = config.SMTP_FROM || config.SMTP_USER
-    logger.info(`发送邮件至 ${to}，主题: ${subject}`)
+    // 收件人邮箱属于 PII，禁止直接打印到日志
+    logger.info(`发送邮件至 [REDACTED]，主题: ${subject}`)
 
     const start = Date.now()
     const result = await transporter.sendMail({ from, to, subject, html })

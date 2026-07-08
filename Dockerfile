@@ -1,38 +1,47 @@
-# ---- Build stage: admin panel ----
-FROM node:20-alpine AS admin-build
+# ---- Build stage: monorepo workspace ----
+FROM node:22-alpine AS builder
 WORKDIR /app
-COPY src/admin/package.json src/admin/pnpm-lock.yaml* ./
-RUN corepack enable && pnpm install --frozen-lockfile
-COPY src/admin/ ./
-RUN pnpm build
 
-# ---- Build stage: server ----
-FROM node:20-alpine AS server-build
-WORKDIR /app
-COPY src/server/package.json src/server/pnpm-lock.yaml* ./
-RUN corepack enable && pnpm install --frozen-lockfile
-COPY src/server/ ./
-RUN pnpm build
+# Install pnpm via corepack (version from root package.json)
+RUN corepack enable
+
+# Copy workspace config and lockfile first for layer caching
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY src/server/package.json src/server/
+COPY src/admin/package.json src/admin/
+
+# Install all dependencies (devDeps needed for build)
+RUN pnpm install --frozen-lockfile
+
+# Copy full source tree
+COPY . .
+
+# Build packages
+RUN pnpm --filter takoio-admin build
+RUN pnpm --filter takoio-server build
 
 # ---- Runtime stage ----
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV DB_TYPE=sqlite
 ENV PORT=8080
 
-# Install production dependencies for server
-COPY src/server/package.json src/server/pnpm-lock.json* ./
-RUN corepack enable && pnpm install --prod --frozen-lockfile
+RUN corepack enable
 
-# Copy server build output
-COPY --from=server-build /app/.output ./.output
+# Copy workspace manifest and lockfile
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY src/server/package.json src/server/
 
-# Copy admin build output (served at /admin/)
-COPY --from=admin-build /app/dist ./admin-dist
+# Install production-only dependencies via workspace filter
+RUN pnpm install --frozen-lockfile --prod --filter takoio-server...
 
-# Copy data directory (for SQLite persistence)
+# Copy build outputs from builder stage
+COPY --from=builder /app/src/server/.output ./.output
+COPY --from=builder /app/src/admin/dist ./admin-dist
+
+# SQLite data persistence
 RUN mkdir -p /app/data
 VOLUME /app/data
 

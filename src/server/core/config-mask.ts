@@ -27,10 +27,13 @@ export const PUBLIC_EXCLUDED_KEYS = HIDDEN_KEYS
 
 // ========== Sensitive Config Masking ==========
 
-/** 对敏感值做掩码处理：仅显示前 3 位和后 4 位，中间用 **** 替代 */
+/**
+ * 对敏感值做掩码处理：不再保留任何原始片段，统一返回 ****。
+ * 前端回显的掩码值在保存时会被服务端忽略，避免误写入片段。
+ */
 export const maskSensitiveValue = (value: string): string => {
-  if (!value || value.length <= 7) return '****'
-  return `${value.slice(0, 3)}****${value.slice(-4)}`
+  if (!value || value.length === 0) return ''
+  return '****'
 }
 
 /**
