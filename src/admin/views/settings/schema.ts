@@ -8,7 +8,7 @@ import {
 export interface ConfigField {
   key: string
   label: string
-  type: 'input' | 'switch' | 'select' | 'tag-select' | 'number' | 'textarea' | 'color' | 'slider' | 'checkbox-group' | 'sensitive'
+  type: 'input' | 'switch' | 'select' | 'tag-select' | 'number' | 'textarea' | 'color' | 'slider' | 'checkbox-group' | 'sensitive' | 'authProvider'
   options?: { label: string; value: string }[]
   placeholder?: string
   hint?: string
@@ -22,6 +22,7 @@ export interface ConfigField {
   tag?: boolean
   group?: string
   full?: boolean
+  pushChannel?: boolean
   condition?: (c: Record<string, unknown>) => boolean
   disabled?: (c: Record<string, unknown>) => boolean
 }

@@ -252,7 +252,8 @@ const doAddAuth = () => {
 const isFullRow = (field: ConfigField) => field.full || field.type === 'textarea' || field.type === 'checkbox-group'
 const isLastVisible = (section: ConfigSection, idx: number) => {
   for (let i = idx + 1; i < section.fields.length; i++) {
-    if (!section.fields[i].condition || section.fields[i].condition(config)) return false
+    const cond = section.fields[i].condition
+    if (!cond || cond(config)) return false
   }
   return true
 }
@@ -350,9 +351,10 @@ const loadConfig = async () => {
     const { data: rawAiProviders } = await configApi.privateKey.get('AI_PROVIDERS')
     updateAiProviderOptions(rawAiProviders)
 
-    savedConfig.value = JSON.parse(JSON.stringify(data)) as any
-    savedConfig.value.CODE_FEATURES = [...(config.CODE_FEATURES || [])]
-    savedConfig.value.COMMENT_FEATURES = [...(config.COMMENT_FEATURES || [])]
+    const parsed = JSON.parse(JSON.stringify(data)) as any
+    parsed.CODE_FEATURES = [...((config.CODE_FEATURES as any[]) || [])]
+    parsed.COMMENT_FEATURES = [...((config.COMMENT_FEATURES as any[]) || [])]
+    savedConfig.value = parsed
   } catch (e: any) {
     message.error(t('loadConfigFailed') + ': ' + (e.message || ''))
   } finally {
