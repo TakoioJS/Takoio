@@ -1,5 +1,5 @@
 [build]
-  command = "npm install -g pnpm@9 && pnpm install && cd src/admin && pnpm install && npx vite build && cd ../server && pnpm install && pnpm build:netlify"
+  command = "corepack enable && pnpm install --frozen-lockfile && pnpm --filter takoio-admin build && pnpm --filter takoio-server build:netlify"
   publish = ".output/public"
 
 [functions]
