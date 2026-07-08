@@ -9,7 +9,7 @@
  *   - 空结果
  *   - 校验失败
  *   - 私密评论可见性
- *   - 被封禁用户 viewerToken 拒绝访问私密评论
+ *   - 被封禁用户 viewerToken 仍可阅读公开评论，仅失去私密评论查看特权
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -208,14 +208,22 @@ describe('handleCommentGet', () => {
     expect(result.data[0].comment).toBe('secret')
   })
 
-  it('rejects banned viewer from accessing private comments', async () => {
+  it('lets banned viewer read public comments but hides private ones (no 403)', async () => {
     const email = 'banned@example.com'
+    const mailMd5 = crypto.createHash('sha256').update(email).digest('hex')
     vi.mocked(verifyToken).mockResolvedValue({ provider: 'email', id: email, name: 'Banned', email })
     vi.mocked(userStore.getUserByEmail).mockResolvedValue({ id: 'u1', email, role: 'banned' } as any)
     vi.mocked(commentStore.getComments).mockResolvedValueOnce({
-      data: [{ id: 'p1', url: '/test', nick: 'Author', mailMd5: crypto.createHash('sha256').update(email).digest('hex'), comment: 'secret', isPrivate: true, created: 1 }],
-      total: 1,
+      data: [
+        { id: 'pub1', url: '/test', nick: 'Author', mailMd5: '', comment: 'public comment', isPrivate: false, created: 1 },
+        { id: 'p1', url: '/test', nick: 'Author', mailMd5, comment: 'secret', isPrivate: true, created: 1 },
+      ],
+      total: 2,
     } as any)
-    await expect(handleCommentGet({ url: '/test', viewerToken: 'banned-token' } as any)).rejects.toMatchObject({ code: 'USER_BANNED' })
+    const result = await handleCommentGet({ url: '/test', viewerToken: 'banned-token' } as any)
+    // 公开评论正常返回，不抛 403
+    expect(result.data.find((c: any) => c.id === 'pub1')?.comment).toBe('public comment')
+    // 私密评论对封禁用户隐藏（仅失去私密查看特权）
+    expect(result.data.find((c: any) => c.id === 'p1')?.comment).toBe('🔒 私密评论')
   })
 })

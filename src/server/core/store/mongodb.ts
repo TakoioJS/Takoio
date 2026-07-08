@@ -1,5 +1,5 @@
 import { MongoClient, type Db, type Collection } from 'mongodb'
-import { generateSessionToken, hashSessionToken, verifySessionToken } from '../utils/crypto'
+import { generateSessionToken, hashSessionToken } from '../utils/crypto'
 import type {
   Comment,
   CommentInput,
@@ -458,7 +458,9 @@ export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
     const db = await getDb()
     const token = generateSessionToken()
-    const tokenHash = await hashSessionToken(token)
+    // 存储 sha256(token) 而非明文：256-bit 高熵 token 无需 scrypt 慢哈希，
+    // 用确定性 sha256 哈希做 _id 主键，保证 O(1) 查询，避免全表扫描 + 同步慢哈希导致 CPU 耗尽 DoS。
+    const tokenHash = hashSessionToken(token)
     await col(db, 'sessions').insertOne({ _id: tokenHash, createdAt: new Date() })
     return token
   },
@@ -466,25 +468,17 @@ export const sessionStore: SessionStore = {
   async validateToken (token: string): Promise<boolean> {
     if (!token) return false
     const db = await getDb()
-    const rows = await col(db, 'sessions').find({}).toArray()
-    const now = Date.now()
-    for (const row of rows) {
-      if (now - toMs(row.createdAt) >= SESSION_TTL_MS) continue
-      if (await verifySessionToken(token, row._id)) return true
-    }
-    return false
+    const tokenHash = hashSessionToken(token)
+    const row = await col(db, 'sessions').findOne({ _id: tokenHash })
+    if (!row) return false
+    return Date.now() - toMs(row.createdAt) < SESSION_TTL_MS
   },
 
   async removeToken (token: string): Promise<void> {
     if (!token) return
     const db = await getDb()
-    const rows = await col(db, 'sessions').find({}).toArray()
-    for (const row of rows) {
-      if (await verifySessionToken(token, row._id)) {
-        await col(db, 'sessions').deleteOne({ _id: row._id })
-        return
-      }
-    }
+    const tokenHash = hashSessionToken(token)
+    await col(db, 'sessions').deleteOne({ _id: tokenHash })
   },
 
   async cleanupSessions (): Promise<void> {
@@ -507,19 +501,14 @@ export const sessionStore: SessionStore = {
   async rotateToken (oldToken: string): Promise<string | null> {
     if (!oldToken) return null
     const db = await getDb()
-    const rows = await col(db, 'sessions').find({}).toArray()
-    const cutoff = Date.now() - SESSION_TTL_MS
-    for (const row of rows) {
-      if (toMs(row.createdAt) < cutoff) continue
-      if (await verifySessionToken(oldToken, row._id)) {
-        const newToken = generateSessionToken()
-        const newHash = await hashSessionToken(newToken)
-        await col(db, 'sessions').deleteOne({ _id: row._id })
-        await col(db, 'sessions').insertOne({ _id: newHash, createdAt: new Date() })
-        return newToken
-      }
-    }
-    return null
+    const oldHash = hashSessionToken(oldToken)
+    const row = await col(db, 'sessions').findOne({ _id: oldHash })
+    if (!row || Date.now() - toMs(row.createdAt) >= SESSION_TTL_MS) return null
+    const newToken = generateSessionToken()
+    const newHash = hashSessionToken(newToken)
+    await col(db, 'sessions').deleteOne({ _id: oldHash })
+    await col(db, 'sessions').insertOne({ _id: newHash, createdAt: new Date() })
+    return newToken
   },
 }
 

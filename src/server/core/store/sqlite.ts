@@ -31,7 +31,7 @@ import type {
 } from './index'
 import { COMMENT_STATE, relTime, stripPrivate, fromRow, commentToSqliteRow, BATCH_SIZE_SQLITE } from './utils'
 import { buildGetCommentsQuery } from './query-helpers'
-import { generateSessionToken, hashSessionToken, verifySessionToken } from '../utils/crypto'
+import { generateSessionToken, hashSessionToken } from '../utils/crypto'
 
 const db = () => getDb()
 
@@ -352,55 +352,43 @@ export const visitorStore: VisitorStore = {
 export const sessionStore: SessionStore = {
   async createToken (): Promise<string> {
     const token = generateSessionToken()
-    // 存储 scrypt(token) 而非明文：DB 泄露不直接泄露可用 session token，
-    // 且比 sha256 更能抵抗离线暴力破解。
-    const tokenHash = await hashSessionToken(token)
+    // 存储 sha256(token) 而非明文：DB 泄露不直接泄露可用 session token。
+    // 256-bit 高熵 token 离线暴力破解在物理上不可行，无需 scrypt 慢哈希；
+    // 用确定性 sha256 哈希做主键索引，保证 O(1) 查询，避免全表扫描 + 同步慢哈希导致 CPU 耗尽 DoS。
+    const tokenHash = hashSessionToken(token)
     await db().insert(sessions).values({ token: tokenHash, createdAt: Date.now() }).run()
     return token
   },
 
   async validateToken (token: string): Promise<boolean> {
     if (!token) return false
-    // 查询该 token 对应的所有存储哈希（理论上最多一条），并用 timingSafeEqual 比较
-    const rows = await db().select().from(sessions).all()
-    const now = Date.now()
-    const ttl = 24 * 60 * 60 * 1000
-    for (const row of rows) {
-      if (now - row.createdAt >= ttl) continue
-      if (await verifySessionToken(token, row.token)) return true
-    }
-    return false
+    const tokenHash = hashSessionToken(token)
+    const row = await db().select().from(sessions).where(eq(sessions.token, tokenHash)).get()
+    if (!row) return false
+    // 24h TTL, matches cleanupSessions window
+    return Date.now() - row.createdAt < 24 * 60 * 60 * 1000
   },
 
   async removeToken (token: string): Promise<void> {
     if (!token) return
-    const rows = await db().select().from(sessions).all()
-    for (const row of rows) {
-      if (await verifySessionToken(token, row.token)) {
-        await db().delete(sessions).where(eq(sessions.token, row.token)).run()
-        return
-      }
-    }
+    const tokenHash = hashSessionToken(token)
+    await db().delete(sessions).where(eq(sessions.token, tokenHash)).run()
   },
 
   async rotateToken (oldToken: string): Promise<string | null> {
     if (!oldToken) return null
-    const rows = await db().select().from(sessions).all()
+    const oldHash = hashSessionToken(oldToken)
+    const newToken = generateSessionToken()
+    const newHash = hashSessionToken(newToken)
     const now = Date.now()
     const ttl = 24 * 60 * 60 * 1000
-    for (const row of rows) {
-      if (now - row.createdAt >= ttl) continue
-      if (await verifySessionToken(oldToken, row.token)) {
-        const newToken = generateSessionToken()
-        const newHash = await hashSessionToken(newToken)
-        await db().transaction(async (tx) => {
-          await tx.delete(sessions).where(eq(sessions.token, row.token)).run()
-          await tx.insert(sessions).values({ token: newHash, createdAt: now }).run()
-        })
-        return newToken
-      }
-    }
-    return null
+    // Atomic: delete old token only if it exists and is not expired, then insert new token.
+    const result = await db().run(
+      sql`DELETE FROM ${sessions} WHERE ${sessions.token} = ${oldHash} AND ${sessions.createdAt} > ${now - ttl}`
+    )
+    if (result.rowsAffected === 0) return null
+    await db().insert(sessions).values({ token: newHash, createdAt: now }).run()
+    return newToken
   },
 
   async removeAllTokens (): Promise<void> {

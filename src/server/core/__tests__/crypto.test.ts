@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hashPassword, verifyPassword, generateSessionToken, hashSessionToken, verifySessionToken } from '../utils/crypto'
+import { hashPassword, verifyPassword, generateSessionToken, hashSessionToken } from '../utils/crypto'
 
 describe('Password hashing (scrypt)', () => {
   it('hashes a password and returns an encoded string', async () => {
@@ -44,21 +44,14 @@ describe('Admin session token helpers', () => {
     expect(t1).not.toBe(t2)
   })
 
-  it('hashes a token with scrypt', async () => {
+  it('hashes a token with deterministic SHA-256', () => {
     const token = generateSessionToken()
-    const hash = await hashSessionToken(token)
-    expect(hash).toContain('$scrypt$')
-  })
-
-  it('verifies a token against its hash', async () => {
-    const token = generateSessionToken()
-    const hash = await hashSessionToken(token)
-    expect(await verifySessionToken(token, hash)).toBe(true)
-    expect(await verifySessionToken(generateSessionToken(), hash)).toBe(false)
-  })
-
-  it('rejects invalid hash format without throwing', async () => {
-    const token = generateSessionToken()
-    expect(await verifySessionToken(token, 'not-a-scrypt-hash')).toBe(false)
+    const hash = hashSessionToken(token)
+    // 确定性：相同输入产生相同输出（无需随机盐，可用哈希值做主键/索引 → O(1) 查询）
+    expect(hashSessionToken(token)).toBe(hash)
+    // 单向：哈希不等于原始 token
+    expect(hash).not.toBe(token)
+    // 64 字符十六进制 = SHA-256
+    expect(hash).toMatch(/^[a-f0-9]{64}$/)
   })
 })

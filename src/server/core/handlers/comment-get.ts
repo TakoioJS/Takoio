@@ -32,17 +32,12 @@ export const handleCommentGet = async (data: GetCommentData) => {
   if (viewerToken) {
     const viewer = await verifyToken(viewerToken)
     if (viewer?.email) {
-      // 校验 viewer 是否被封禁：被封禁用户不能查看私密评论
-      try {
-        const userRecord = await userStore.getUserByEmail(viewer.email)
-        if (userRecord?.role === 'banned') {
-          throw new AppError('USER_BANNED', '账户已被封禁', 403)
-        }
-      } catch (e) {
-        if (e instanceof AppError) throw e
-        // 查询失败不阻塞读取，仅降级（安全性上等同于未登录视角）
+      // 被封禁用户仅失去"作者本人"私密评论查看特权（不生成 viewerMailMd5），
+      // 仍可作为访客正常阅读公开评论，不阻断整个请求。
+      const userRecord = await userStore.getUserByEmail(viewer.email).catch(() => null)
+      if (userRecord?.role !== 'banned') {
+        viewerMailMd5 = crypto.createHash('sha256').update(viewer.email.trim().toLowerCase()).digest('hex')
       }
-      viewerMailMd5 = crypto.createHash('sha256').update(viewer.email.trim().toLowerCase()).digest('hex')
     }
   }
 

@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto'
 
 // OWASP 2023 推荐 scrypt N >= 2^17 (131072) 用于密码哈希。
 // 旧版用 N=16384 (2^14) 偏低，现代 GPU 可每秒数万次尝试；升级到 2^17 约 100-200ms/次。
@@ -66,26 +66,13 @@ export const generateSessionToken = (): string => {
 }
 
 /**
- * Hash a session token with scrypt for database storage.
- * Uses the same OWASP-recommended parameters as password hashing.
+ * Hash a session token with SHA-256 for database storage.
+ *
+ * 高熵 CSPRNG token（256-bit）的熵空间为 2^256，离线暴力破解在物理上不可行，
+ * 因此无需使用 scrypt 等慢哈希（慢哈希是为低熵人类密码设计的）。
+ * 使用快速、确定性、单向的 SHA-256 即可：既能保证 DB 泄露后不暴露原始 token，
+ * 又支持以哈希值为主键/索引做 O(1) 查询，避免全表扫描 + 同步慢哈希导致的 CPU 耗尽 DoS。
  */
-export const hashSessionToken = async (token: string): Promise<string> => {
-  const salt = randomBytes(16)
-  const key = scryptSync(Buffer.from(token), salt, SCRYPT_KEYLEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: SCRYPT_MAXMEM })
-  return encodeScrypt(SCRYPT_N, SCRYPT_R, SCRYPT_P, salt, key)
-}
-
-/**
- * Verify a session token against a scrypt hash using constant-time comparison.
- * Returns false for malformed hashes to avoid leaking storage format.
- */
-export const verifySessionToken = async (token: string, hash: string): Promise<boolean> => {
-  const parts = parseScrypt(hash)
-  if (!parts) return false
-  try {
-    const derived = scryptSync(Buffer.from(token), parts.salt, parts.key.length, { N: parts.N, r: parts.r, p: parts.p, maxmem: SCRYPT_MAXMEM })
-    return timingSafeEqual(derived, parts.key)
-  } catch {
-    return false
-  }
+export const hashSessionToken = (token: string): string => {
+  return createHash('sha256').update(token).digest('hex')
 }
