@@ -3,7 +3,7 @@ import { maskSensitiveValue, maskSensitiveConfig, SENSITIVE_CONFIG_KEYS } from '
 
 describe('maskSensitiveValue', () => {
   it('masks values longer than 7 chars', () => {
-    expect(maskSensitiveValue('abcdefghijk')).toBe('abc****hijk')
+    expect(maskSensitiveValue('abcdefghijk')).toBe('****')
   })
 
   it('returns **** for short values', () => {
@@ -11,12 +11,13 @@ describe('maskSensitiveValue', () => {
     expect(maskSensitiveValue('abcdefg')).toBe('****')
   })
 
-  it('returns **** for empty values', () => {
-    expect(maskSensitiveValue('')).toBe('****')
+  it('returns empty string for empty values', () => {
+    expect(maskSensitiveValue('')).toBe('')
   })
 
-  it('preserves first 3 and last 4 chars', () => {
-    expect(maskSensitiveValue('1234567890')).toBe('123****7890')
+  it('does not preserve any original fragment', () => {
+    expect(maskSensitiveValue('1234567890')).toBe('****')
+    expect(maskSensitiveValue('my-super-secret-key')).toBe('****')
   })
 })
 

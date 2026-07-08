@@ -118,12 +118,13 @@ export default defineHandler(async (event) => {
     return handleTypeSet(data)
   }
 
-  // GET /api/admin/private-key
+  // GET /api/admin/private-key（二次授权：admin token + Origin 校验）
   if (segments[0] === 'private-key' && method === 'GET') {
     const key = getQuery(event).key as string | undefined
     if (!key) return { data: null }
     const token = getToken(event)
     await requireAdmin({ token })
+    await validateOrigin(buildRequestContext(event))
     return handlePrivateKeyGet({ key })
   }
 

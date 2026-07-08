@@ -20,7 +20,8 @@ import { isDev, SETUP_TOKEN } from '../env'
 
 export const handleCheckSetup = async () => {
   const hash = await getAuthHash()
-  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN, dev: isDev() }
+  // 不再返回 dev 模式标志，避免向未认证客户端泄露运行环境信息
+  return { needSetup: !hash, setupTokenRequired: !!SETUP_TOKEN }
 }
 
 // ========== Login ==========
