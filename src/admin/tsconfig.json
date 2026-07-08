@@ -13,7 +13,8 @@
     "noEmit": true,
     "paths": {
       "@shared/*": ["../client/*"],
-      "@takoio/common": ["../../src/shared/common"]
+      "@takoio/common": ["../../src/shared/common"],
+      "@takoio/core": ["../../src/shared/core"]
     }
   },
   "include": [

@@ -163,6 +163,8 @@ const toComment = (item: any, source: string) => {
     dislike: item.dislike ?? 0,
     isSpam: m.isSpam ?? item.isSpam ?? false,
     isTop: m.isTop ?? item.isTop ?? false,
+    isPinned: m.isPinned ?? item.isPinned ?? false,
+    isPrivate: m.isPrivate ?? item.isPrivate ?? false,
     href: item.href ?? null,
     image: m.image ?? item.image ?? null,
     sticker: m.sticker ?? item.sticker ?? null,

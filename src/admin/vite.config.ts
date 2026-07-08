@@ -30,7 +30,8 @@ export default defineConfig({
     alias: {
       '@shared': resolve(__dirname, '../client'),
       '@': resolve(__dirname),
-      '@takoio/common': resolve(__dirname, '../../src/shared/common')
+      '@takoio/common': resolve(__dirname, '../../src/shared/common'),
+      '@takoio/core': resolve(__dirname, '../../src/shared/core')
     }
   },
   build: {

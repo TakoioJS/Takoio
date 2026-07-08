@@ -107,7 +107,7 @@ async function persistSubmit (newComment: CommentInput, _ip?: string) {
 
 // ========== Export ==========
 
-export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: string; event?: any }): Promise<any> => {
+export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: string }): Promise<any> => {
   const _ip = data._ip
   const cfg = await getConfig()
 

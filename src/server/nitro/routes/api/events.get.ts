@@ -5,8 +5,8 @@
 import { runSSEStream } from '#core'
 import { buildRequestContext, buildSSESink } from '../../utils/request-context'
 
-export default defineHandler((event) => {
+export default defineHandler(async (event) => {
   const sink = buildSSESink(event)
   const ctx = buildRequestContext(event)
-  runSSEStream(sink, ctx.query)
+  await runSSEStream(sink, ctx.query)
 })

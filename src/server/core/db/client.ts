@@ -37,6 +37,10 @@ export function getDb (): DbClient {
 export async function initDb () {
   if (!_raw) return
 
+  // WARNING: 以下 raw SQL 必须与 schema-shared.ts 的 Drizzle 定义保持同步。
+  // 当前策略：Drizzle schema 是类型/迁移的唯一来源，raw SQL 仅用于运行时自动建表。
+  // 新增表/字段时，先改 schema-shared.ts，再同步到 client.ts 与 pg-client.ts。
+
   // Enable foreign key constraint enforcement
   await _raw.execute('PRAGMA foreign_keys = ON')
 
@@ -77,6 +81,15 @@ export async function initDb () {
   await _raw.execute(`CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, created_at INTEGER NOT NULL
   )`)
+
+  // Rate limits table — must stay in sync with schema-shared.ts rateLimits
+  await _raw.execute(`CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT NOT NULL,
+    window_start INTEGER NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (key, window_start)
+  )`)
+  await _raw.execute('CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits(key)')
 
   await _raw.execute(`CREATE TABLE IF NOT EXISTS reactions (
     url TEXT NOT NULL, emoji TEXT NOT NULL, ip TEXT NOT NULL,

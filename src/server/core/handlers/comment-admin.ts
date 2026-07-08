@@ -41,7 +41,7 @@ export const handleCommentUpdate = async (data: UpdateCommentData) => {
 
 // ========== Comment Delete ==========
 
-export const handleCommentDelete = async (data: CommentIdData, _event?: any) => {
+export const handleCommentDelete = async (data: CommentIdData) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
 
@@ -104,7 +104,7 @@ export const handleCommentSetSpam = async (data: CommentSetSpamData) => {
 
 // ========== Comment Approve (pending → visible) ==========
 
-export const handleCommentApprove = async (data: CommentIdData, _event?: any) => {
+export const handleCommentApprove = async (data: CommentIdData) => {
   const validation = safeValidate(CommentIdSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', validation.error, 400)
 

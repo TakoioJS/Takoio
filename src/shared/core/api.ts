@@ -79,6 +79,140 @@ export const request = async <T = any>(url: string, init?: RequestInit & { exter
   return res.json()
 }
 
+// ========== Configurable API Client (shared by admin / custom integrations) ==========
+
+export interface ApiError extends Error {
+  status?: number
+  data?: any
+}
+
+export interface ApiClientOptions {
+  /** 基础 URL（字符串或返回字符串的函数） */
+  baseUrl?: string | (() => string)
+  /** 获取当前认证 token */
+  getToken?: () => string | null | undefined
+  /** 不需要自动附加 Authorization 的路径片段 */
+  skipAuthPaths?: string[]
+  /** 401 回调 */
+  onUnauthorized?: () => void
+  /** 超时毫秒数，默认 30_000 */
+  timeout?: number
+  /** 自定义 HTTP 错误文案（接收 status） */
+  formatHttpError?: (status: number) => string
+  /** 自定义网络错误文案 */
+  formatNetworkError?: () => string
+}
+
+export interface ApiClient {
+  request: <T = any>(url: string, init?: RequestInit & { externalSignal?: AbortSignal }) => Promise<T>
+  get: <T = any>(url: string, params?: Record<string, any>) => Promise<T>
+  post: <T = any>(url: string, data?: any) => Promise<T>
+  put: <T = any>(url: string, data?: any) => Promise<T>
+  patch: <T = any>(url: string, data?: any) => Promise<T>
+  delete: <T = any>(url: string) => Promise<T>
+}
+
+/** 创建可配置 API 客户端 */
+export function createApiClient (options: ApiClientOptions = {}): ApiClient {
+  const {
+    baseUrl = '',
+    getToken,
+    skipAuthPaths = [],
+    onUnauthorized,
+    timeout = API_TIMEOUT_MS,
+    formatHttpError,
+    formatNetworkError,
+  } = options
+
+  function resolveBaseUrl (): string {
+    return typeof baseUrl === 'function' ? baseUrl() : baseUrl
+  }
+
+  function shouldSkipAuth (url: string): boolean {
+    return skipAuthPaths.some(path => url.includes(path))
+  }
+
+  async function request<T = any> (url: string, init?: RequestInit & { externalSignal?: AbortSignal }): Promise<T> {
+    const controller = new AbortController()
+    const externalSignal = init?.externalSignal
+    delete init?.externalSignal
+
+    const onExternalAbort = () => controller.abort()
+    externalSignal?.addEventListener('abort', onExternalAbort, { once: true })
+
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+    const token = getToken?.()
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init?.headers as Record<string, string> || {}),
+    }
+    if (token && !shouldSkipAuth(url)) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    let res: Response
+    try {
+      res = await fetch(resolveBaseUrl() + url, { ...init, signal: controller.signal, headers })
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        if (externalSignal?.aborted) {
+          const e = new Error('请求已取消')
+          e.name = 'TakoioCancelledError'
+          throw e
+        }
+        const e = new Error('请求超时，请检查网络后重试')
+        e.name = 'TakoioTimeoutError'
+        throw e
+      }
+      const message = err instanceof Error ? err.message : (formatNetworkError?.() || 'Network error')
+      const error = new Error(message) as ApiError
+      throw error
+    } finally {
+      clearTimeout(timeoutId)
+      externalSignal?.removeEventListener('abort', onExternalAbort)
+    }
+
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const error = new Error(data.message || formatHttpError?.(res.status) || `Takoio: HTTP ${res.status}`) as ApiError
+      error.status = res.status
+      error.data = data
+      if (res.status === 401) {
+        onUnauthorized?.()
+      }
+      throw error
+    }
+    return data as T
+  }
+
+  function get<T = any> (url: string, params?: Record<string, any>): Promise<T> {
+    const qs = params
+      ? '?' + new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
+      ).toString()
+      : ''
+    return request<T>(url + qs)
+  }
+
+  function post<T = any> (url: string, data?: any): Promise<T> {
+    return request<T>(url, { method: 'POST', body: data ? JSON.stringify(data) : undefined })
+  }
+
+  function put<T = any> (url: string, data?: any): Promise<T> {
+    return request<T>(url, { method: 'PUT', body: data ? JSON.stringify(data) : undefined })
+  }
+
+  function patch<T = any> (url: string, data?: any): Promise<T> {
+    return request<T>(url, { method: 'PATCH', body: data ? JSON.stringify(data) : undefined })
+  }
+
+  function del<T = any> (url: string): Promise<T> {
+    return request<T>(url, { method: 'DELETE' })
+  }
+
+  return { request, get, post, put, patch, delete: del }
+}
+
 // ========== Comment API ==========
 
 export const submitComment = (envId: string, data: {

@@ -10,21 +10,53 @@ import type { RequestContext } from './ports'
 import { LOGIN_MAX_FAILURES, LOGIN_LOCKOUT_MS } from './constants'
 
 // ========== Password Hash Cache ==========
+// 优先使用 Redis 缓存（多实例 / Serverless 一致），无 Redis 时回退到进程内存。
 
 let authHashCache: string | null = null
 let authHashCacheTime = 0
 const AUTH_HASH_CACHE_TTL = 60_000 // 60 seconds
+const REDIS_AUTH_HASH_KEY = 'takoio:auth-hash'
 
-/** Get the current password hash (memory cache → database). Returns null if no password set (setup mode). */
+async function getRedisAuthHash (): Promise<string | null | undefined> {
+  try {
+    const { withRedis } = await import('./store/redis')
+    return await withRedis(async (c) => c.get(REDIS_AUTH_HASH_KEY))
+  } catch {
+    return undefined
+  }
+}
+
+async function setRedisAuthHash (hash: string): Promise<void> {
+  try {
+    const { withRedis } = await import('./store/redis')
+    await withRedis(async (c) => { await c.set(REDIS_AUTH_HASH_KEY, hash, 'PX', AUTH_HASH_CACHE_TTL); return true })
+  } catch { /* best effort */ }
+}
+
+async function delRedisAuthHash (): Promise<void> {
+  try {
+    const { withRedis } = await import('./store/redis')
+    await withRedis(async (c) => { await c.del(REDIS_AUTH_HASH_KEY); return true })
+  } catch { /* best effort */ }
+}
+
+/** Get the current password hash (Redis → memory cache → database). Returns null if no password set (setup mode). */
 export const getAuthHash = async (): Promise<string | null> => {
   if (authHashCache && Date.now() - authHashCacheTime < AUTH_HASH_CACHE_TTL) {
     return authHashCache
+  }
+  const redisHash = await getRedisAuthHash()
+  if (redisHash) {
+    authHashCache = redisHash
+    authHashCacheTime = Date.now()
+    return redisHash
   }
   const dbConfig = await configStore.getConfig()
   const hash = dbConfig.AUTH_HASH
   if (hash && typeof hash === 'string') {
     authHashCache = hash
     authHashCacheTime = Date.now()
+    await setRedisAuthHash(hash)
     return hash
   }
   return null
@@ -37,12 +69,14 @@ export { hashPassword } from './utils/crypto'
 export const invalidateAuthHashCache = () => {
   authHashCache = null
   authHashCacheTime = 0
+  delRedisAuthHash().catch(() => {})
 }
 
 /** Update auth hash cache directly (called after password set) */
 export const updateAuthHashCache = (hash: string) => {
   authHashCache = hash
   authHashCacheTime = Date.now()
+  setRedisAuthHash(hash).catch(() => {})
 }
 
 /** Initialize password on startup: check database for existing hash, otherwise await first-time setup via admin panel. */
@@ -53,6 +87,7 @@ export const initPassword = async (): Promise<{ hasPassword: boolean }> => {
     if (hash && typeof hash === 'string') {
       authHashCache = hash
       authHashCacheTime = Date.now()
+      await setRedisAuthHash(hash)
       logger.info('Admin password loaded from database')
       return { hasPassword: true }
     } else {

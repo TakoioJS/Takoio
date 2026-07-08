@@ -87,6 +87,15 @@ export async function initDb (): Promise<void> {
     created_at INTEGER NOT NULL
   )`)
 
+  // Rate limits table — must stay in sync with schema-shared.ts rateLimits
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT NOT NULL,
+    window_start INTEGER NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (key, window_start)
+  )`)
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits(key)`)
+
   await db.execute(sql`CREATE TABLE IF NOT EXISTS reactions (
     url TEXT NOT NULL,
     emoji TEXT NOT NULL,

@@ -83,10 +83,49 @@ export interface Comment {
 }
 
 /**
- * 新增评论时的输入 — 由 handler 层构造
- * id / created 由 handler 生成，store 层直接透传
+ * 客户端提交评论时允许传入的字段。
+ * 仅包含用户可控制的输入；服务器生成/计算字段（id、created、state、like 等） excluded。
  */
-export type CommentInput = Comment
+export interface CreateCommentPayload {
+  url: string
+  href?: string | null
+  nick: string
+  mail?: string
+  link?: string
+  comment: string
+  ua?: string
+  pid?: string | null
+  rid?: string | null
+  image?: string | null
+  sticker?: string | null
+  isPrivate?: boolean
+}
+
+/**
+ * 新增评论时的输入 — 由 handler 层构造后传给 store。
+ * 注意：id / created / state / like / dislike / isSpam / isTop / isPinned
+ * 必须由 handler 层设置，客户端不得直接传入。
+ * 计算字段（mailMd5 / ipRegion / renderedComment / tags）由 handler 或 store 填充，可为可选。
+ */
+export interface CommentInput extends CreateCommentPayload {
+  id: string
+  ip: string
+  state: CommentState
+  created: number
+  updated?: number | null
+  like: number
+  dislike: number
+  isSpam: boolean
+  isTop: boolean
+  isPinned: boolean
+  isPrivate: boolean
+  userId?: string | null
+  authProvider?: string | null
+  mailMd5?: string
+  ipRegion?: string | null
+  tags?: string | null
+  renderedComment?: string | null
+}
 
 /**
  * 评论列表项 — 在 Comment 基础上附加 UI 层需要的字段

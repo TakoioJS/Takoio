@@ -22,13 +22,17 @@ export function createModelInstance (format: AiFormat, endpoint: string, key: st
       if (!/\/v1beta/.test(baseUrl)) baseUrl += '/v1beta'
       return createGoogleGenerativeAI({ baseURL: baseUrl, apiKey: key })(model)
     }
-    case 'openai':
-    default: {
+    case 'openai': {
       // OpenAI SDK baseURL 默认含 /v1，url = `${baseURL}${path}`，SDK 不会自动补 /v1，故 baseURL 须保留版本段。
       // 注意：@ai-sdk/openai v4 直接调用 provider（如 createOpenAI({...})(model)）默认走 Responses API（/responses），
       // 多数第三方 OpenAI 兼容端点（阶跃、DeepSeek 等）未实现 /responses，需显式用 .chat(model) 走 Chat Completions。
       const baseUrl = endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')
       return createOpenAI({ baseURL: baseUrl, apiKey: key }).chat(model)
+    }
+    default: {
+      // Exhaustiveness check: if a new AiFormat is added, TypeScript will error here.
+      const _exhaustive: never = format
+      throw new Error(`Unsupported AI format: ${_exhaustive}`)
     }
   }
 }
