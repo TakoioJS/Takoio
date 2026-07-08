@@ -330,7 +330,7 @@ export const validateOrigin = async (ctx: RequestContext): Promise<void> => {
   // Only validate state-changing methods
   if (method === 'GET' || method === 'HEAD') return
 
-  const cfg = await getConfig(ctx)
+  const cfg = await getConfig()
   const allowedOrigins = [
     ...parseOrigins(cfg.CORS_ORIGINS),
     ...(cfg.SITE_URL ? [cfg.SITE_URL] : []),
