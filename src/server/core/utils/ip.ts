@@ -31,7 +31,7 @@ const isTrustedProxy = (ip: string, trusted: string[]): boolean =>
   trusted.length === 0 ? false : trusted.includes(ip)
 
 export const getClientIp = async (ctx: RequestContext): Promise<string> => {
-  const config = await getConfig(ctx)
+  const config = await getConfig()
 
   // Direct connection IP is extracted by the nitro adapter (from socket,
   // NOT from X-Forwarded-For — preserves the original security guarantee).

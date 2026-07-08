@@ -1,5 +1,5 @@
 /**
- * Store facade — lazy-loads the selected backend (sqlite or mongodb).
+ * Store facade — lazy-loads the selected backend (sqlite / postgres / mongodb).
  *
  * ponytail: replaced Proxy+makeThenable with simple async init.
  * Consumers already write `await store.method()`, so a plain object works.
@@ -44,25 +44,16 @@ async function getImpl (): Promise<StoreBackend> {
   return _initPromise
 }
 
-/** Runtime validation: ensure backend implements all required methods */
-function validateBackend (impl: StoreBackend, backendName: string): void {
-  const requiredStores: { name: string; methods: string[] }[] = [
-    { name: 'commentStore', methods: ['addComment', 'getComment', 'updateComment', 'getComments', 'deleteComment'] },
-    { name: 'configStore', methods: ['getConfig', 'setConfig'] },
-    { name: 'sessionStore', methods: ['createToken', 'validateToken'] },
-  ]
+/** Initialize the store backend — called from Nitro init plugin */
+export async function initStore (): Promise<void> {
+  if (_initialized) return
+  await getImpl()
+  _initialized = true
+}
 
-  for (const store of requiredStores) {
-    const implStore = (impl as any)[store.name]
-    if (!implStore) {
-      throw new Error(`Backend "${backendName}" missing store: ${store.name}`)
-    }
-    for (const method of store.methods) {
-      if (typeof implStore[method] !== 'function') {
-        throw new Error(`Backend "${backendName}" store "${store.name}" missing method: ${method}()`)
-      }
-    }
-  }
+/** 检查 store 是否已初始化 */
+export function isStoreInitialized (): boolean {
+  return _initialized
 }
 
 function createStoreProxy<T extends object> (name: keyof StoreBackend): T {
@@ -79,19 +70,6 @@ function createStoreProxy<T extends object> (name: keyof StoreBackend): T {
       return value
     },
   })
-}
-
-/** Initialize the store backend — called from Nitro init plugin */
-export async function initStore (): Promise<void> {
-  if (_initialized) return
-  const impl = await getImpl()
-  validateBackend(impl, DB_TYPE)
-  _initialized = true
-}
-
-/** 检查 store 是否已初始化 */
-export function isStoreInitialized (): boolean {
-  return _initialized
 }
 
 // Module-level store proxies — delegate to the actual backend after initStore()
@@ -114,10 +92,8 @@ export * from './rate-limit'
 export async function closeDb (): Promise<void> {
   try {
     if (DB_TYPE === 'mongodb') {
-      // MongoDB 驱动自行管理连接池，无需显式关闭
       return
     }
-    // SQLite 和 PostgreSQL 各自有 closeDb 实现
     const mod = DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg'
       ? await import('../db/pg-client.js')
       : await import('../db/client.js')

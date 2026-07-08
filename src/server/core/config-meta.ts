@@ -156,33 +156,29 @@ export const CONFIG_META: ConfigMeta[] = [
   { key: 'SOCIAL_AUTH_GOOGLE_CLIENT_SECRET', type: 'string', default: '',                               masked: true },
 ]
 
-// ========== Auto-Generated Derivatives ==========
+// ========== Module-Level Computed Constants ==========
 
 /** Flat default config object */
-export function buildDefaults (): Record<string, any> {
+export const DEFAULT_CONFIG_MAP: Record<string, any> = (() => {
   const defaults: Record<string, any> = {}
-  for (const m of CONFIG_META) {
-    defaults[m.key] = m.default
-  }
+  for (const m of CONFIG_META) defaults[m.key] = m.default
   return defaults
-}
+})()
 
 /** All allowed config keys */
-export function buildAllowedKeys (): string[] {
-  return CONFIG_META.map(m => m.key)
-}
+export const ALLOWED_CONFIG_KEYS_META: string[] = CONFIG_META.map(m => m.key)
 
 /** Keys that are completely hidden from all API responses */
-export function buildHiddenKeys (): Set<string> {
-  return new Set(CONFIG_META.filter(m => m.hidden).map(m => m.key))
-}
+export const HIDDEN_CONFIG_KEYS: Set<string> = new Set(
+  CONFIG_META.filter(m => m.hidden).map(m => m.key)
+)
 
 /** Keys whose values are masked in admin API */
-export function buildMaskedKeys (): Set<string> {
-  return new Set(CONFIG_META.filter(m => m.masked).map(m => m.key))
-}
+export const MASKED_CONFIG_KEYS: Set<string> = new Set(
+  CONFIG_META.filter(m => m.masked).map(m => m.key)
+)
 
 /** Keys allowed in public API (GET /api/comments?) */
-export function buildPublicKeys (): Set<string> {
-  return new Set(CONFIG_META.filter(m => m.public).map(m => m.key))
-}
+export const PUBLIC_CONFIG_KEYS: Set<string> = new Set(
+  CONFIG_META.filter(m => m.public).map(m => m.key)
+)

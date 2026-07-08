@@ -19,7 +19,6 @@ import type { AuthUser } from '../auth-social'
 
 const DEFAULT_TTL_MS = 300_000
 const LRU_MAX_SIZE = 1000
-const CLEANUP_INTERVAL_MS = 60_000
 
 const stateKey = (state: string): string => `takoio:oauth:state:${state}`
 const verifyCodeKey = (uuid: string): string => `takoio:oauth:email-code:${uuid}`
@@ -39,19 +38,6 @@ function warnRedisUnavailable (): void {
   _warnedRedisUnavailable = true
   logger.warn('[oauth-cache] Redis unavailable, using memory LRU')
 }
-
-// Periodic cleanup of expired entries (every 60s). unref() so it never blocks process exit.
-setInterval(() => {
-  const now = Date.now()
-  for (const k of _memStateCache.keys()) {
-    const entry = _memStateCache.get(k)
-    if (entry && entry.expire < now) _memStateCache.delete(k)
-  }
-  for (const k of _memCodeCache.keys()) {
-    const entry = _memCodeCache.get(k)
-    if (entry && entry.expire < now) _memCodeCache.delete(k)
-  }
-}, CLEANUP_INTERVAL_MS).unref()
 
 // ========== State ==========
 

@@ -2,11 +2,10 @@
  * Config management — aggregation re-export.
  *
  * 原 319 行/6 职责的"上帝文件"已按职责拆分（Phase 3 Task 3.4）：
- *   - config-schema.ts : TakoioConfig / DEFAULT_CONFIG / ALLOWED_CONFIG_KEYS / Zod validation / AIProviderConfig
+ *   - config-schema.ts : TakoioConfig / DEFAULT_CONFIG / ALLOWED_CONFIG_KEYS / Zod validation / AIProviderConfig / serializeAIProviders / deserializeAIProviders
  *   - config-cache.ts  : configCache / getConfig / invalidateConfig / CACHE_TTL
  *   - config-mask.ts   : maskSensitiveValue / publicConfigSubset / maskSensitiveConfig
- *   - config-ai.ts     : serializeAIProviders / deserializeAIProviders
- *   - errors.ts        : AppError / ERR（Phase 3 Task 3.1）
+ *   - errors.ts        : AppError（Phase 3 Task 3.1）
  *
  * 外部 Import 路径保持不变：`import { ... } from '#core/config'` 或 `'../config'`
  * 由本聚合文件统一 re-export。
@@ -28,5 +27,4 @@ export { MAX_UPLOAD_SIZE } from './constants'
 export * from './config-schema'
 export * from './config-cache'
 export * from './config-mask'
-export * from './config-ai'
 export * from './errors'
