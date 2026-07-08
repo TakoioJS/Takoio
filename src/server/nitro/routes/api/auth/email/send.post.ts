@@ -45,7 +45,8 @@ export default defineHandler(async (event) => {
       <p style="color:#666;font-size:14px;">5 分钟内有效。如非本人操作请忽略。</p>
     </div>`)
   if (!result.success) {
-    throw createError({ statusCode: 500, statusMessage: `邮件发送失败: ${result.message}` })
+    // 原始错误已在服务端日志中记录，禁止向客户端透传 SMTP 等后端细节
+    throw createError({ statusCode: 500, statusMessage: '邮件发送失败，请稍后重试' })
   }
 
   return { uuid, message: '验证码已发送' }

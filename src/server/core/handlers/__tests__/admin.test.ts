@@ -108,11 +108,11 @@ describe('Admin Handlers', () => {
   })
 
   describe('handleCheckSetup', () => {
-    it('returns setup status', async () => {
+    it('returns setup status without dev flag', async () => {
       const result = await handleCheckSetup()
       expect(result).toHaveProperty('needSetup')
       expect(result).toHaveProperty('setupTokenRequired')
-      expect(result).toHaveProperty('dev')
+      expect(result).not.toHaveProperty('dev')
     })
   })
 

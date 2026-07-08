@@ -193,7 +193,7 @@ describe('handleArticleSummary', () => {
     expect(result.keywords).toEqual([])
   })
 
-  it('uses AI provider error message when generateText throws', async () => {
+  it('returns generic message when generateText throws without leaking original error', async () => {
     vi.mocked(getConfig).mockResolvedValueOnce({
       AI_PROVIDERS: JSON.stringify([PROVIDER_OK]),
     } as any)
@@ -201,8 +201,8 @@ describe('handleArticleSummary', () => {
 
     const result = await handleArticleSummary({ content: 'x'.repeat(20) })
     expect(result.success).toBe(false)
-    expect(result.message).toContain('摘要生成失败')
-    expect(result.message).toContain('API rate limit exceeded')
+    expect(result.message).toBe('摘要生成失败，请稍后重试')
+    expect(result.message).not.toContain('API rate limit exceeded')
     expect(result.summary).toBe('')
   })
 

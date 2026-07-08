@@ -101,6 +101,8 @@ export async function handleArticleSummary (data: {
       keywords: parsed.keywords || [],
     }
   } catch (e: any) {
-    return { success: false, message: `摘要生成失败: ${e.message}`, summary: '', keywords: [] }
+    // 记录完整异常供服务端排查，但禁止将 LLM 原始错误/堆栈返回给客户端
+    logger.error({ error: e.message, stack: e.stack }, 'AI 摘要生成失败')
+    return { success: false, message: '摘要生成失败，请稍后重试', summary: '', keywords: [] }
   }
 }
