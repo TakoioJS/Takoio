@@ -52,7 +52,7 @@ describe('useFormValidation', () => {
   })
 
   it('requires link only when enableLinkInput and in REQUIRED_FIELDS', () => {
-    const { errors, validate } = useFormValidation({
+    const { validate } = useFormValidation({
       ...baseOptions,
       options: { enableLinkInput: false } as any,
       siteConfig: { REQUIRED_FIELDS: ['nick', 'mail', 'link'] },
