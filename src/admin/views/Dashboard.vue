@@ -116,7 +116,7 @@ const loadComments = async () => {
     const res = await commentsApi.list({ page: 1, pageSize: 6, filter: 'all' })
     const data = res.data || []
     await Promise.all(data.map(async (item: Comment) => {
-      item._safeContent = await renderMarkdown(item.renderedComment || item.comment || '')
+      item._safeContent = item.renderedComment || await renderMarkdown(item.comment || '')
     }))
     recentComments.value = data
   } catch (e: any) { loadError.value = true; message.error(t('commentsLoadFailed') + '：' + (e.message || '')) }

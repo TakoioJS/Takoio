@@ -21,6 +21,7 @@ export function useDraft (opts: UseDraftOptions) {
   const draftTimer = ref<number | null>(null)
 
   const saveDraft = (): void => {
+    clearDraftTimer()
     draftTimer.value = window.setTimeout(() => {
       const form = opts.form
       if (form.comment.trim() || form.nick.trim() || form.mail.trim()) {

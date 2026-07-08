@@ -65,14 +65,24 @@ const reactionsApi = useReactions({ options: props.options, toast })
 const { reactions, myReactions, fetchReactions, toggleReaction } = reactionsApi
 
 // --- Markdown preview ---
+let previewTimer: number | null = null
 const updatePreview = async (): Promise<void> => {
   if (!showPreview.value) return
   previewHtml.value = await renderMarkdown(form.comment)
   await nextTick()
   if (previewRef.value) await renderTex(previewRef.value, props.options.texRenderer)
 }
-watch(() => form.comment, updatePreview)
-watch(showPreview, (v) => { if (v) updatePreview() })
+const debouncedUpdatePreview = () => {
+  if (previewTimer) clearTimeout(previewTimer)
+  previewTimer = window.setTimeout(updatePreview, 250)
+}
+watch(() => form.comment, debouncedUpdatePreview)
+watch(showPreview, (v) => {
+  if (v) {
+    if (previewTimer) clearTimeout(previewTimer)
+    updatePreview()
+  }
+})
 
 // --- Form error clear on edit ---
 watch(form, () => {
@@ -211,7 +221,7 @@ onMounted(async () => {
     availableProviders.value = { github: false, google: false, email: false }
   }
 })
-onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as any); if (unsubscribeAuth) unsubscribeAuth() })
+onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as any); if (previewTimer) clearTimeout(previewTimer); if (unsubscribeAuth) unsubscribeAuth() })
 </script>
 
 <template>
@@ -413,6 +423,30 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
         </div>
 
         <div class="tk-toolbar-right">
+          <!-- 预览按钮 -->
+          <button
+            type="button"
+            class="tk-btn-icon-ghost"
+            :class="{ 'tk-preview-active': showPreview }"
+            :title="t('preview') || '预览'"
+            :aria-label="t('preview') || '预览'"
+            @click="showPreview = !showPreview"
+            style="margin-right: 4px;"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
           <!-- 公开 / 私密切换（设计稿 296–302 行） -->
           <PrivacyToggle
             :model-value="privateComment"
@@ -763,6 +797,7 @@ onBeforeUnmount(() => { if (draftTimer.value) clearTimeout(draftTimer.value as a
   cursor: pointer; opacity: .55; transition: all .15s;
 }
 .tk-btn-icon-ghost:hover { opacity: 1; background: var(--tk-bg-hover); color: var(--tk-text-primary); }
+.tk-btn-icon-ghost.tk-preview-active { opacity: 1; color: var(--tk-brand); }
 
 .tk-btn-circle { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: inherit; opacity: .6; cursor: pointer; border-radius: 50%; transition: all .15s; padding: 0; position: relative; flex-shrink: 0; }
 .tk-btn-circle:hover { opacity: 1; background: var(--tk-bg-muted); }
