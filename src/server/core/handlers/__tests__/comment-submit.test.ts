@@ -194,4 +194,34 @@ describe('handleCommentSubmit', () => {
     // ipRegion may be '' (empty string) or 'CN' (from mock) when lookup runs
     expect(result.data.ipRegion === null || result.data.ipRegion === '' || result.data.ipRegion === 'CN').toBe(true)
   })
+
+  it('does not crash when MASTER_NAME / MASTER are numeric (regression: config type-coercion TypeError)', async () => {
+    // config 存储层把字符串原样写入、读取时统一 JSON.parse：当博主把 MASTER_NAME
+    // 设成全数字字符串 "12345" 时，读回的是 number 12345。旧实现直接调用
+    // (12345).toLowerCase() 会抛 TypeError，导致所有评论提交失败。
+    const { getConfig } = await import('../../config')
+    vi.mocked(getConfig).mockResolvedValueOnce({
+      SITE_NAME: 'Test Blog',
+      MASTER_NAME: 12345 as unknown as string, // 模拟 JSON.parse 把 "12345" 解成 number
+      MASTER: 67890 as unknown as string,
+      ENABLE_CAPTCHA: false,
+      COMMENT_RATE_LIMIT: 30000,
+      COMMENT_LENGTH_MAX: 500,
+      BLOCKED_KEYWORDS: 'spam,gambling',
+      AUTO_AUDIT_METHOD: '',
+      AUDIT_MODE: false,
+      ENABLE_MAIL_NOTIFICATION: false,
+    } as any)
+
+    // 不应抛出 TypeError；正常提交应成功
+    const result = await handleCommentSubmit({
+      url: '/test',
+      nick: 'TestUser',
+      mail: 'test@example.com',
+      comment: 'This is a test comment',
+      _ip: '127.0.0.1',
+    })
+    expect(result.data).toBeDefined()
+    expect(result.data.nick).toBe('TestUser')
+  })
 })

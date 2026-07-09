@@ -352,6 +352,16 @@ const PROVIDER_UPLOADERS: Record<string, (buffer: Buffer, filename: string, mime
 export const handleUploadImage = async (data: { image: string }) => {
   const validation = safeValidate(UploadImageSchema, data)
   if (!validation.success) throw new AppError('INVALID_INPUT', '无图片数据', 400)
+  // 在解码前先用 base64 字符串长度做粗略上限校验，避免对超大 payload 调用
+  // Buffer.from(...) 一次性分配缓冲区导致 OOM（DoS）。
+  // base64 编码会把原始字节膨胀约 4/3 倍，因此当 base64 数据段长度 > MAX_UPLOAD_SIZE * 4/3
+  // 时，解码后必然超限。这里取 1.5 作为更宽松的安全系数。
+  const base64Data = validation.data.image.includes(',')
+    ? validation.data.image.split(',').slice(1).join(',')
+    : validation.data.image
+  if (base64Data.length > MAX_UPLOAD_SIZE * 1.5) {
+    throw new AppError('INVALID_INPUT', '图片超过 5MB', 400)
+  }
   // Decode base64 and check actual buffer size
   const buffer = base64ToBuffer(validation.data.image)
   if (buffer.length > MAX_UPLOAD_SIZE) { throw new AppError('INVALID_INPUT', '图片超过 5MB', 400) }

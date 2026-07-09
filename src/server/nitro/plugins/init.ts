@@ -69,18 +69,16 @@ export default definePlugin(async () => {
       logger.info({ signal }, 'Received shutdown signal, starting graceful shutdown...')
 
       // 停止接收新连接 + 给 in-flight 请求完成时间
+      // 旧实现在此处用 setImmediate 立即 resolve + clearTimeout(timeout)，
+      // 把 10s grace period 缩成 ~0ms，随后 closeDb() 立即执行会中断
+      // in-flight 的 DB 写入（如评论提交事务）→ 数据丢失。
+      // 修复：移除 setImmediate 短路；同时移除 .unref()，否则当 in-flight refs
+      // 清空后进程会立即退出，closeDb()/closeRedis() 永远不会执行。
       await new Promise<void>(resolve => {
-        // 最多等待 10 秒
-        const timeout = setTimeout(() => {
+        setTimeout(() => {
           logger.warn('Graceful shutdown timeout reached, forcing exit')
           resolve()
-        }, 10_000).unref()
-
-        // 再等一个事件循环 tick，让 Node.js 有机会关闭 HTTP server
-        setImmediate(() => {
-          clearTimeout(timeout)
-          resolve()
-        })
+        }, 10_000)
       })
 
       // 关闭 Redis 连接

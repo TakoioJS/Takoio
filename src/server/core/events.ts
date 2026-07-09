@@ -17,6 +17,10 @@ interface Listener {
   url: string
   send: (data: string) => void
   createdAt: number
+  /** 由 runSSEStream 在创建 cleanup 闭包后回填。 eviction 路径（超过 MAX_LISTENERS
+   *  或 stale 清理）必须调用它，否则 listener 的 keepAlive setInterval 与
+   *  sink 持有的 HTTP 连接都不会被释放，长期累积会导致 FD 耗尽（DoS）。 */
+  cleanup?: () => void
 }
 
 const listeners = new Set<Listener>()
@@ -158,14 +162,6 @@ export async function runSSEStream (sink: SSESink, query: Record<string, string>
   const listener: Listener = { url, send: (data) => sink.write(data), createdAt: Date.now() }
   listeners.add(listener)
 
-  // Enforce max listener limit
-  if (listeners.size > MAX_LISTENERS) {
-    const oldest = listeners.values().next().value
-    if (oldest) {
-      listeners.delete(oldest)
-    }
-  }
-
   // Keep-alive ping every 30s
   const keepAlive = setInterval(() => {
     sink.write(': ping\n\n')
@@ -174,6 +170,22 @@ export async function runSSEStream (sink: SSESink, query: Record<string, string>
   const cleanup = () => {
     clearInterval(keepAlive)
     listeners.delete(listener)
+  }
+
+  // 回填 cleanup 闭包：eviction 路径（MAX_LISTENERS / stale 清理）需要它来释放
+  // keepAlive 定时器与 sink 持有的 HTTP 连接，否则被驱逐的 listener 仍会
+  // 每 30s 写入已孤立的 sink，连接也永不关闭，最终 FD 耗尽。
+  listener.cleanup = cleanup
+
+  // Enforce max listener limit
+  if (listeners.size > MAX_LISTENERS) {
+    const oldest = listeners.values().next().value
+    if (oldest) {
+      // 关键：必须调用 oldest.cleanup() 而非只 listeners.delete(oldest)。
+      // 只 delete 会留下 keepAlive setInterval 与未关闭的 HTTP 连接 → 资源泄漏。
+      if (oldest.cleanup) oldest.cleanup()
+      else listeners.delete(oldest)
+    }
   }
 
   // Disconnect detection is delegated to the sink adapter (nitro layer),
@@ -185,8 +197,7 @@ export async function runSSEStream (sink: SSESink, query: Record<string, string>
   // enforce a max lifetime to prevent memory leaks.
   if (!cleanupRegistered) {
     setTimeout(() => {
-      clearInterval(keepAlive)
-      listeners.delete(listener)
+      cleanup()
     }, LISTENER_TIMEOUT_MS)
   }
 }
@@ -197,7 +208,10 @@ export function cleanupStaleListeners (): number {
   let removed = 0
   for (const listener of listeners) {
     if (now - listener.createdAt > LISTENER_TIMEOUT_MS) {
-      listeners.delete(listener)
+      // 关键：必须调用 listener.cleanup() 而非只 listeners.delete(listener)。
+      // 只 delete 会留下 keepAlive setInterval 与未关闭的 HTTP 连接 → 资源泄漏。
+      if (listener.cleanup) listener.cleanup()
+      else listeners.delete(listener)
       removed++
     }
   }

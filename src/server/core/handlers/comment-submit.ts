@@ -45,9 +45,12 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
   // （避免已登录博主评论自己博客时反复验证）
 
   // Impersonation protection — case-INSENSITIVE comparison (CVE-2026-0705-01 fix)
-  const masterNameLower = cfg.MASTER_NAME?.toLowerCase() || ''
+  // 注意：config 存储层把字符串原样写入，读取时统一 JSON.parse，因此 `"12345"` 这种
+  // 全数字字符串会被解析回 number 类型。直接对 number 调用 .toLowerCase() / .trim()
+  // 会抛 TypeError，导致所有评论提交失败。这里强制 String() 转换以避免类型崩溃。
+  const masterNameLower = String(cfg.MASTER_NAME || '').toLowerCase()
   const nickLower = nick.toLowerCase()
-  const masterMailLower = cfg.MASTER?.trim().toLowerCase() || ''
+  const masterMailLower = String(cfg.MASTER || '').trim().toLowerCase()
   const mailLower = mail?.trim().toLowerCase() || ''
   if ((masterNameLower && nickLower === masterNameLower) || (masterMailLower && mailLower === masterMailLower)) {
     logger.warn({ nick, mail: mail ? '[redacted]' : '', ip: data._ip }, 'Impersonation attempt blocked')

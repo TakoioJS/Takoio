@@ -19,6 +19,15 @@ export class LRUCache<K, V> {
     return value
   }
 
+  /** Read without promoting to most-recently-used.
+   *  必须用于遍历清理场景：在 `for...of keys()` 迭代中调用 `get()` 会 delete+set
+   *  把当前 key 重新追加到 Map 尾部，迭代器会再次访问它 → 死循环卡死事件循环。
+   *  peek 不修改 Map 结构，保证遍历可终止。
+   */
+  peek (key: K): V | undefined {
+    return this.cache.get(key)
+  }
+
   set (key: K, value: V): void {
     if (this.cache.has(key)) {
       this.cache.delete(key)

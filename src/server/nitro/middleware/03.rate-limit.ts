@@ -24,7 +24,23 @@ function resolveRateLimitAction (event: any): RateLimitAction {
   const path = event.path || event.node?.req?.url || ''
   const pathLower = path.toLowerCase()
 
-  if (pathLower.startsWith('/api/auth')) return 'login'
+  if (pathLower.startsWith('/api/auth')) {
+    // /api/auth/me 是无副作用的 JWT 现状查询（前端 __takoio_auth 嵌入脚本在每次
+    // 页面加载时调用），/api/auth/providers 与 /api/auth/logout 同样无需限流。
+    // 若让它们共享 login 桶（5/15min），用户浏览 5 个页面就会把 login 桶耗尽，
+    // 反向锁死真正的登录尝试（/api/auth/email/send、/verify 等）。
+    // 这里把这类只读 / 无状态端点放回 default 桶，仅保留对登录尝试端点的严格限流。
+    if (
+      pathLower === '/api/auth/me' ||
+      pathLower.startsWith('/api/auth/me?') ||
+      pathLower === '/api/auth/providers' ||
+      pathLower.startsWith('/api/auth/providers?') ||
+      pathLower === '/api/auth/logout'
+    ) {
+      return 'default'
+    }
+    return 'login'
+  }
   if (pathLower.startsWith('/api/admin')) return 'admin'
   if (pathLower.startsWith('/api/upload')) return 'upload'
   if (pathLower.startsWith('/api/reactions')) return 'reaction'

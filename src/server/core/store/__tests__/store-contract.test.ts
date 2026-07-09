@@ -43,9 +43,9 @@ vi.mock('../../env', async (importOriginal) => {
 })
 
 import { closeDb, getDb, initDb } from '../../db/client'
-import { comments, commentReactions } from '../../db/schema'
-import { commentStore } from '../sqlite'
-import type { CommentInput } from '../types'
+import { comments, commentReactions, visitors } from '../../db/schema'
+import { commentStore, visitorStore, importStore } from '../sqlite'
+import type { CommentInput, StoreImportData } from '../types'
 
 let commentCounter = 0
 
@@ -96,6 +96,7 @@ describe('SQLite commentStore contract', () => {
     // 清空 comments 及关联的 comment_reactions 表，确保测试间数据隔离
     await getDb().delete(commentReactions).run()
     await getDb().delete(comments).run()
+    await getDb().delete(visitors).run()
   })
 
   afterAll(async () => {
@@ -441,6 +442,49 @@ describe('SQLite commentStore contract', () => {
       const direct = await commentStore.getComment('filter-1')
       expect(direct).toBeDefined()
       expect(direct!.state).toBe('spam')
+    })
+  })
+
+  // ========== visitorStore: getVisitorCount (regression: double-increment) ==========
+
+  describe('visitorStore.getVisitorCount', () => {
+    it('first visit returns count 1 (not 2)', async () => {
+      // 旧实现 INSERT(count=1) 后无条件 UPDATE(count+1) → 首次访问返回 2
+      const r = await visitorStore.getVisitorCount('/visitor-page', 'Title')
+      expect(r.time).toBe(1)
+      expect(r.url).toBe('/visitor-page')
+    })
+
+    it('increments by exactly 1 per visit', async () => {
+      await visitorStore.getVisitorCount('/v2', 'T')
+      const r2 = await visitorStore.getVisitorCount('/v2', 'T')
+      const r3 = await visitorStore.getVisitorCount('/v2', 'T')
+      expect(r2.time).toBe(2)
+      expect(r3.time).toBe(3)
+    })
+  })
+
+  // ========== importStore: isPrivate preservation (regression: dropped field) ==========
+
+  describe('importStore', () => {
+    it('preserves isPrivate=true on import (was dropped → private comments leaked)', async () => {
+      const privateComment = makeComment({ id: 'imp-private', isPrivate: true, comment: 'top secret' })
+      const data: StoreImportData = { comments: [privateComment] }
+      await importStore(data)
+
+      const retrieved = await commentStore.getComment('imp-private')
+      expect(retrieved).toBeDefined()
+      expect(retrieved!.isPrivate).toBe(true)
+      expect(retrieved!.comment).toBe('top secret')
+    })
+
+    it('preserves isPrivate=false on import', async () => {
+      const publicComment = makeComment({ id: 'imp-public', isPrivate: false })
+      await importStore({ comments: [publicComment] })
+
+      const retrieved = await commentStore.getComment('imp-public')
+      expect(retrieved).toBeDefined()
+      expect(retrieved!.isPrivate).toBe(false)
     })
   })
 })

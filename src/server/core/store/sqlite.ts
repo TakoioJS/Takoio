@@ -332,17 +332,18 @@ export const configStore: ConfigStore = {
 
 export const visitorStore: VisitorStore = {
   async getVisitorCount (url: string, title?: string): Promise<VisitorCount> {
-    // Use atomic UPSERT: insert with count=1, or update count = count + 1 on conflict.
-    // This eliminates the read-modify-write race condition.
+    // 单次原子 UPSERT：首次插入 count=1，已存在则 count=count+1。
+    // 旧实现先 INSERT(count=1) 再无条件 UPDATE(count+1)，导致首次访问就记成 2，每次访问恒多 1。
     const now = Date.now()
-    await db().insert(visitors).values({ url, title: title || '', count: 1, updatedAt: now }).run()
-      .catch(() => {
-        // Conflict expected when row exists; fall through to atomic update
-      })
-    // After ensuring row exists, perform atomic increment
-    await db().run(
-      sql`UPDATE ${visitors} SET count = count + 1, updated_at = ${now}${title ? sql`, title = ${title}` : sql``} WHERE ${visitors.url} = ${url}`
-    )
+    const conflictSet: Record<string, unknown> = {
+      count: sql`${visitors.count} + 1`,
+      updatedAt: now,
+    }
+    if (title) conflictSet.title = title
+    await db().insert(visitors)
+      .values({ url, title: title || '', count: 1, updatedAt: now })
+      .onConflictDoUpdate({ target: visitors.url, set: conflictSet })
+      .run()
     // Fetch the updated count
     const row = await db().select({ count: visitors.count }).from(visitors).where(eq(visitors.url, url)).get()
     return { url, time: row?.count ?? 1, updatedAt: now }
@@ -575,6 +576,8 @@ export async function importStore (data: StoreImportData): Promise<void> {
           isSpam: c.isSpam ? 1 : 0,
           isTop: c.isTop ? 1 : 0,
           isPinned: c.isPinned ? 1 : 0,
+          // 必须保留 isPrivate：遗漏会让 DEFAULT 0 生效，导入后私密评论变公开泄露
+          isPrivate: c.isPrivate ? 1 : 0,
           image: c.image,
           sticker: c.sticker,
           ipRegion: c.ipRegion,

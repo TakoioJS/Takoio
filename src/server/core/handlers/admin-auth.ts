@@ -8,7 +8,7 @@ import { safeValidate, LoginSchema, PasswordSetSchema } from '../schemas'
 import type { LoginData, PasswordSetData } from '../schemas'
 import { configStore, sessionStore } from '../store/index'
 import { getConfig } from '../config'
-import { hashPassword, getAuthHash, updateAuthHashCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha, requireAdmin } from '../auth'
+import { hashPassword, getAuthHash, updateAuthHashCache, invalidateAdminTokenCache, checkLoginRateLimit, recordLoginFailure, clearLoginFailures, verifyCaptcha, requireAdmin } from '../auth'
 import { verifyPassword, needsRehash } from '../utils/crypto'
 import { logger } from '../utils/logger'
 import { AppError } from '../errors'
@@ -86,6 +86,9 @@ export const handleLogin = async (data: LoginData, ip?: string) => {
 
 export const handleLogout = async (data: { token?: string }) => {
   if (data.token) await sessionStore.removeToken(data.token)
+  // 失效 token 缓存：sessionStore 已删除该 token，但 _adminTokenCache 仍可能
+  // 在 60s TTL 内对同一 token 返回 true，造成登出后短暂可继续以 admin 身份操作。
+  invalidateAdminTokenCache(data.token)
   return { success: true }
 }
 
@@ -116,6 +119,9 @@ export const handlePasswordSet = async (data: PasswordSetData & { token?: string
   updateAuthHashCache(newHash)
   // Invalidate all existing sessions on password change
   await sessionStore.removeAllTokens()
+  // 清空 admin token 缓存：removeAllTokens 已让所有旧 token 失效，
+  // 但 _adminTokenCache（60s TTL）仍可能放行旧 token，造成改密后 60s 内的鉴权绕过。
+  invalidateAdminTokenCache()
   logger.info(existingHash ? 'Admin password updated (all sessions invalidated)' : 'Admin password created (first-time setup)')
 
   // Return a session token so the user is auto-logged in after setup

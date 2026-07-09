@@ -29,6 +29,8 @@ vi.mock('../../auth', () => ({
   hashPassword: vi.fn().mockResolvedValue('new-hash'),
   updateAuthHashCache: vi.fn(),
   invalidateAuthHashCache: vi.fn(),
+  invalidateAdminTokenCache: vi.fn(),
+  requireAdmin: vi.fn().mockResolvedValue(undefined),
   checkLoginRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
   recordLoginFailure: vi.fn().mockResolvedValue(undefined),
   clearLoginFailures: vi.fn().mockResolvedValue(undefined),
@@ -99,6 +101,7 @@ import {
   handleGetConfig,
   handleSetConfig,
   handlePasswordSet,
+  handleConfigReset,
   handleIpRegionGet,
 } from '../admin'
 
@@ -158,6 +161,14 @@ describe('Admin Handlers', () => {
       expect(result.success).toBe(true)
       expect(sessionStore.removeToken).toHaveBeenCalledWith('test-token')
     })
+
+    it('invalidates admin token cache for the logged-out token (regression: post-logout auth bypass)', async () => {
+      // 旧实现只调用 sessionStore.removeToken，未失效 _adminTokenCache（60s TTL），
+      // 导致登出后 60s 内旧 token 仍能通过 isAdminAsync 校验，构成鉴权绕过。
+      const { invalidateAdminTokenCache } = await import('../../auth')
+      await handleLogout({ token: 'leaked-token' })
+      expect(invalidateAdminTokenCache).toHaveBeenCalledWith('leaked-token')
+    })
   })
 
   describe('handleGetConfig', () => {
@@ -202,6 +213,25 @@ describe('Admin Handlers', () => {
       })
       expect(result.success).toBe(true)
       expect(result.token).toBe('test-token')
+    })
+
+    it('clears admin token cache after password change (regression: post-change auth bypass)', async () => {
+      // 改密会调用 sessionStore.removeAllTokens 让所有旧 session 失效，
+      // 但 _adminTokenCache（60s TTL）仍可能放行旧 token，导致改密后 60s 鉴权绕过。
+      const { getAuthHash, invalidateAdminTokenCache } = await import('../../auth')
+      vi.mocked(getAuthHash).mockResolvedValueOnce(null)
+      await handlePasswordSet({ password: 'new-password-123', setupToken: 'test-setup-token' })
+      expect(invalidateAdminTokenCache).toHaveBeenCalledWith()
+    })
+  })
+
+  describe('handleConfigReset', () => {
+    it('clears admin token cache after config reset (regression: post-reset auth bypass)', async () => {
+      // 重置配置会清除 AUTH_HASH 并 removeAllTokens，但 _adminTokenCache（60s TTL）
+      // 仍可能放行旧 token，构成重置后 60s 内的鉴权绕过。
+      const { invalidateAdminTokenCache } = await import('../../auth')
+      await handleConfigReset()
+      expect(invalidateAdminTokenCache).toHaveBeenCalledWith()
     })
   })
 

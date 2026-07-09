@@ -186,6 +186,48 @@ describe('handleCommentGet', () => {
     expect(result.data[0].renderedComment).toContain('🔒 私密评论')
   })
 
+  it('masks private reply content nested in children (regression: private reply leak)', async () => {
+    // 顶层公开评论下挂一条 isPrivate:true 的回复。旧实现只对顶层做 .map()，
+    // 未递归 children，导致私密回复正文原样泄露给匿名访客。
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [{
+        id: 'top', url: '/test', nick: 'Author', mailMd5: 'md5-top',
+        comment: 'public top', isPrivate: false, created: 1,
+        children: [
+          { id: 'reply', url: '/test', nick: 'Replier', mailMd5: 'md5-reply',
+            comment: 'my phone 555-1234', renderedComment: '<p>my phone 555-1234</p>',
+            isPrivate: true, created: 2, children: [] },
+        ],
+      }],
+      total: 1,
+    } as any)
+    const result = await handleCommentGet({ url: '/test' } as any)
+    const top = result.data[0]
+    expect(top.comment).toBe('public top') // 顶层公开评论不受影响
+    const reply = top.children[0]
+    expect(reply.comment).toBe('🔒 私密评论') // 私密回复正文被替换
+    expect(reply.renderedComment).toContain('🔒 私密评论')
+    // 原始泄露内容不得出现在响应中
+    expect(JSON.stringify(result.data)).not.toContain('555-1234')
+  })
+
+  it('keeps private reply visible to admin via adminToken (recursion does not over-mask)', async () => {
+    vi.mocked(isAdminAsync).mockResolvedValue(true)
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [{
+        id: 'top', url: '/test', nick: 'Author', mailMd5: 'md5-top',
+        comment: 'public top', isPrivate: false, created: 1,
+        children: [
+          { id: 'reply', url: '/test', nick: 'Replier', mailMd5: 'md5-reply',
+            comment: 'private reply body', isPrivate: true, created: 2, children: [] },
+        ],
+      }],
+      total: 1,
+    } as any)
+    const result = await handleCommentGet({ url: '/test', adminToken: 'admin-token' } as any)
+    expect(result.data[0].children[0].comment).toBe('private reply body')
+  })
+
   it('shows private comments to the author via viewerToken', async () => {
     const email = 'author@example.com'
     const mailMd5 = crypto.createHash('sha256').update(email).digest('hex')

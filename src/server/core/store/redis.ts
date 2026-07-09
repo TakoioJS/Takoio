@@ -200,7 +200,7 @@ const _memCache = new LRUCache<string, { data: SummaryCacheData; expire: number 
 setInterval(() => {
   const now = Date.now()
   for (const k of _memCache.keys()) {
-    const entry = _memCache.get(k)
+    const entry = _memCache.peek(k)
     if (entry && entry.expire < now) _memCache.delete(k)
   }
 }, 60_000).unref()
@@ -297,7 +297,7 @@ const _memCommentUrlIndex = new Map<string, Set<string>>()
 function cleanupMemCommentCache (): void {
   const now = Date.now()
   for (const k of _memCommentCache.keys()) {
-    const entry = _memCommentCache.get(k)
+    const entry = _memCommentCache.peek(k)
     if (entry && entry.expire < now) {
       _memCommentCache.delete(k)
     }

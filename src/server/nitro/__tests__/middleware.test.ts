@@ -401,6 +401,45 @@ describe('03.rate-limit middleware', () => {
 
     expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'login')
   })
+
+  it('does NOT consume login bucket for /api/auth/me (regression: browsing locks out login)', async () => {
+    // /api/auth/me 是无副作用的 JWT 现状查询，__takoio_auth 嵌入脚本在每次页面
+    // 加载时调用。旧实现让它共享 login 桶（5/15min），用户浏览 5 个页面就会
+    // 耗尽 login 桶，反向锁死真正的登录尝试。修复后它应走 default 桶。
+    const event = makeEvent({ path: '/api/auth/me?token=abc' })
+    vi.mocked(coreMocks.rateLimitStore.checkRateLimit).mockResolvedValueOnce(true)
+
+    await rateLimit(event)
+
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'default')
+  })
+
+  it('does NOT consume login bucket for /api/auth/providers', async () => {
+    const event = makeEvent({ path: '/api/auth/providers' })
+    vi.mocked(coreMocks.rateLimitStore.checkRateLimit).mockResolvedValueOnce(true)
+
+    await rateLimit(event)
+
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'default')
+  })
+
+  it('does NOT consume login bucket for /api/auth/logout', async () => {
+    const event = makeEvent({ method: 'POST', path: '/api/auth/logout' })
+    vi.mocked(coreMocks.rateLimitStore.checkRateLimit).mockResolvedValueOnce(true)
+
+    await rateLimit(event)
+
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'default')
+  })
+
+  it('still consumes login bucket for /api/auth/email/verify (brute-forceable)', async () => {
+    const event = makeEvent({ method: 'POST', path: '/api/auth/email/verify' })
+    vi.mocked(coreMocks.rateLimitStore.checkRateLimit).mockResolvedValueOnce(true)
+
+    await rateLimit(event)
+
+    expect(coreMocks.rateLimitStore.checkRateLimit).toHaveBeenCalledWith('127.0.0.1', 'login')
+  })
 })
 
 // =================================================================
