@@ -41,42 +41,88 @@ export function classifyApiError (error: unknown): ApiErrorCategory {
   return 'unknown'
 }
 
+// ========== Retry Logic ==========
+
+const MAX_RETRIES = 2
+const RETRY_DELAYS = [1000, 3000] // ms
+
+/** 判断是否可重试：仅 GET 请求的网络/超时错误可重试，POST 等写操作不重试 */
+function isRetryable (method: string | undefined, error: unknown): boolean {
+  if (method && method.toUpperCase() !== 'GET') return false
+  const category = classifyApiError(error)
+  return category === 'network' || category === 'timeout'
+}
+
+async function sleep (ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 // ========== Core Request ==========
 
 export const request = async <T = any>(url: string, init?: RequestInit & { externalSignal?: AbortSignal }): Promise<T> => {
-  const controller = new AbortController()
-  const externalSignal = init?.externalSignal
-  delete init?.externalSignal
+  let lastError: unknown
+  const method = init?.method
 
-  // 同时支持外部信号（调用方取消）和内部超时信号
-  const onExternalAbort = () => controller.abort()
-  externalSignal?.addEventListener('abort', onExternalAbort, { once: true })
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    // 重试前等待退避时间
+    if (attempt > 0) {
+      await sleep(RETRY_DELAYS[attempt - 1] ?? RETRY_DELAYS.at(-1)!)
+    }
 
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
-  let res: Response
-  try {
-    res = await fetch(url, { ...init, signal: controller.signal })
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      if (externalSignal?.aborted) {
+    const controller = new AbortController()
+    const externalSignal = init?.externalSignal
+    delete init?.externalSignal
+
+    // 同时支持外部信号（调用方取消）和内部超时信号
+    const onExternalAbort = () => controller.abort()
+    externalSignal?.addEventListener('abort', onExternalAbort, { once: true })
+
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+    let res: Response
+    try {
+      res = await fetch(url, { ...init, signal: controller.signal })
+    } catch (err) {
+      clearTimeout(timeoutId)
+      externalSignal?.removeEventListener('abort', onExternalAbort)
+      lastError = err
+
+      // 外部主动取消不重试
+      if (err instanceof DOMException && err.name === 'AbortError' && externalSignal?.aborted) {
         const e = new Error('请求已取消')
         e.name = 'TakoioCancelledError'
         throw e
       }
-      const e = new Error('请求超时，请检查网络后重试')
-      e.name = 'TakoioTimeoutError'
-      throw e
+
+      // 可重试错误且还有重试次数，继续下一轮
+      if (attempt < MAX_RETRIES && isRetryable(method, err)) continue
+
+      // 超时 → 抛出明确错误
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        const e = new Error('请求超时，请检查网络后重试')
+        e.name = 'TakoioTimeoutError'
+        throw e
+      }
+      throw err
     }
-    throw err
-  } finally {
+
     clearTimeout(timeoutId)
     externalSignal?.removeEventListener('abort', onExternalAbort)
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      const httpError = new Error(body.message || `Takoio: HTTP ${res.status}`)
+      // 5xx 服务端错误且是 GET 请求 → 可重试
+      if (res.status >= 500 && attempt < MAX_RETRIES && isRetryable(method, httpError)) {
+        lastError = httpError
+        continue
+      }
+      throw httpError
+    }
+    return res.json()
   }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.message || `Takoio: HTTP ${res.status}`)
-  }
-  return res.json()
+
+  // 理论上不会到这里，但兜底
+  throw lastError ?? new Error('Takoio: request failed after retries')
 }
 
 // ========== Configurable API Client (shared by admin / custom integrations) ==========

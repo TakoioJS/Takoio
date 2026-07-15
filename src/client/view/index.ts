@@ -6,6 +6,7 @@ import { createApp, type App as VueApp } from 'vue'
 import 'virtual:uno.css'
 import App from './App.vue'
 import { version, setLanguage } from '../utils'
+import { sanitizeCustomCSS } from '../utils/sanitize-css'
 import type { TakoioConfig } from '../types'
 
 const containers: Map<string, HTMLElement> = new Map()
@@ -64,11 +65,12 @@ export const render = async (options: TakoioConfig): Promise<void> => {
     return
   }
 
-  // 处理自定义 CSS
+  // 处理自定义 CSS — 必须消毒防止 XSS（与 App.vue 使用同一规则）
   if (options.customCSS) {
     const style = document.createElement('style')
     style.id = 'takoio-custom-css'
-    style.textContent = options.customCSS
+    style.textContent = sanitizeCustomCSS(options.customCSS)
+    style.setAttribute('data-takoio-custom-css', '')
     document.head.appendChild(style)
   }
 

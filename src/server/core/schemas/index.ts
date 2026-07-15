@@ -8,20 +8,23 @@ import { ALLOWED_CONFIG_KEYS } from '../config-schema'
 // ========== Comment ==========
 
 export const SubmitCommentSchema = z.object({
-  url: z.string().min(1),
-  href: z.string().optional(),
+  url: z.string().min(1).max(500).refine(
+    v => v.startsWith('/') || /^https?:\/\//.test(v),
+    { message: 'url 必须以 / 开头或为合法 http(s) URL' }
+  ),
+  href: z.string().max(500).optional(),
   nick: z.string().min(1).max(50).trim(),
   mail: z.string().email().optional().or(z.literal('')),
   link: z.string().url().optional().or(z.literal('')),
   comment: z.string().min(1).max(5000).trim(),
   pid: z.string().optional(),
   rid: z.string().optional(),
-  ua: z.string().optional(),
-  image: z.string().optional(),
-  title: z.string().optional(),
-  captchaToken: z.string().optional(),
-  _token: z.string().optional(),
-  token: z.string().optional(),
+  ua: z.string().max(500).optional(),
+  image: z.string().max(200).optional(),
+  title: z.string().max(200).optional(),
+  captchaToken: z.string().max(2000).optional(),
+  _token: z.string().max(2000).optional(),
+  token: z.string().max(2000).optional(),
   // 私密评论：开启后只有博主和评论作者本人可见
   isPrivate: z.boolean().optional(),
 })
@@ -120,11 +123,11 @@ export const CounterUpdateSchema = z.object({
 })
 
 export const CommentsCountSchema = z.object({
-  urls: z.array(z.string()),
+  urls: z.array(z.string().max(500)).max(100),
 })
 
 export const RecentCommentsSchema = z.object({
-  count: z.coerce.number().int().positive().default(10),
+  count: z.coerce.number().int().positive().max(50).default(10),
 })
 
 // ========== Dashboard ==========
@@ -141,7 +144,7 @@ export const ReactionGetSchema = z.object({
 
 export const ReactionSubmitSchema = z.object({
   url: z.string().default('/'),
-  emoji: z.string().min(1),
+  emoji: z.string().min(1).max(20),
 })
 
 export const CommentReactionGetSchema = z.object({
@@ -150,7 +153,7 @@ export const CommentReactionGetSchema = z.object({
 
 export const CommentReactionSubmitSchema = z.object({
   id: z.string().min(1).optional(), // id 可由 URL 路径提供，body 不必传
-  emoji: z.string().min(1),
+  emoji: z.string().min(1).max(20),
 })
 
 // ========== Admin (partial — missing schemas) ==========

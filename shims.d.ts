@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __TAKOIO_VERSION__: string
+
 interface Window {
   TAKOIO_MAGIC_PATH?: string
   TAKOIO_MAGIC_HREF?: string

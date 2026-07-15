@@ -23,6 +23,7 @@
 import { ref, computed, provide, onMounted, onBeforeUnmount } from 'vue'
 import { version } from '../utils'
 import { logger } from '../utils'
+import { sanitizeCustomCSS } from '../utils/sanitize-css'
 import type { TakoioConfig, Comment as TakoioComment } from '../types'
 import TkComments from './components/TkComments.vue'
 import TkSummary from './components/TkSummary.vue'
@@ -127,21 +128,10 @@ onMounted(() => {
   }
 
   if (typeof window !== 'undefined' && props.options.customCSS) {
-    // 严格过滤自定义 CSS：禁止 url()、import、expression、javascript: 等危险特性
-    // 注意：正则过滤存在局限，完全安全方案需要 CSS 解析器沙箱
-    const sanitized = props.options.customCSS
-      .replace(/url\s*\([^)]*\)/gi, '/* url() blocked */') // 禁止所有 url()
-      .replace(/@import/gi, '/* @import blocked */')         // 禁止 @import
-      .replace(/expression\s*\([^)]*\)/gi, '/* expression() blocked */') // 禁止 expression
-      .replace(/-moz-binding\s*:/gi, '/* -moz-binding blocked */')       // 禁止 binding
-      .replace(/javascript\s*:/gi, '/* javascript: blocked */')           // 禁止 javascript:
-      .replace(/vbscript\s*:/gi, '/* vbscript: blocked */')               // 禁止 vbscript:
-      .replace(/behavior\s*:/gi, '/* behavior blocked */')                // 禁止 behavior
-      .replace(/@keyframes\s+[^{]*\{/gi, '/* @keyframes blocked */')     // 禁止 @keyframes（可滥用）
-      .replace(/pointer-events?\s*:/gi, '/* pointer-events blocked */')   // 禁止 pointer-events（可遮挡按钮）
+    const sanitized = sanitizeCustomCSS(props.options.customCSS)
     const style = document.createElement('style')
     style.textContent = sanitized
-    style.setAttribute('data-takoio-custom-css', '') // 标记来源便于审计
+    style.setAttribute('data-takoio-custom-css', '')
     document.head.appendChild(style)
   }
   logger.log(`Takoio v${version} initialized`)

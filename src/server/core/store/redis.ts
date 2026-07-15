@@ -244,14 +244,16 @@ function cleanupExpiredRateBuckets (now: number): void {
   }
 }
 
+// P2-fix: 定时清理内存限流桶（每 5 分钟），替代原来每 1000 次请求触发的方式
+// 低流量场景下 1000 次请求可能要等很久，过期桶会无限积累
+setInterval(() => {
+  cleanupExpiredRateBuckets(Date.now())
+}, 300_000).unref()
+
 /** 内存限流（serverless 或 Redis 不可用时使用） */
 export function memoryRateLimit (identifier: string, max: number, windowMs: number): boolean {
   const key = `takoio:rate:${identifier}`
   const now = Date.now()
-  // Periodic cleanup: every 1000 requests, purge expired buckets to prevent leaks.
-  if (_memRateBuckets.size % 1000 === 0) {
-    cleanupExpiredRateBuckets(now)
-  }
   const bucket = _memRateBuckets.get(key)
   if (!bucket || bucket.reset < now) {
     _memRateBuckets.set(key, { count: 1, reset: now + windowMs })

@@ -43,12 +43,19 @@ const connUri = () => MONGODB_URI || 'mongodb://localhost:27017'
 const dbName = () => MONGODB_DB || 'takoio'
 
 let _connectPromise: Promise<Db> | null = null
+let _connectAttempts = 0 // 用于断线重连退避
 
 async function getDb (): Promise<Db> {
   if (_db) return _db
   if (_connectPromise) return _connectPromise
 
   _connectPromise = (async () => {
+    // P1-fix: 断线重连时加入退避，防止疯狂锤正在恢复的 MongoDB
+    _connectAttempts++
+    if (_connectAttempts > 1) {
+      const backoff = Math.min(1000 * 2 ** (_connectAttempts - 2), 30_000)
+      await new Promise(r => setTimeout(r, backoff))
+    }
     _client = new MongoClient(connUri(), {
       maxPoolSize: 10,
       minPoolSize: 1,
@@ -60,11 +67,22 @@ async function getDb (): Promise<Db> {
     })
     await _client.connect()
     _db = _client.db(dbName())
+    _connectAttempts = 0 // 连接成功，重置计数
     _client.on('close', () => { _db = null; _connectPromise = null })
     return _db
   })()
 
   return _connectPromise
+}
+
+/** 优雅关闭 MongoDB 连接 — 由 store/index.ts closeDb() 调用 */
+export async function closeMongoDb (): Promise<void> {
+  if (_client) {
+    try { await _client.close() } catch { /* ignore */ }
+    _client = null
+    _db = null
+    _connectPromise = null
+  }
 }
 
 const relTime = (ts: number): string => {

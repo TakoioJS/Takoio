@@ -27,7 +27,12 @@ function broadcastLocally (url: string, event: string, payload: any) {
   const data = JSON.stringify({ event, url, ...payload })
   for (const listener of listeners) {
     if (listener.url === url || listener.url === '*') {
-      listener.send(`data: ${data}\n\n`)
+      try {
+        listener.send(`data: ${data}\n\n`)
+      } catch {
+        // P3-fix: 某个 listener 的 stream 已关闭，移除而不中断广播循环
+        listeners.delete(listener)
+      }
     }
   }
 }
@@ -137,6 +142,8 @@ export async function closeSseSubscriber (): Promise<void> {
   }
   _redisSubscriber = null
   _subscriberPromise = null
+  // P3-fix: 关闭时清空 listeners，让 in-flight SSE 连接能被 GC 回收
+  listeners.clear()
 }
 
 /**

@@ -151,3 +151,41 @@ export const LOG_LEVEL = (process.env.LOG_LEVEL || '').toLowerCase() as 'debug' 
 
 /** 初始化设置 Token */
 export const SETUP_TOKEN = process.env.SETUP_TOKEN
+
+// ========== 启动配置校验 ==========
+
+/** PostgreSQL 连接 URL */
+export const POSTGRES_URL = process.env.POSTGRES_URL || process.env.DATABASE_URL
+
+/**
+ * 启动时校验关键配置，对明显错误给出清晰报错而非运行时困惑错误。
+ * 由 init plugin 调用，在任何 DB 操作之前执行。
+ */
+export function validateStartupConfig (): void {
+  const dbType = DB_TYPE.toLowerCase()
+
+  // MongoDB: 必须有连接 URI
+  if (dbType === 'mongodb' && !MONGODB_URI) {
+    throw new Error(
+      'DB_TYPE=mongodb 但未设置 MONGODB_URI 环境变量。' +
+      '请在部署环境配置 MONGODB_URI（如 mongodb+srv://user:pass@cluster.mongodb.net/takoio）'
+    )
+  }
+
+  // PostgreSQL: 必须有连接 URL
+  if ((dbType === 'postgres' || dbType === 'postgresql' || dbType === 'pg') && !POSTGRES_URL) {
+    throw new Error(
+      `DB_TYPE=${dbType} 但未设置 POSTGRES_URL 或 DATABASE_URL 环境变量。` +
+      '请在部署环境配置连接字符串（如 postgresql://user:pass@host:5432/takoio）'
+    )
+  }
+
+  // Throttle 合理性检查
+  if (TAKOIO_THROTTLE_MS > 60000) {
+    // 不 throw（可能有意为之），但打 warn 让运维知道
+    console.warn(
+      `[takoio] TAKOIO_THROTTLE=${TAKOIO_THROTTLE_MS}ms 异常偏大（>${60000}ms），` +
+      '每个请求都会被延迟，请确认是否为预期配置'
+    )
+  }
+}

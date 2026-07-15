@@ -92,6 +92,11 @@ export * from './rate-limit'
 export async function closeDb (): Promise<void> {
   try {
     if (DB_TYPE === 'mongodb') {
+      // P1-fix: MongoDB 之前是空操作，现在正确关闭连接防止 in-flight 数据丢失
+      const mod = await import('./mongodb.js') as any
+      if (typeof mod.closeMongoDb === 'function') {
+        await mod.closeMongoDb()
+      }
       return
     }
     const mod = DB_TYPE === 'postgres' || DB_TYPE === 'postgresql' || DB_TYPE === 'pg'

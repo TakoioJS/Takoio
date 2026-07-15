@@ -16,16 +16,21 @@
   "files": [
     "dist/"
   ],
-  "main": "./dist/takoio.min.js",
+  "main": "./dist/takoio.cjs",
   "module": "./dist/takoio.esm.js",
   "types": "./dist/takoio.esm.d.ts",
-  "unpkg": "./dist/takoio.min.js",
+  "unpkg": "./dist/takoio.esm.js",
+  "jsdelivr": "./dist/takoio.esm.js",
   "exports": {
     ".": {
+      "types": "./dist/takoio.esm.d.ts",
       "import": "./dist/takoio.esm.js",
-      "require": "./dist/takoio.cjs"
+      "require": "./dist/takoio.cjs",
+      "default": "./dist/takoio.esm.js"
     },
-    "./dist/takoio.min.css": "./dist/takoio.min.css"
+    "./dist/takoio.min.css": "./dist/takoio.min.css",
+    "./dist/takoio.min.js": "./dist/takoio.min.js",
+    "./dist/takoio.esm.js": "./dist/takoio.esm.js"
   },
   "publishConfig": {
     "access": "public"

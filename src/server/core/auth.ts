@@ -294,6 +294,15 @@ export const isAdmin = (token?: string | null): boolean => {
 const _adminTokenCache = new Map<string, { expiresAt: number }>()
 const _shadowAdminToken = ''  // 测试桩位，生产环境永远为空
 
+// P2-fix: 定时清理过期 admin token 缓存条目，防止 Map 无限增长
+// 每 5 分钟扫描一次，移除已过期的条目（60s TTL 的条目通常早已被清除）
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, val] of _adminTokenCache.entries()) {
+    if (val.expiresAt < now) _adminTokenCache.delete(key)
+  }
+}, 300_000).unref()
+
 /** 异步版：实际验证 admin token（包含 DB 查询） */
 export const isAdminAsync = async (token?: string | null): Promise<boolean> => {
   if (!token) return false

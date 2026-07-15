@@ -30,16 +30,22 @@
 ### CDN 引入（静态站点）
 
 ```html
-<!-- 先加载 Vue 3 -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<!-- 再加载 Takoio -->
-<script src="https://unpkg.com/takoio/dist/takoio.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/takoio/dist/takoio.min.css">
+
+<script type="importmap">
+{
+  "imports": {
+    "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js"
+  }
+}
+</script>
 
 <div id="takoio"></div>
 
-<script>
-  takoio.init({
+<script type="module">
+  import { init } from 'https://unpkg.com/takoio/dist/takoio.esm.js'
+
+  init({
     envId: 'https://your-server.com',  // 你的 Takoio 服务端地址
     el: '#takoio',
   })

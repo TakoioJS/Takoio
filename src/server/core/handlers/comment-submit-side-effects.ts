@@ -47,25 +47,26 @@ export async function invalidateAfterSubmit (url: string, saved: any): Promise<v
 
 async function sendEmailNotification (saved: any, cfg: TakoioConfig) {
   if (!cfg.ENABLE_MAIL_NOTIFICATION || !cfg.SMTP_HOST) return
-  try {
-    const { sendEmail } = await import('../email')
-    await sendEmail(cfg, cfg.SMTP_TO || cfg.SMTP_USER, '新评论通知', `用户 ${saved.nick} 发表了评论`)
-  } catch { /* ignore */ }
+  const { sendEmail } = await import('../email')
+  await sendEmail(cfg, cfg.SMTP_TO || cfg.SMTP_USER, '新评论通知', `用户 ${saved.nick} 发表了评论`)
 }
 
 async function sendPushNotification (saved: any, cfg: TakoioConfig) {
   if (!cfg.PUSHOO_CHANNELS) return
-  try {
-    const { sendNotification } = await import('../notify')
-    await sendNotification(cfg, { title: '新评论', content: `${saved.nick}: ${saved.comment}` })
-  } catch { /* ignore */ }
+  const { sendNotification } = await import('../notify')
+  await sendNotification(cfg, { title: '新评论', content: `${saved.nick}: ${saved.comment}` })
 }
 
 /**
  * 提交后副作用 2：邮件 + 推送通知（fire-and-forget）。
  * 内部并发触发两类通知，互不阻塞；调用方无需 await。
+ * P1-fix: 错误不再静默吞掉，统一 warn 日志方便排查
  */
 export function notifyAfterSubmit (saved: any, cfg: TakoioConfig): void {
-  sendEmailNotification(saved, cfg).catch(() => {})
-  sendPushNotification(saved, cfg).catch(() => {})
+  sendEmailNotification(saved, cfg).catch(err =>
+    logger.warn({ err, nick: saved.nick, url: saved.url }, '[notify] Email notification failed')
+  )
+  sendPushNotification(saved, cfg).catch(err =>
+    logger.warn({ err, nick: saved.nick, url: saved.url }, '[notify] Push notification failed')
+  )
 }

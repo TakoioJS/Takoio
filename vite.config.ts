@@ -2,9 +2,14 @@ import { defineConfig, type LibraryFormats } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
 import UnoCSS from 'unocss/vite'
 import dts from 'vite-plugin-dts'
 import { visualizer } from 'rollup-plugin-visualizer'
+
+const packageJson = JSON.parse(
+  readFileSync(resolve(__dirname, 'package.json'), 'utf-8')
+) as { version: string }
 
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'umd' || mode === 'esm'
@@ -53,6 +58,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     define: {
+      __TAKOIO_VERSION__: JSON.stringify(packageJson.version),
       __VUE_OPTIONS_API__: 'true',
       __VUE_PROD_DEVTOOLS__: 'false',
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false'

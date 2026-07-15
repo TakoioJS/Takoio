@@ -9,16 +9,31 @@ import { initPassword } from '#core'
 import { initIpSearcher } from '#core'
 import { closeRedis } from '#core'
 import { logger } from '#core'
-import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN, validateAuthJwtSecret } from '#core'
+import { isServerless, getPresetName, DB_TYPE, SETUP_TOKEN, validateAuthJwtSecret, validateStartupConfig } from '#core'
 import { closeDb } from '#core'
+import { closeSseSubscriber } from '#core'
 
 let initialized = false
 
 export default definePlugin(async () => {
   if (initialized) return
 
+  // P0-fix: 进程级安全网 — 捕获所有未处理的异步异常，防止 Node.js 16+ 默认行为（unhandled rejection → 进程退出）
+  // 放在所有异步操作之前，确保覆盖后续所有 fire-and-forget 模式
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error({ err: reason }, '[init] Unhandled Rejection — caught by process-level safety net')
+  })
+  process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, '[init] Uncaught Exception — process may be in unstable state')
+    // 不立即退出：给 in-flight 请求完成机会，但标记不健康
+    // 由外部进程管理器（PM2/systemd/Docker）通过健康检查重启
+  })
+
   // C1(deploy): Validate JWT secret strength before anything else
   validateAuthJwtSecret()
+
+  // P1-fix: 启动时校验关键配置，对缺失的连接串等给出清晰报错
+  validateStartupConfig()
 
   // C1(deploy): Fail fast on serverless if DB_TYPE is sqlite — ephemeral filesystem causes data loss
   const dbType = DB_TYPE
@@ -31,7 +46,7 @@ export default definePlugin(async () => {
   // 不阻塞 server ready：lookupIpRegion 在 searcher 就绪前返回空串，就绪后自动生效
   const dbPromise = ensureDb()
   const storePromise = initStore()
-  initIpSearcher().catch(() => {})
+  initIpSearcher().catch(err => logger.warn({ err }, '[init] IP region searcher init failed (non-fatal)'))
   await dbPromise
   await storePromise
   const { hasPassword } = await initPassword()
@@ -83,6 +98,8 @@ export default definePlugin(async () => {
         })
       })
 
+      // 关闭 SSE 订阅者
+      try { await closeSseSubscriber() } catch {}
       // 关闭 Redis 连接
       try { await closeRedis() } catch {}
       // 关闭数据库连接
