@@ -226,4 +226,131 @@ describe('handleCommentGet', () => {
     // 私密评论对封禁用户隐藏（仅失去私密查看特权）
     expect(result.data.find((c: any) => c.id === 'p1')?.comment).toBe('🔒 私密评论')
   })
+
+  it('masks private replies (children) from anonymous viewers — regression for private reply leak', async () => {
+    // Regression: private replies attached as children of a public top-level
+    // comment were previously returned with full content to anonymous viewers,
+    // because the privacy filter only walked the top-level array.
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'parent-pub',
+          url: '/test',
+          nick: 'Author',
+          mailMd5: 'author-hash',
+          comment: 'public parent',
+          isPrivate: false,
+          created: 1,
+          children: [
+            {
+              id: 'reply-pub',
+              nick: 'Bob',
+              mailMd5: 'bob-hash',
+              comment: 'public reply',
+              isPrivate: false,
+              created: 2,
+            },
+            {
+              id: 'reply-priv',
+              nick: 'Author',
+              mailMd5: 'author-hash',
+              comment: 'secret reply content',
+              isPrivate: true,
+              created: 3,
+            },
+          ],
+        },
+      ],
+      total: 1,
+    } as any)
+
+    const result = await handleCommentGet({ url: '/test' } as any)
+    const parent = result.data[0]
+    // Public parent stays visible
+    expect(parent.comment).toBe('public parent')
+    // Public reply stays visible
+    const pubReply = parent.children.find((c: any) => c.id === 'reply-pub')
+    expect(pubReply.comment).toBe('public reply')
+    // Private reply MUST be masked — this was the leak
+    const privReply = parent.children.find((c: any) => c.id === 'reply-priv')
+    expect(privReply.comment).toBe('🔒 私密评论')
+    expect(privReply.renderedComment).toContain('🔒 私密评论')
+    // Original secret content must not appear anywhere in the response
+    expect(JSON.stringify(result.data)).not.toContain('secret reply content')
+  })
+
+  it('masks private replies under a masked private parent (no leak via children)', async () => {
+    // Even when the top-level private comment is masked for an unauthorized
+    // viewer, its private reply children must also be masked (not leaked
+    // through the children array attached to the masked placeholder).
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'parent-priv',
+          url: '/test',
+          nick: 'Author',
+          mailMd5: 'author-hash',
+          comment: 'secret parent content',
+          isPrivate: true,
+          created: 1,
+          children: [
+            {
+              id: 'reply-priv',
+              nick: 'Author',
+              mailMd5: 'author-hash',
+              comment: 'secret reply content',
+              isPrivate: true,
+              created: 2,
+            },
+          ],
+        },
+      ],
+      total: 1,
+    } as any)
+
+    const result = await handleCommentGet({ url: '/test' } as any)
+    const parent = result.data[0]
+    // Parent is masked
+    expect(parent.comment).toBe('🔒 私密评论')
+    // Child reply is also masked — no leak via children
+    const child = parent.children.find((c: any) => c.id === 'reply-priv')
+    expect(child.comment).toBe('🔒 私密评论')
+    // Neither secret string may appear in the response
+    expect(JSON.stringify(result.data)).not.toContain('secret parent content')
+    expect(JSON.stringify(result.data)).not.toContain('secret reply content')
+  })
+
+  it('shows private replies to admin via adminToken', async () => {
+    vi.mocked(isAdminAsync).mockResolvedValue(true)
+    vi.mocked(commentStore.getComments).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'parent-pub',
+          url: '/test',
+          nick: 'Author',
+          mailMd5: 'author-hash',
+          comment: 'public parent',
+          isPrivate: false,
+          created: 1,
+          children: [
+            {
+              id: 'reply-priv',
+              nick: 'Author',
+              mailMd5: 'author-hash',
+              comment: 'secret reply content',
+              isPrivate: true,
+              created: 2,
+            },
+          ],
+        },
+      ],
+      total: 1,
+    } as any)
+
+    const result = await handleCommentGet({ url: '/test', adminToken: 'admin-token' } as any)
+    const parent = result.data[0]
+    const privReply = parent.children.find((c: any) => c.id === 'reply-priv')
+    // Admin sees the real content of the private reply
+    expect(privReply.comment).toBe('secret reply content')
+  })
 })

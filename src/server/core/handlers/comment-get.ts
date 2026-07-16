@@ -50,8 +50,16 @@ export const handleCommentGet = async (data: GetCommentData) => {
 
   // 二次过滤：私密评论。
   // 先浅克隆每一项，避免 markMasterComments 直接修改缓存中的原始对象引用。
-  const filteredData = (result.data as any[]).map((c: any) => {
+  // 注意：递归处理 children —— store 返回的 replies 不区分 isPrivate，
+  // 私密 reply 必须在此处按相同规则掩码，否则会被泄露给未授权视角。
+  const filterPrivateComment = (c: any): any => {
     const clone = { ...c }
+    // Always recurse into children so private replies are masked regardless
+    // of the parent's own visibility. Without this, a private reply attached
+    // to a public (or masked private) parent would be returned verbatim.
+    if (Array.isArray(clone.children)) {
+      clone.children = clone.children.map(filterPrivateComment)
+    }
     if (!clone.isPrivate) return clone
     // 博主可见
     if (isMasterViewer) return clone
@@ -59,7 +67,8 @@ export const handleCommentGet = async (data: GetCommentData) => {
     if (viewerMailMd5 && clone.mailMd5 && clone.mailMd5 === viewerMailMd5) return clone
     // 其他视角：用占位替换 content，避免泄露正文
     return { ...clone, comment: '🔒 私密评论', renderedComment: '<p>🔒 私密评论，仅博主与作者本人可见</p>' }
-  })
+  }
+  const filteredData = (result.data as any[]).map(filterPrivateComment)
 
   const rawCfg = await getConfig()
   markMasterComments(filteredData, rawCfg)
