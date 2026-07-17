@@ -194,8 +194,12 @@ export const handleImport = async (source: string, data: any) => {
   }
 
   if (source === 'takoio') {
-    await importStore(parsed as StoreImportData)
-    return { count: parsed.comments?.length || 0 }
+    // 与导出端对称地剥离 configs / sessions：导出时已剔除这两类敏感数据，
+    // 导入端若不过滤，恶意/被篡改的备份可覆盖 AUTH_HASH 等认证凭据或注入会话，
+    // 导致认证绕过。仅允许导入 comments / visitors / reactions / commentReactions / users。
+    const { configs: _configs, sessions: _sessions, ...rest } = parsed as StoreImportData
+    await importStore(rest as StoreImportData)
+    return { count: rest.comments?.length || 0 }
   }
 
   logger.info({ count: parsed.length }, 'Import records')
@@ -212,7 +216,13 @@ const CSV_COLUMNS = ['id', 'url', 'nick', 'mail', 'link', 'comment', 'created', 
 
 /** 将值转义为 CSV 字段（含逗号/引号/换行时包裹双引号） */
 function csvEscape (val: unknown): string {
-  const s = val == null ? '' : String(val)
+  let s = val == null ? '' : String(val)
+  // 防 CSV 公式注入：以 = / + / - / @ / TAB / CR 开头的字段会被 Excel / WPS / LibreOffice
+  // 解释为公式（如 =cmd|'/c calc'!A1、=HYPERLINK(...)），管理员打开导出文件即触发。
+  // 前置单引号强制以文本形式展示（OWASP 推荐缓解措施）。
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`
+  }
   if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
     return `"${s.replace(/"/g, '""')}"`
   }

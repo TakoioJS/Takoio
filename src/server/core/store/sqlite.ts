@@ -332,18 +332,20 @@ export const configStore: ConfigStore = {
 
 export const visitorStore: VisitorStore = {
   async getVisitorCount (url: string, title?: string): Promise<VisitorCount> {
-    // Use atomic UPSERT: insert with count=1, or update count = count + 1 on conflict.
-    // This eliminates the read-modify-write race condition.
+    // Atomic UPSERT: insert with count=1, or on conflict increment count atomically.
+    // 修复：原先先 INSERT(count=1) 再无条件 UPDATE(count=count+1)，导致首次访问计数为 2
+    // 且每次访问都多 +1。现与 postgres 实现保持一致，仅在冲突时 +1。
     const now = Date.now()
-    await db().insert(visitors).values({ url, title: title || '', count: 1, updatedAt: now }).run()
-      .catch(() => {
-        // Conflict expected when row exists; fall through to atomic update
+    await db().insert(visitors).values({ url, title: title || '', count: 1, updatedAt: now })
+      .onConflictDoUpdate({
+        target: visitors.url,
+        set: {
+          count: sql`${visitors.count} + 1`,
+          updatedAt: now,
+          ...(title ? { title } : {}),
+        },
       })
-    // After ensuring row exists, perform atomic increment
-    await db().run(
-      sql`UPDATE ${visitors} SET count = count + 1, updated_at = ${now}${title ? sql`, title = ${title}` : sql``} WHERE ${visitors.url} = ${url}`
-    )
-    // Fetch the updated count
+      .run()
     const row = await db().select({ count: visitors.count }).from(visitors).where(eq(visitors.url, url)).get()
     return { url, time: row?.count ?? 1, updatedAt: now }
   },

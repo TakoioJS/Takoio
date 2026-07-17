@@ -56,7 +56,7 @@ async function getDb (): Promise<Db> {
       const backoff = Math.min(1000 * 2 ** (_connectAttempts - 2), 30_000)
       await new Promise(r => setTimeout(r, backoff))
     }
-    _client = new MongoClient(connUri(), {
+    const client = new MongoClient(connUri(), {
       maxPoolSize: 10,
       minPoolSize: 1,
       serverSelectionTimeoutMS: 10_000,
@@ -65,8 +65,18 @@ async function getDb (): Promise<Db> {
       retryWrites: true,
       retryReads: true,
     })
-    await _client.connect()
-    _db = _client.db(dbName())
+    try {
+      await client.connect()
+    } catch (e) {
+      // 连接失败必须清空 _connectPromise：否则后续 getDb() 会一直命中
+      // `if (_connectPromise) return _connectPromise` 返回这个 rejected promise，
+      // 退避重连逻辑成为死代码，MongoDB 恢复后也无法自愈（仅重启进程可恢复）。
+      try { await client.close() } catch { /* ignore */ }
+      _connectPromise = null
+      throw e
+    }
+    _client = client
+    _db = client.db(dbName())
     _connectAttempts = 0 // 连接成功，重置计数
     _client.on('close', () => { _db = null; _connectPromise = null })
     return _db

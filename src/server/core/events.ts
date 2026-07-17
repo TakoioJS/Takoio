@@ -17,6 +17,9 @@ interface Listener {
   url: string
   send: (data: string) => void
   createdAt: number
+  // 清理该 listener 的 keepAlive 定时器；在 listener 被驱逐/清理时必须调用，
+  // 否则 30s ping 的 setInterval 会泄漏并阻止进程退出。
+  cleanup?: () => void
 }
 
 const listeners = new Set<Listener>()
@@ -169,6 +172,8 @@ export async function runSSEStream (sink: SSESink, query: Record<string, string>
   if (listeners.size > MAX_LISTENERS) {
     const oldest = listeners.values().next().value
     if (oldest) {
+      // 驱逐最旧 listener 时必须调用其 cleanup，否则 keepAlive 定时器泄漏
+      try { oldest.cleanup?.() } catch { /* ignore */ }
       listeners.delete(oldest)
     }
   }
@@ -177,11 +182,15 @@ export async function runSSEStream (sink: SSESink, query: Record<string, string>
   const keepAlive = setInterval(() => {
     sink.write(': ping\n\n')
   }, 30_000)
+  // 定时器不应阻止进程优雅退出
+  if (typeof keepAlive.unref === 'function') keepAlive.unref()
 
   const cleanup = () => {
     clearInterval(keepAlive)
     listeners.delete(listener)
   }
+  // 让 cleanupStaleListeners / MAX_LISTENERS 驱逐路径也能清理 keepAlive
+  listener.cleanup = cleanup
 
   // Disconnect detection is delegated to the sink adapter (nitro layer),
   // which decides whether to use Node `req.on('close')` or Web `AbortSignal`.
@@ -192,9 +201,8 @@ export async function runSSEStream (sink: SSESink, query: Record<string, string>
   // enforce a max lifetime to prevent memory leaks.
   if (!cleanupRegistered) {
     setTimeout(() => {
-      clearInterval(keepAlive)
-      listeners.delete(listener)
-    }, LISTENER_TIMEOUT_MS)
+      cleanup()
+    }, LISTENER_TIMEOUT_MS).unref()
   }
 }
 
@@ -204,6 +212,8 @@ export function cleanupStaleListeners (): number {
   let removed = 0
   for (const listener of listeners) {
     if (now - listener.createdAt > LISTENER_TIMEOUT_MS) {
+      // 必须调用 cleanup 清除 keepAlive 定时器，否则只删 Set 条目会泄漏 30s ping 定时器
+      try { listener.cleanup?.() } catch { /* ignore */ }
       listeners.delete(listener)
       removed++
     }

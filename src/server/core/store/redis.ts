@@ -97,19 +97,28 @@ export async function closeRedis (): Promise<void> {
  * - 默认 throwOnError = false 保持向后兼容：异常时返回 null 并清理连接。
  */
 export async function withRedis<T> (fn: (client: Redis) => Promise<T>, throwOnError = false): Promise<T | null> {
+  let client: Redis | null = null
   try {
-    const client = await getRedisClient()
+    client = await getRedisClient()
     if (!client) return null
-    return await fn(client)
   } catch (e: any) {
-    logger.warn({ error: e.message }, '[withRedis] Redis operation failed')
-    // 连接失败时清除缓存，下次会重新连接
+    // 连接建立失败：清理连接状态，下次重试
+    logger.warn({ error: e.message }, '[withRedis] Redis connection failed')
     if (_redisClient) {
       try { _redisClient.disconnect() } catch { /* ignore */ }
       _redisClient = null
     }
     _connecting = false
     _connectPromise = null
+    if (throwOnError) throw e
+    return null
+  }
+  // 连接已建立：回调内的应用层错误（如 JSON.parse 损坏缓存值、业务异常）
+  // 不应拆毁健康连接，否则单个损坏缓存条目会触发反复断开+重连的连接风暴。
+  try {
+    return await fn(client)
+  } catch (e: any) {
+    logger.warn({ error: e.message }, '[withRedis] Redis operation failed')
     if (throwOnError) throw e
     return null
   }
@@ -234,6 +243,9 @@ export async function setSummaryCache (url: string, content: string, data: Summa
 // This function uses Redis INCR + EXPIRE for a sliding-window counter, with in-memory fallback.
 
 const _memRateBuckets = new Map<string, { count: number; reset: number }>()
+// 内存限流桶上限：在 IP 伪造 / botnet / 长窗口（如 login 15min）场景下，
+// 过期桶清理（每 5min）跟不上新增速度，会导致 Map 无界增长直至 OOM。
+const RATE_BUCKET_MAX = 20_000
 
 /** Clean up expired rate-limit buckets to prevent unbounded memory growth. */
 function cleanupExpiredRateBuckets (now: number): void {
@@ -241,6 +253,13 @@ function cleanupExpiredRateBuckets (now: number): void {
     if (bucket.reset < now) {
       _memRateBuckets.delete(key)
     }
+  }
+  // 即便没有过期条目，超过硬上限时按最近过期时间驱逐最旧的一批，防止无界增长
+  if (_memRateBuckets.size > RATE_BUCKET_MAX) {
+    const entries = Array.from(_memRateBuckets.entries())
+      .sort((a, b) => a[1].reset - b[1].reset)
+    const evict = entries.length - RATE_BUCKET_MAX
+    for (let i = 0; i < evict; i++) _memRateBuckets.delete(entries[i][0])
   }
 }
 

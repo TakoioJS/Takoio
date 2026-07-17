@@ -43,8 +43,9 @@ vi.mock('../../env', async (importOriginal) => {
 })
 
 import { closeDb, getDb, initDb } from '../../db/client'
-import { comments, commentReactions } from '../../db/schema'
-import { commentStore } from '../sqlite'
+import { comments, commentReactions, visitors } from '../../db/schema'
+import { commentStore, visitorStore } from '../sqlite'
+import { eq } from 'drizzle-orm'
 import type { CommentInput } from '../types'
 
 let commentCounter = 0
@@ -93,9 +94,10 @@ describe('SQLite commentStore contract', () => {
   })
 
   beforeEach(async () => {
-    // 清空 comments 及关联的 comment_reactions 表，确保测试间数据隔离
+    // 清空 comments 及关联的 comment_reactions / visitors 表，确保测试间数据隔离
     await getDb().delete(commentReactions).run()
     await getDb().delete(comments).run()
+    await getDb().delete(visitors).run()
   })
 
   afterAll(async () => {
@@ -441,6 +443,28 @@ describe('SQLite commentStore contract', () => {
       const direct = await commentStore.getComment('filter-1')
       expect(direct).toBeDefined()
       expect(direct!.state).toBe('spam')
+    })
+  })
+
+  // ========== visitorStore.getVisitorCount (regression) ==========
+
+  describe('visitorStore.getVisitorCount', () => {
+    it('counts 1 on first visit (not 2)', async () => {
+      // 回归：原实现先 INSERT(count=1) 再无条件 UPDATE(count=count+1)，
+      // 导致首次访问计数为 2 且每次访问都多 +1。现应与 postgres 一致使用 onConflictDoUpdate。
+      const r1 = await visitorStore.getVisitorCount('/regress-page', 'Title')
+      expect(r1.time).toBe(1)
+      const r2 = await visitorStore.getVisitorCount('/regress-page', 'Title')
+      expect(r2.time).toBe(2)
+      const r3 = await visitorStore.getVisitorCount('/regress-page', 'Title')
+      expect(r3.time).toBe(3)
+    })
+
+    it('updates title on subsequent visits when provided', async () => {
+      await visitorStore.getVisitorCount('/title-page', 'Old')
+      await visitorStore.getVisitorCount('/title-page', 'New')
+      const row = await getDb().select().from(visitors).where(eq(visitors.url, '/title-page')).get()
+      expect(row?.title).toBe('New')
     })
   })
 })

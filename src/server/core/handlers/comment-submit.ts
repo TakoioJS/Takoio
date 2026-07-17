@@ -31,6 +31,15 @@ async function validateSubmit (data: SubmitCommentData & { _ip?: string }, cfg: 
 
   const { url, nick, mail, link, comment, pid, rid, ua, image, title, captchaToken, token, isPrivate } = validation.data
 
+  // 长度上限：与可配置的 COMMENT_LENGTH_MAX 一致，超出直接拒绝。
+  // 原实现先通过 schema(max 5000) 再静默 slice 到 COMMENT_LENGTH_MAX(默认 500)，
+  // 截断点可能落在 markdown 构造中间（代码围栏/链接/HTML 实体），导致渲染产物破损，
+  // 且用户内容无提示丢失。改为显式 400 让前端感知并提示用户。
+  const maxLen = typeof cfg.COMMENT_LENGTH_MAX === 'number' && cfg.COMMENT_LENGTH_MAX > 0 ? cfg.COMMENT_LENGTH_MAX : 5000
+  if (comment.length > maxLen) {
+    throw new AppErrorClass('INVALID_INPUT', `评论长度不能超过 ${maxLen} 字`, 400)
+  }
+
   // Social auth: if token is provided but invalid, reject. Valid token auto-populates user info.
   let authUser = null
   if (token) {
@@ -143,7 +152,7 @@ export const handleCommentSubmit = async (data: SubmitCommentData & { _ip?: stri
     mail: mail || '',
     mailMd5,
     link: link || '',
-    comment: comment.slice(0, cfg.COMMENT_LENGTH_MAX || 5000),
+    comment: comment, // 长度已在 validateSubmit 中按 cfg.COMMENT_LENGTH_MAX 校验
     ua: ua || '',
     ip: _ip || '',
     state: 'visible',

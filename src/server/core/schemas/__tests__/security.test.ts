@@ -5,6 +5,7 @@ import {
   LoginSchema,
   CommentIdSchema,
   GetCommentSchema,
+  SubmitCommentSchema,
   safeValidate,
 } from '../index'
 
@@ -131,5 +132,35 @@ describe('GetCommentSchema defaults', () => {
   it('should reject pageSize over 100', () => {
     const result = safeValidate(GetCommentSchema, { pageSize: 200 })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('SubmitCommentSchema image field', () => {
+  // 安全修复：image 字段原本只校验 max(200)，无协议限制。评论者可直接调 API
+  // 设置 image 为任意 URL，所有访客浏览器都会加载该 URL（被动数据外泄/追踪）。
+  // 现仅允许 http(s) URL 或 / 开头的相对路径，阻断 javascript:/data: 等危险协议。
+  const baseComment = { url: '/', nick: 'A', comment: 'hi' }
+
+  it('should accept http(s) image URLs', () => {
+    expect(safeValidate(SubmitCommentSchema, { ...baseComment, image: 'https://cdn.example/a.png' }).success).toBe(true)
+    expect(safeValidate(SubmitCommentSchema, { ...baseComment, image: 'http://cdn.example/a.png' }).success).toBe(true)
+  })
+
+  it('should accept relative path image URLs', () => {
+    expect(safeValidate(SubmitCommentSchema, { ...baseComment, image: '/uploads/a.png' }).success).toBe(true)
+  })
+
+  it('should reject javascript: image URLs', () => {
+    const r = safeValidate(SubmitCommentSchema, { ...baseComment, image: 'javascript:alert(1)' })
+    expect(r.success).toBe(false)
+  })
+
+  it('should reject data: image URLs', () => {
+    const r = safeValidate(SubmitCommentSchema, { ...baseComment, image: 'data:text/html,<script>alert(1)</script>' })
+    expect(r.success).toBe(false)
+  })
+
+  it('should allow omitting image (optional)', () => {
+    expect(safeValidate(SubmitCommentSchema, baseComment).success).toBe(true)
   })
 })

@@ -98,6 +98,53 @@ describe('import-export handlers', () => {
       expect(result.total).toBe(0)
     })
 
+    it('CSV export neutralizes formula injection in user-controlled fields', async () => {
+      // 安全修复：以 = / + / - / @ 开头的字段会被 Excel/WPS/LibreOffice 当作公式执行，
+      // 导出时必须前置单引号强制文本模式。
+      vi.mocked(commentStore.getAllComments).mockResolvedValueOnce({
+        data: [
+          {
+            id: 'c1', url: '/p1', nick: '=HYPERLINK("https://evil.com","click")',
+            comment: '=cmd|\'/c calc\'!A1', mail: '', link: '', ua: 'Mozilla',
+            ip: '1.2.3.4', ipRegion: '', created: 1, state: 'visible',
+            pid: null, rid: null, like: 0, dislike: 0,
+            isSpam: false, isTop: false, isPinned: false, isPrivate: false,
+          },
+          {
+            id: 'c2', url: '/p2', nick: '@SUM(1+1)*cmd|\'/c calc\'!A1',
+            comment: 'plain', mail: '', link: '', ua: '', ip: '',
+            ipRegion: '', created: 2, state: 'visible',
+            pid: null, rid: null, like: 0, dislike: 0,
+            isSpam: false, isTop: false, isPinned: false, isPrivate: false,
+          },
+        ],
+        total: 2,
+      })
+      const result = await handleExport({ format: 'csv' })
+      const csv = result.data as string
+      // 安全属性：以 = / @ 开头的危险字段必须被前置单引号中和，
+      // 电子表格程序遇到 '= / '@ 开头会按文本处理而非公式。
+      // 验证中和后的字段以 ' 为前缀（'=HYPERLINK / '@SUM）。
+      expect(csv).toContain("'=HYPERLINK")
+      expect(csv).toContain("'=cmd|")
+      expect(csv).toContain("'@SUM")
+      // 任意 CSV 字段（按逗号切分并去引号后）不得以 = / @ / + / - 作为首字符
+      // —— 即未中和的公式起始符不应出现在字段开头。
+      const lines = csv.split('\n').slice(1) // skip header
+      for (const line of lines) {
+        if (!line) continue
+        // 粗略切分字段（CSV 可含引号包裹的逗号，此处仅校验字段起始符）
+        const fields = line.match(/(?:^|,)(?:[^,]*)/g) || []
+        for (let i = 0; i < fields.length; i++) {
+          const raw = fields[i].replace(/^,/, '').replace(/^"(.*)"$/, '$1')
+          // 字段首字符不得是公式触发符（已被前置 ' 中和）
+          if (raw.length > 0) {
+            expect(['=', '@', '+'].includes(raw[0])).toBe(false)
+          }
+        }
+      }
+    })
+
     it('throws AppError on invalid format', async () => {
       await expect(
         handleExport({ format: 'xml' } as any)
@@ -108,15 +155,21 @@ describe('import-export handlers', () => {
   // ----- Import -----
 
   describe('handleImport', () => {
-    it('imports takoio format via importStore', async () => {
+    it('imports takoio format via importStore, stripping configs/sessions', async () => {
+      // 安全修复：导入端必须与导出端对称地剥离 configs / sessions，
+      // 防止恶意/被篡改的备份覆盖 AUTH_HASH 等认证凭据或注入会话。
       const payload = {
         comments: [{ id: 'c1', url: '/p1', nick: 'A', comment: 'hi' }],
-        configs: [],
-        sessions: [],
+        configs: [{ key: 'AUTH_HASH', value: 'attacker-hash' }],
+        sessions: [{ token: 'tok' }],
       }
       const result = await handleImport('takoio', { takoio: payload })
       expect(result.count).toBe(1)
-      expect(importStore).toHaveBeenCalledWith(payload)
+      // importStore 只应收到剥离 configs/sessions 后的数据
+      expect(importStore).toHaveBeenCalledWith({ comments: payload.comments })
+      const called = (importStore as any).mock.calls[0][0] as any
+      expect(called.configs).toBeUndefined()
+      expect(called.sessions).toBeUndefined()
     })
 
     it('imports valine format with field mapping', async () => {

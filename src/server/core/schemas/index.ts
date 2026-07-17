@@ -20,7 +20,10 @@ export const SubmitCommentSchema = z.object({
   pid: z.string().optional(),
   rid: z.string().optional(),
   ua: z.string().max(500).optional(),
-  image: z.string().max(200).optional(),
+  image: z.string().max(200).refine(
+    v => /^https?:\/\//.test(v) || v.startsWith('/'),
+    { message: 'image 必须为 http(s) URL 或以 / 开头的相对路径' }
+  ).optional(),
   title: z.string().max(200).optional(),
   captchaToken: z.string().max(2000).optional(),
   _token: z.string().max(2000).optional(),

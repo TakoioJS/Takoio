@@ -119,15 +119,26 @@ describe('handleCommentSubmit', () => {
     ).rejects.toThrow()
   })
 
-  it('truncates long comments', async () => {
-    const result = await handleCommentSubmit({
+  it('rejects comments exceeding COMMENT_LENGTH_MAX instead of silently truncating', async () => {
+    // 安全修复：原实现先通过 schema(max 5000) 再静默 slice 到 COMMENT_LENGTH_MAX(默认 500)，
+    // 截断点可能落在 markdown 构造中间导致渲染产物破损，且用户内容无提示丢失。
+    // 现超出 cfg.COMMENT_LENGTH_MAX 时直接 400 拒绝。
+    await expect(
+      handleCommentSubmit({
+        url: '/test',
+        nick: 'TestUser',
+        comment: 'x'.repeat(501), // mock cfg.COMMENT_LENGTH_MAX = 500
+        _ip: '127.0.0.1',
+      })
+    ).rejects.toThrow(/超过/)
+    // 等长上限的评论应被接受
+    const ok = await handleCommentSubmit({
       url: '/test',
       nick: 'TestUser',
-      comment: 'x'.repeat(501),
+      comment: 'x'.repeat(500),
       _ip: '127.0.0.1',
     })
-    // Long comments are truncated at handler level, not rejected
-    expect(result.data.comment.length).toBeLessThanOrEqual(500)
+    expect(ok.data.comment.length).toBe(500)
   })
 
   it('rejects impersonation of master', async () => {
