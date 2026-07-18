@@ -56,7 +56,7 @@ async function getDb (): Promise<Db> {
       const backoff = Math.min(1000 * 2 ** (_connectAttempts - 2), 30_000)
       await new Promise(r => setTimeout(r, backoff))
     }
-    _client = new MongoClient(connUri(), {
+    const client = new MongoClient(connUri(), {
       maxPoolSize: 10,
       minPoolSize: 1,
       serverSelectionTimeoutMS: 10_000,
@@ -65,10 +65,25 @@ async function getDb (): Promise<Db> {
       retryWrites: true,
       retryReads: true,
     })
-    await _client.connect()
-    _db = _client.db(dbName())
+    try {
+      await client.connect()
+    } catch (err) {
+      // P1-fix: 连接失败必须清理 _connectPromise，否则下次调用会命中
+      // `if (_connectPromise) return _connectPromise` 永久返回 rejected promise。
+      // 单次瞬态故障（启动期 MongoDB 不可达 / 网络抖动 / 维护重启）即可导致
+      // 整个数据面瘫痪直至进程重启。退避计数 _connectAttempts 保留以驱动后续重试节奏。
+      // 与 events.ts ensureRedisSubscriber 的修复属于同一类 bug，原实现遗漏了此处。
+      try { await client.close() } catch { /* ignore */ }
+      _connectPromise = null
+      throw err
+    }
+    _client = client
+    _db = client.db(dbName())
     _connectAttempts = 0 // 连接成功，重置计数
-    _client.on('close', () => { _db = null; _connectPromise = null })
+    // 连接断开时清理 _db / _connectPromise / _client：
+    // 仅清前两者会留下 stale _client，下次 getDb() 新建客户端覆盖引用前，
+    // 旧客户端的连接池/事件监听无法及时回收。
+    _client.on('close', () => { _db = null; _connectPromise = null; _client = null })
     return _db
   })()
 
