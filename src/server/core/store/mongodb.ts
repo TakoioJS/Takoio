@@ -56,20 +56,34 @@ async function getDb (): Promise<Db> {
       const backoff = Math.min(1000 * 2 ** (_connectAttempts - 2), 30_000)
       await new Promise(r => setTimeout(r, backoff))
     }
-    _client = new MongoClient(connUri(), {
-      maxPoolSize: 10,
-      minPoolSize: 1,
-      serverSelectionTimeoutMS: 10_000,
-      connectTimeoutMS: 10_000,
-      socketTimeoutMS: 30_000,
-      retryWrites: true,
-      retryReads: true,
-    })
-    await _client.connect()
-    _db = _client.db(dbName())
-    _connectAttempts = 0 // 连接成功，重置计数
-    _client.on('close', () => { _db = null; _connectPromise = null })
-    return _db
+    try {
+      _client = new MongoClient(connUri(), {
+        maxPoolSize: 10,
+        minPoolSize: 1,
+        serverSelectionTimeoutMS: 10_000,
+        connectTimeoutMS: 10_000,
+        socketTimeoutMS: 30_000,
+        retryWrites: true,
+        retryReads: true,
+      })
+      await _client.connect()
+      _db = _client.db(dbName())
+      _connectAttempts = 0 // 连接成功，重置计数
+      _client.on('close', () => { _db = null; _connectPromise = null })
+      return _db
+    } catch (err) {
+      // P1-fix: 失败时必须清理 _client 与 cached promise。
+      // 否则 _client.on('close', ...) 因 connect() 抛出而不会注册，_connectPromise 永久卡在
+      // rejected 态；后续 getDb() 永远命中 `if (_connectPromise) return _connectPromise`
+      // 返回同一个 rejected promise，重连退避逻辑成死代码。
+      // 触发场景：serverless 冷启动 / MongoDB 维护窗口 / 网络抖动 → 一次瞬时连接失败
+      // 即导致实例永久不可用，必须重启进程才能恢复。
+      try { await _client?.close() } catch { /* ignore */ }
+      _client = null
+      _db = null
+      _connectPromise = null
+      throw err
+    }
   })()
 
   return _connectPromise
@@ -79,10 +93,11 @@ async function getDb (): Promise<Db> {
 export async function closeMongoDb (): Promise<void> {
   if (_client) {
     try { await _client.close() } catch { /* ignore */ }
-    _client = null
-    _db = null
-    _connectPromise = null
   }
+  _client = null
+  _db = null
+  _connectPromise = null
+  _connectAttempts = 0 // 重置退避计数：close 后再次连接应从无 backoff 开始
 }
 
 const relTime = (ts: number): string => {
