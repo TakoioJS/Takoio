@@ -65,7 +65,18 @@ async function getDb (): Promise<Db> {
       retryWrites: true,
       retryReads: true,
     })
-    await _client.connect()
+    try {
+      await _client.connect()
+    } catch (err) {
+      // P1-fix: 连接失败必须清理状态。否则 _connectPromise 会缓存 rejected promise，
+      // 后续 getDb() 命中 `if (_connectPromise) return _connectPromise` 永远返回同一个 rejected promise，
+      // 即使 MongoDB 恢复也无法重连——单次抖动即永久宕机直到进程重启。
+      // （close 事件监听器在 connect 成功后才注册，失败路径上不会自动重置状态。）
+      try { await _client.close() } catch { /* ignore */ }
+      _client = null
+      _connectPromise = null
+      throw err
+    }
     _db = _client.db(dbName())
     _connectAttempts = 0 // 连接成功，重置计数
     _client.on('close', () => { _db = null; _connectPromise = null })
